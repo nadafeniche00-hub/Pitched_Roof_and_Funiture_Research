@@ -1,0 +1,509 @@
+// Evaluation engine: usable height of a roof storey + furniture fit.
+// Pure JS, no dependencies, runs identically in the browser (live feedback) and in Node (API, tests).
+//
+// Plan coordinates: x to the right, y downwards, metres. Room = [0,W] x [0,D].
+// Gable roof, ridge parallel to y at x = W/2, eaves (knee walls) on x = 0 and x = W.
+import { CATALOG } from './catalog.js';
+
+const EPS = 1e-6;
+
+export const DEFAULT_RULES = {
+  fullH: 2.0, // floor with >= this height counts 100 %   (WoFlV-style area counting)
+  halfH: 1.0, // floor with >= this height counts 50 %, below it 0 %
+  halfFactor: 0.5,
+  walkH: 1.9, // height needed to walk upright
+  passage: 0.6, // minimum clear passage width
+  fitTolerance: 0.9, // share of a clearance zone that must be usable -> "ok"
+  warnTolerance: 0.6, // ... -> "warn", below that "fail"
+  fullStorey: { height: 2.3, share: 2 / 3 }, // placeholder - differs per building code, configurable
+  weights: { furnish: 0.4, usable: 0.3, circulation: 0.3 },
+};
+
+export const DEFAULT_ROOM = {
+  width: 5.0,
+  depth: 7.0,
+  kneeWall: 0.9,
+  pitch: 38,
+  maxHeight: 3.0, // flat collar-tie ceiling
+  dormers: [{ side: 'left', center: 3.5, width: 2.0, depth: 1.4, height: 2.4 }],
+  stair: { x: 2.0, y: 0.2, w: 0.9, d: 2.0 },
+  doors: [],
+  windows: [{ wall: 'N', pos: 2.5, width: 1.0 }, { wall: 'S', pos: 2.5, width: 1.0 }],
+};
+
+const clamp = (v, lo, hi, dflt) => (Number.isFinite(+v) ? Math.min(hi, Math.max(lo, +v)) : dflt);
+
+export function sanitizeRoom(r = {}) {
+  const D = DEFAULT_ROOM;
+  const width = clamp(r.width, 2, 12, D.width);
+  const depth = clamp(r.depth, 2, 14, D.depth);
+  const wall = (w) => (['N', 'S', 'E', 'W'].includes(w) ? w : 'N');
+  return {
+    width,
+    depth,
+    kneeWall: clamp(r.kneeWall, 0, 2.5, D.kneeWall),
+    pitch: clamp(r.pitch, 5, 75, D.pitch),
+    maxHeight: clamp(r.maxHeight, 1, 6, D.maxHeight),
+    dormers: (Array.isArray(r.dormers) ? r.dormers : []).slice(0, 6).map((d) => ({
+      side: d.side === 'right' ? 'right' : 'left',
+      center: clamp(d.center, 0, depth, depth / 2),
+      width: clamp(d.width, 0.5, depth, 2),
+      depth: clamp(d.depth, 0.3, width, 1.4),
+      height: clamp(d.height, 1, 6, 2.4),
+    })),
+    stair: r.stair
+      ? { x: clamp(r.stair.x, 0, width, 2), y: clamp(r.stair.y, 0, depth, 0.2), w: clamp(r.stair.w, 0.5, 3, 0.9), d: clamp(r.stair.d, 0.5, 5, 2) }
+      : null,
+    doors: (Array.isArray(r.doors) ? r.doors : []).slice(0, 6).map((d) => ({ wall: wall(d.wall), pos: clamp(d.pos, 0, 14, 1), width: clamp(d.width, 0.6, 1.5, 0.9) })),
+    windows: (Array.isArray(r.windows) ? r.windows : []).slice(0, 8).map((d) => ({ wall: wall(d.wall), pos: clamp(d.pos, 0, 14, 1), width: clamp(d.width, 0.4, 4, 1) })),
+  };
+}
+
+export function sanitizeItems(items) {
+  return (Array.isArray(items) ? items : [])
+    .filter((it) => it && CATALOG[it.type])
+    .slice(0, 40)
+    .map((it, i) => ({
+      id: String(it.id ?? `i${i}`).slice(0, 40),
+      type: it.type,
+      x: clamp(it.x, -20, 40, 0),
+      y: clamp(it.y, -20, 40, 0),
+      rot: [0, 1, 2, 3].includes(it.rot) ? it.rot : 0,
+      placed: !!it.placed,
+    }));
+}
+
+// ---------------------------------------------------------------- geometry
+
+function rotPt(px, py, rot) {
+  switch (rot) {
+    case 0: return [px, py];
+    case 1: return [-py, px];
+    case 2: return [-px, -py];
+    default: return [py, -px];
+  }
+}
+
+export const FRONT = [[0, 1], [-1, 0], [0, -1], [1, 0]]; // direction the front faces, per rotation (clockwise)
+
+export function bodySize(def, rot) {
+  return rot % 2 ? { w: def.d, d: def.w } : { w: def.w, d: def.d };
+}
+
+/** Absolute rectangles [x0,y0,x1,y1] of body + clearance zones for a placed item. */
+export function itemRects(def, item) {
+  const { w, d } = def;
+  const c = def.clear || {};
+  const local = { body: [0, 0, w, d] };
+  if (c.front > 0) local.front = [0, d, w, d + c.front];
+  if (c.back > 0) local.back = [0, -c.back, w, 0];
+  if (c.side > 0) {
+    local.sideA = [-c.side, 0, 0, d];
+    local.sideB = [w, 0, w + c.side, d];
+  }
+  const rot = item.rot || 0;
+  const [sx, sy] = [[0, 0], [d, 0], [w, d], [0, w]][rot];
+  const out = {};
+  for (const [k, r] of Object.entries(local)) {
+    const a = rotPt(r[0], r[1], rot);
+    const b = rotPt(r[2], r[3], rot);
+    out[k] = [
+      Math.min(a[0], b[0]) + sx + item.x,
+      Math.min(a[1], b[1]) + sy + item.y,
+      Math.max(a[0], b[0]) + sx + item.x,
+      Math.max(a[1], b[1]) + sy + item.y,
+    ];
+  }
+  return out;
+}
+
+export function dormerRect(room, d) {
+  const x0 = d.side === 'left' ? 0 : room.width - d.depth;
+  return [x0, d.center - d.width / 2, x0 + d.depth, d.center + d.width / 2];
+}
+
+export function doorRect(room, d) {
+  const { width: W, depth: D } = room;
+  const h = d.width / 2;
+  switch (d.wall) {
+    case 'N': return [d.pos - h, 0, d.pos + h, d.width];
+    case 'S': return [d.pos - h, D - d.width, d.pos + h, D];
+    case 'W': return [0, d.pos - h, d.width, d.pos + h];
+    default: return [W - d.width, d.pos - h, W, d.pos + h];
+  }
+}
+
+export function windowRect(room, d) {
+  const { width: W, depth: D } = room;
+  const h = d.width / 2;
+  const t = 0.3; // strip in front of the window that tall furniture must not block
+  switch (d.wall) {
+    case 'N': return [d.pos - h, 0, d.pos + h, t];
+    case 'S': return [d.pos - h, D - t, d.pos + h, D];
+    case 'W': return [0, d.pos - h, t, d.pos + h];
+    default: return [W - t, d.pos - h, W, d.pos + h];
+  }
+}
+
+export function stairRect(room) {
+  const s = room.stair;
+  return s ? [s.x, s.y, s.x + s.w, s.y + s.d] : null;
+}
+
+/** Roof height at (x, y) - analytic, used for the section view and tests. */
+export function roofHeight(room, x, y) {
+  const tan = Math.tan((room.pitch * Math.PI) / 180);
+  let hh = room.kneeWall + tan * Math.min(x, room.width - x);
+  for (const d of room.dormers) {
+    const r = dormerRect(room, d);
+    if (x >= r[0] && x <= r[2] && y >= r[1] && y <= r[3]) hh = Math.max(hh, d.height);
+  }
+  return Math.min(hh, room.maxHeight);
+}
+
+function cellRange(r, res) {
+  return [
+    Math.ceil(r[0] / res - 0.5 - EPS),
+    Math.floor(r[2] / res - 0.5 + EPS),
+    Math.ceil(r[1] / res - 0.5 - EPS),
+    Math.floor(r[3] / res - 0.5 + EPS),
+  ];
+}
+
+function markRect(arr, g, r) {
+  const [i0, i1, j0, j1] = cellRange(r, g.res);
+  for (let j = Math.max(0, j0); j <= Math.min(g.ny - 1, j1); j++)
+    for (let i = Math.max(0, i0); i <= Math.min(g.nx - 1, i1); i++) arr[j * g.nx + i] = 1;
+}
+
+// ---------------------------------------------------------------- grid
+
+const gridCache = new Map();
+
+export function buildGrid(room, res = 0.05) {
+  const nx = Math.round(room.width / res);
+  const ny = Math.round(room.depth / res);
+  const n = nx * ny;
+  const g = { nx, ny, res, h: new Float32Array(n), stair: new Uint8Array(n), door: new Uint8Array(n), win: new Uint8Array(n) };
+  const tan = Math.tan((room.pitch * Math.PI) / 180);
+  const dorms = room.dormers.map((d) => ({ r: dormerRect(room, d), h: d.height }));
+  for (let j = 0; j < ny; j++) {
+    const y = (j + 0.5) * res;
+    for (let i = 0; i < nx; i++) {
+      const x = (i + 0.5) * res;
+      let hh = room.kneeWall + tan * Math.min(x, room.width - x);
+      for (const d of dorms) if (x >= d.r[0] && x <= d.r[2] && y >= d.r[1] && y <= d.r[3]) hh = Math.max(hh, d.h);
+      g.h[j * nx + i] = Math.min(hh, room.maxHeight);
+    }
+  }
+  const sr = stairRect(room);
+  if (sr) markRect(g.stair, g, sr);
+  for (const d of room.doors) markRect(g.door, g, doorRect(room, d));
+  for (const d of room.windows) markRect(g.win, g, windowRect(room, d));
+  return g;
+}
+
+export function getGrid(room, res = 0.05) {
+  const key = res + JSON.stringify(room);
+  let g = gridCache.get(key);
+  if (!g) {
+    g = buildGrid(room, res);
+    gridCache.set(key, g);
+    if (gridCache.size > 6) gridCache.delete(gridCache.keys().next().value);
+  }
+  return g;
+}
+
+// ---------------------------------------------------------------- per-item check
+
+const pct = (a, b) => Math.round((100 * a) / Math.max(1, b));
+
+function evalOne(g, occ, selfMarked, def, item, rules, wantAccess) {
+  const rects = itemRects(def, item);
+  const { nx, ny, res, h, stair, door, win } = g;
+  const occLimit = selfMarked ? 1 : 0; // occ > occLimit  => someone else is there too
+  const issues = [];
+
+  const [i0, i1, j0, j1] = cellRange(rects.body, res);
+  const total = Math.max(0, (i1 - i0 + 1) * (j1 - j0 + 1));
+  let out = 0, low = 0, st = 0, dr = 0, wn = 0, ov = 0;
+  for (let j = j0; j <= j1; j++) {
+    for (let i = i0; i <= i1; i++) {
+      if (i < 0 || j < 0 || i >= nx || j >= ny) { out++; continue; }
+      const k = j * nx + i;
+      if (h[k] < def.bodyH - EPS) low++;
+      if (stair[k]) st++;
+      if (door[k]) dr++;
+      if (win[k] && def.h > 0.9) wn++;
+      if (occ[k] > occLimit) ov++;
+    }
+  }
+  if (out) issues.push({ code: 'outside', msg: 'Sticks out of the room' });
+  if (low) issues.push({ code: 'headroom', msg: `Roof too low over ${pct(low, total)}% of it (needs ${def.bodyH.toFixed(2)} m)` });
+  if (st) issues.push({ code: 'stair', msg: 'Blocks the stair opening' });
+  if (dr) issues.push({ code: 'door', msg: 'Blocks a door swing' });
+  if (wn) issues.push({ code: 'window', msg: 'Blocks a window' });
+  if (ov) issues.push({ code: 'overlap', msg: 'Overlaps other furniture' });
+  const hard = issues.length > 0;
+
+  const zones = {};
+  const access = wantAccess ? [] : null;
+  let limiting = null;
+  if (!hard || wantAccess) {
+    for (const name of ['front', 'back', 'sideA', 'sideB']) {
+      const r = rects[name];
+      if (!r) continue;
+      const [a0, a1, b0, b1] = cellRange(r, res);
+      const zt = Math.max(1, (a1 - a0 + 1) * (b1 - b0 + 1));
+      let ok = 0;
+      for (let j = b0; j <= b1; j++) {
+        for (let i = a0; i <= a1; i++) {
+          if (i < 0 || j < 0 || i >= nx || j >= ny) continue;
+          const k = j * nx + i;
+          if (occ[k] === 0 && !stair[k] && h[k] >= def.useH - EPS) {
+            ok++;
+            if (access) access.push(k);
+          }
+        }
+      }
+      zones[name] = ok / zt;
+    }
+  }
+  const c = def.clear || {};
+  const parts = [];
+  if (c.front > 0) parts.push(['front', zones.front ?? 0]);
+  if (c.back > 0) parts.push(['back', zones.back ?? 0]);
+  if (c.side > 0) {
+    const a = zones.sideA ?? 0, b = zones.sideB ?? 0;
+    parts.push(['side', c.sideRule === 'both' ? Math.min(a, b) : Math.max(a, b)]);
+  }
+  let ratio = 1;
+  for (const [n, v] of parts) if (v < ratio) { ratio = v; limiting = n; }
+
+  let status;
+  if (hard) status = 'fail';
+  else if (ratio >= rules.fitTolerance) status = 'ok';
+  else if (ratio >= rules.warnTolerance) status = 'warn';
+  else status = 'fail';
+  if (!hard && ratio < rules.fitTolerance) {
+    issues.push({ code: 'clearance', msg: `Only ${pct(ratio, 1)}% of the ${limiting} clearance (${(c[limiting] ?? c.side).toFixed(1)} m, ${def.useH.toFixed(1)} m high) is usable` });
+  }
+  return { status, ratio, zones, issues, rects, access, hard };
+}
+
+// ---------------------------------------------------------------- summed-area helpers
+
+function sat(nx, ny, f) {
+  const w = nx + 1;
+  const s = new Int32Array(w * (ny + 1));
+  for (let j = 0; j < ny; j++) {
+    let row = 0;
+    for (let i = 0; i < nx; i++) {
+      row += f(j * nx + i) ? 1 : 0;
+      s[(j + 1) * w + i + 1] = s[j * w + i + 1] + row;
+    }
+  }
+  return s;
+}
+
+function winSum(s, nx, ny, i0, j0, i1, j1) {
+  i0 = Math.max(0, i0); j0 = Math.max(0, j0); i1 = Math.min(nx - 1, i1); j1 = Math.min(ny - 1, j1);
+  if (i1 < i0 || j1 < j0) return 0;
+  const w = nx + 1;
+  return s[(j1 + 1) * w + i1 + 1] - s[j0 * w + i1 + 1] - s[(j1 + 1) * w + i0] + s[j0 * w + i0];
+}
+
+// ---------------------------------------------------------------- full evaluation
+
+export function evaluate(room, items, opts = {}) {
+  const rules = { ...DEFAULT_RULES, ...(opts.rules || {}) };
+  const res = opts.res ?? 0.05;
+  const g = getGrid(room, res);
+  const { nx, ny, h, stair } = g;
+  const n = nx * ny;
+  const occ = new Uint8Array(n);
+
+  for (const it of items) {
+    const def = CATALOG[it.type];
+    if (!it.placed || !def) continue;
+    const [i0, i1, j0, j1] = cellRange(itemRects(def, it).body, res);
+    for (let j = Math.max(0, j0); j <= Math.min(ny - 1, j1); j++)
+      for (let i = Math.max(0, i0); i <= Math.min(nx - 1, i1); i++) occ[j * nx + i]++;
+  }
+
+  // per-item geometry checks
+  const per = items.map((it) => {
+    const def = CATALOG[it.type];
+    if (!def) return { id: it.id, status: 'fail', ratio: 0, zones: {}, issues: [{ code: 'type', msg: 'Unknown furniture type' }], reachable: false };
+    if (!it.placed) return { id: it.id, status: 'unplaced', ratio: 0, zones: {}, issues: [{ code: 'unplaced', msg: 'Not placed' }], reachable: false };
+    return { id: it.id, ...evalOne(g, occ, true, def, it, rules, true) };
+  });
+
+  // circulation: walkable cells, eroded by half the passage width, flood-filled from the entries
+  const rr = Math.max(1, Math.round(rules.passage / 2 / res));
+  const blocked = (k) => h[k] < rules.walkH - EPS || occ[k] > 0 || stair[k] === 1;
+  const sBlocked = sat(nx, ny, blocked);
+  const E = new Uint8Array(n);
+  for (let j = rr; j < ny - rr; j++)
+    for (let i = rr; i < nx - rr; i++)
+      if (winSum(sBlocked, nx, ny, i - rr, j - rr, i + rr, j + rr) === 0) E[j * nx + i] = 1;
+
+  const seeds = [];
+  const entries = [];
+  const sr = stairRect(room);
+  const grow = rules.passage + 0.3;
+  if (sr) entries.push([sr[0] - grow, sr[1] - grow, sr[2] + grow, sr[3] + grow]);
+  for (const d of room.doors) { const r = doorRect(room, d); entries.push([r[0] - 0.3, r[1] - 0.3, r[2] + 0.3, r[3] + 0.3]); }
+  for (const r of entries) {
+    const [i0, i1, j0, j1] = cellRange(r, res);
+    for (let j = Math.max(0, j0); j <= Math.min(ny - 1, j1); j++)
+      for (let i = Math.max(0, i0); i <= Math.min(nx - 1, i1); i++) if (E[j * nx + i]) seeds.push(j * nx + i);
+  }
+  const R = new Uint8Array(n);
+  const queue = new Int32Array(n);
+  let qh = 0, qt = 0;
+  const push = (k) => { if (E[k] && !R[k]) { R[k] = 1; queue[qt++] = k; } };
+  if (entries.length) seeds.forEach(push);
+  else for (let k = 0; k < n; k++) push(k); // no entry defined: do not penalise
+  while (qh < qt) {
+    const k = queue[qh++];
+    const i = k % nx, j = (k - i) / nx;
+    if (i > 0) push(k - 1);
+    if (i < nx - 1) push(k + 1);
+    if (j > 0) push(k - nx);
+    if (j < ny - 1) push(k + nx);
+  }
+  const sR = sat(nx, ny, (k) => R[k] === 1);
+  const touched = (k) => {
+    const i = k % nx, j = (k - i) / nx;
+    return winSum(sR, nx, ny, i - rr, j - rr, i + rr, j + rr) > 0;
+  };
+
+  for (const p of per) {
+    if (p.status === 'unplaced' || p.hard) continue;
+    if (p.access.length === 0) { p.reachable = !(CATALOG[items.find((i) => i.id === p.id).type].clear); }
+    else {
+      let hit = 0;
+      for (const k of p.access) if (touched(k)) hit++;
+      p.reachable = hit / p.access.length >= 0.25;
+    }
+    if (!p.reachable && p.status !== 'fail') {
+      p.status = 'fail';
+      p.issues.push({ code: 'unreachable', msg: `No ${rules.passage} m wide passage leads to it` });
+    }
+  }
+  for (const p of per) { delete p.access; if (p.reachable === undefined) p.reachable = false; }
+
+  // area metrics
+  const cell = res * res;
+  let nStair = 0, counted = 0, walkBase = 0, freeWalk = 0, freeReach = 0, tall = 0, noCount = 0;
+  for (let k = 0; k < n; k++) {
+    if (stair[k]) { nStair++; continue; }
+    const hh = h[k];
+    counted += hh >= rules.fullH - EPS ? 1 : hh >= rules.halfH - EPS ? rules.halfFactor : 0;
+    if (hh < rules.halfH - EPS) noCount++;
+    if (hh >= rules.fullStorey.height - EPS) tall++;
+    if (hh >= rules.walkH - EPS) {
+      walkBase++;
+      if (occ[k] === 0) { freeWalk++; if (touched(k)) freeReach++; }
+    }
+  }
+  const gross = (n - nStair) * cell;
+  const countedArea = counted * cell;
+  const usableRatio = gross > 0 ? countedArea / gross : 0;
+  const connectivity = freeWalk > 0 ? freeReach / freeWalk : 0;
+  const tallShare = n - nStair > 0 ? tall / (n - nStair) : 0;
+
+  const score = { ok: 1, warn: 0.5, fail: 0, unplaced: 0 };
+  const furnish = per.length ? per.reduce((a, p) => a + score[p.status], 0) / per.length : 1;
+  const w = rules.weights;
+  const index = (w.furnish * furnish + w.usable * usableRatio + w.circulation * connectivity) / (w.furnish + w.usable + w.circulation);
+
+  return {
+    metrics: {
+      gross,
+      counted: countedArea,
+      lost: noCount * cell,
+      usableRatio,
+      walkable: walkBase * cell,
+      walkableShare: gross > 0 ? (walkBase * cell) / gross : 0,
+      freeWalkableShare: walkBase > 0 ? freeWalk / walkBase : 0,
+      connectivity,
+      furnish,
+      placed: per.filter((p) => p.status !== 'unplaced').length,
+      fits: per.filter((p) => p.status === 'ok').length,
+      total: per.length,
+      fullStorey: { share: tallShare, pass: tallShare >= rules.fullStorey.share, height: rules.fullStorey.height, need: rules.fullStorey.share },
+      index,
+    },
+    items: per.map(({ rects, hard, ...rest }) => rest),
+  };
+}
+
+// ---------------------------------------------------------------- automatic layout
+
+function mulberry32(a) {
+  return () => {
+    a |= 0; a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/**
+ * Greedy randomised search: furniture is placed one piece at a time on a 10 cm lattice in all four
+ * rotations. A candidate must pass the hard checks (headroom, overlap, openings) and a stricter
+ * clearance threshold; among the survivors we prefer low-headroom cells (keep the tall space free),
+ * wall contact and little loss of walkable floor. Several randomised runs, best Usable-Space Index wins.
+ */
+export function solve(room, items, opts = {}) {
+  const rules = { ...DEFAULT_RULES, ...(opts.rules || {}) };
+  const rng = mulberry32(opts.seed ?? 1);
+  const tries = opts.tries ?? 10;
+  const g = getGrid(room, 0.1);
+  const step = 0.1;
+  const base = items.map((it) => ({ ...it, placed: false }));
+  const difficulty = (it) => { const d = CATALOG[it.type]; return d.bodyH * 10 + d.w * d.d; };
+  const baseOrder = base.map((_, i) => i).sort((a, b) => difficulty(base[b]) - difficulty(base[a]));
+
+  let best = null;
+  for (let t = 0; t < tries; t++) {
+    const order = baseOrder.slice();
+    if (t > 0) for (let i = 0; i < order.length - 1; i++) if (rng() < 0.3) [order[i], order[i + 1]] = [order[i + 1], order[i]];
+    const occ = new Uint8Array(g.nx * g.ny);
+    const cur = base.map((it) => ({ ...it }));
+
+    for (const idx of order) {
+      const it = cur[idx];
+      const def = CATALOG[it.type];
+      const cands = [];
+      for (let rot = 0; rot < 4; rot++) {
+        const { w, d } = bodySize(def, rot);
+        for (let y = 0; y <= room.depth - d + EPS; y += step) {
+          for (let x = 0; x <= room.width - w + EPS; x += step) {
+            const cand = { ...it, x: Math.round(x * 20) / 20, y: Math.round(y * 20) / 20, rot };
+            const r = evalOne(g, occ, false, def, cand, rules, false);
+            if (r.hard || r.ratio < 0.95) continue;
+            const [i0, i1, j0, j1] = cellRange(r.rects.body, g.res);
+            let sum = 0, cnt = 0, walk = 0;
+            for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { const hh = g.h[j * g.nx + i]; sum += hh; cnt++; if (hh >= rules.walkH) walk++; }
+            const b = r.rects.body;
+            const touch = (b[0] < 0.06) + (b[1] < 0.06) + (b[2] > room.width - 0.06) + (b[3] > room.depth - 0.06);
+            const cost = 0.4 * (sum / cnt) + walk / cnt - 0.3 * Math.min(touch, 2) + (t > 0 ? rng() * 0.5 : 0);
+            cands.push({ cost, cand });
+          }
+        }
+      }
+      if (!cands.length) continue;
+      cands.sort((a, b) => a.cost - b.cost);
+      const pick = cands[t === 0 ? 0 : Math.floor(rng() * Math.min(3, cands.length))].cand;
+      cur[idx] = { ...pick, placed: true };
+      const [i0, i1, j0, j1] = cellRange(itemRects(def, pick).body, g.res);
+      for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) occ[j * g.nx + i]++;
+    }
+    const result = evaluate(room, cur, { rules });
+    if (!best || result.metrics.index > best.result.metrics.index) best = { items: cur, result };
+  }
+  return best;
+}
