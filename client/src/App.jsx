@@ -4,6 +4,7 @@ import Toolbar from './components/Toolbar.jsx';
 import RoomPanel from './components/RoomPanel.jsx';
 import PlanView from './components/PlanView.jsx';
 import SectionView from './components/SectionView.jsx';
+import Scene3D from './components/Scene3D.jsx';
 import ResultsPanel from './components/ResultsPanel.jsx';
 import { fetchPresets, fetchProjects } from './store/thunks.js';
 import { itemsActions } from './store/itemsSlice.js';
@@ -43,6 +44,7 @@ export default function App() {
       <main className="center">
         {note && <p className="note">{note}</p>}
         <PlanView />
+        <Scene3D />
         <SectionView />
       </main>
       <aside className="right"><ResultsPanel /></aside>

@@ -18,7 +18,7 @@ the roof's height field decides where that is satisfiable.
 - Automatic layout: randomised greedy search (server side), best index wins.
 
 ## Stack
-React + Redux Toolkit (events; a listener middleware re-evaluates on every geometry/furniture action) · Express API · shared pure-JS engine in `shared/` (same code runs in browser and Node).
+React + Redux Toolkit + three.js 3D preview (events; a listener middleware re-evaluates on every geometry/furniture action) · Express API · shared pure-JS engine in `shared/` (same code runs in browser and Node).
 
 ```
 shared/   engine, catalogue, presets

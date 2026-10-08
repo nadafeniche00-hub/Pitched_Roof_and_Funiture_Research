@@ -9,14 +9,14 @@ export const STATUS_COLOR = { ok: '#2f9e5b', warn: '#d99a1c', fail: '#d64545', u
 const PAD = 0.7;
 const snap = (v) => Math.round(v / 0.05) * 0.05;
 
-function heatColor(h) {
+export function heatColor(h) {
   if (h < 1.0) return [201, 106, 92];
   if (h < 2.0) { const t = h - 1.0; return [226 + 14 * t, 172 + 40 * t, 96 + 40 * t]; }
   const t = Math.min(1, (h - 2.0) / 1.2);
   return [150 + 50 * t, 200 + 30 * t, 162 + 43 * t];
 }
 
-function useHeatImage(room) {
+export function useHeatImage(room) {
   return useMemo(() => {
     const g = getGrid(room, 0.05);
     const c = document.createElement('canvas');
