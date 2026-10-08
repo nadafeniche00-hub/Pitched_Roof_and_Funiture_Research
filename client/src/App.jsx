@@ -5,6 +5,7 @@ import RoomPanel from './components/RoomPanel.jsx';
 import PlanView from './components/PlanView.jsx';
 import SectionView from './components/SectionView.jsx';
 import Scene3D from './components/Scene3D.jsx';
+import MapPanel from './components/MapPanel.jsx';
 import ResultsPanel from './components/ResultsPanel.jsx';
 import { fetchPresets, fetchProjects } from './store/thunks.js';
 import { itemsActions } from './store/itemsSlice.js';
@@ -45,6 +46,7 @@ export default function App() {
         {note && <p className="note">{note}</p>}
         <PlanView />
         <Scene3D />
+        <MapPanel />
         <SectionView />
       </main>
       <aside className="right"><ResultsPanel /></aside>

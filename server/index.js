@@ -1,38 +1,37 @@
 import express from 'express';
 import cors from 'cors';
-import { promises as fs } from 'node:fs';
 import { randomUUID } from 'node:crypto';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { evaluate, solve, sanitizeRoom, sanitizeItems, DEFAULT_RULES } from '../shared/engine.js';
+import { sanitizeSite } from '../shared/site.js';
 import { CATALOG, PROGRAMS } from '../shared/catalog.js';
 import { PRESETS } from '../shared/presets.js';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const DB = path.join(__dirname, 'data', 'projects.json');
+import { db, zoneClasses } from './db.js';
+import { windFor, cachedCells } from './wind.js';
 
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: '200kb' }));
 
-// --- tiny JSON-file store, writes serialised so concurrent saves cannot corrupt it
-let queue = Promise.resolve();
-const readAll = async () => {
-  try { return JSON.parse(await fs.readFile(DB, 'utf8')); } catch { return []; }
+const clean = (b) => ({ name: String(b.name || 'Untitled').slice(0, 80), room: sanitizeRoom(b.room), items: sanitizeItems(b.items), site: sanitizeSite(b.site) });
+const wrap = (fn) => async (req, res) => { try { await fn(req, res); } catch (e) { console.error(e); res.status(500).json({ error: e.message || 'server error' }); } };
+
+const q = {
+  list: db.prepare('SELECT id, name, updated_at AS updatedAt FROM projects ORDER BY updated_at DESC'),
+  get: db.prepare('SELECT id, name, data, updated_at AS updatedAt FROM projects WHERE id = ?'),
+  insert: db.prepare('INSERT INTO projects (id,name,data,updated_at) VALUES (?,?,?,?)'),
+  update: db.prepare('UPDATE projects SET name = ?, data = ?, updated_at = ? WHERE id = ?'),
+  del: db.prepare('DELETE FROM projects WHERE id = ?'),
+  site: db.prepare(`INSERT INTO sites (project_id,lat,lon,azimuth,wind_zone,updated_at) VALUES (?,?,?,?,?,?)
+                    ON CONFLICT(project_id) DO UPDATE SET lat=excluded.lat, lon=excluded.lon, azimuth=excluded.azimuth, wind_zone=excluded.wind_zone, updated_at=excluded.updated_at`),
 };
-const mutate = (fn) => {
-  const run = queue.then(async () => {
-    const all = await readAll();
-    const out = await fn(all);
-    await fs.mkdir(path.dirname(DB), { recursive: true });
-    await fs.writeFile(DB, JSON.stringify(all, null, 2));
-    return out;
-  });
-  queue = run.catch(() => {});
-  return run;
+const inflate = (r) => (r ? { id: r.id, name: r.name, updatedAt: r.updatedAt, ...JSON.parse(r.data) } : null);
+const save = (id, c, isNew) => {
+  const now = new Date().toISOString();
+  const data = JSON.stringify({ room: c.room, items: c.items, site: c.site });
+  if (isNew) q.insert.run(id, c.name, data, now); else q.update.run(c.name, data, now, id);
+  q.site.run(id, c.site.lat, c.site.lon, c.site.azimuth, c.site.windZone, now);
+  return inflate(q.get.get(id));
 };
-const wrap = (fn) => (req, res) => fn(req, res).catch((e) => { console.error(e); res.status(500).json({ error: 'server error' }); });
-const clean = (b) => ({ name: String(b.name || 'Untitled').slice(0, 80), room: sanitizeRoom(b.room), items: sanitizeItems(b.items) });
 
 app.get('/api/health', (_q, r) => r.json({ ok: true }));
 app.get('/api/catalog', (_q, r) => r.json({ catalog: CATALOG, programs: PROGRAMS }));
@@ -47,44 +46,34 @@ app.post('/api/evaluate', (req, res) => {
 app.post('/api/solve', (req, res) => {
   const { room, items } = clean(req.body || {});
   const seed = Number.isFinite(+req.body?.seed) ? +req.body.seed : 1;
-  const out = solve(room, items, { seed });
-  res.json(out);
+  res.json(solve(room, items, { seed }));
 });
 
-app.get('/api/projects', wrap(async (_q, res) => {
-  const all = await readAll();
-  res.json(all.map(({ id, name, updatedAt }) => ({ id, name, updatedAt })).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)));
+// --- wind
+app.get('/api/wind/zones', (_q, r) => r.json(zoneClasses()));
+app.get('/api/wind/cells', (_q, r) => r.json(cachedCells()));
+app.get('/api/wind', wrap(async (req, res) => {
+  const lat = +req.query.lat, lon = +req.query.lon;
+  if (!(Math.abs(lat) <= 85) || !(Math.abs(lon) <= 180)) return res.status(400).json({ error: 'lat/lon required' });
+  try { res.json(await windFor(lat, lon)); }
+  catch (e) { res.status(502).json({ error: `wind data unavailable: ${e.message}` }); }
 }));
 
-app.get('/api/projects/:id', wrap(async (req, res) => {
-  const p = (await readAll()).find((x) => x.id === req.params.id);
+// --- projects (SQLite)
+app.get('/api/projects', (_q, res) => res.json(q.list.all()));
+app.get('/api/projects/:id', (req, res) => {
+  const p = inflate(q.get.get(req.params.id));
   p ? res.json(p) : res.status(404).json({ error: 'not found' });
-}));
-
-app.post('/api/projects', wrap(async (req, res) => {
-  const p = { id: randomUUID(), ...clean(req.body || {}), updatedAt: new Date().toISOString() };
-  await mutate((all) => { all.push(p); });
-  res.status(201).json(p);
-}));
-
-app.put('/api/projects/:id', wrap(async (req, res) => {
-  const found = await mutate((all) => {
-    const i = all.findIndex((x) => x.id === req.params.id);
-    if (i < 0) return null;
-    all[i] = { id: all[i].id, ...clean(req.body || {}), updatedAt: new Date().toISOString() };
-    return all[i];
-  });
-  found ? res.json(found) : res.status(404).json({ error: 'not found' });
-}));
-
-app.delete('/api/projects/:id', wrap(async (req, res) => {
-  const hit = await mutate((all) => {
-    const i = all.findIndex((x) => x.id === req.params.id);
-    if (i >= 0) all.splice(i, 1);
-    return i >= 0;
-  });
-  hit ? res.status(204).end() : res.status(404).json({ error: 'not found' });
-}));
+});
+app.post('/api/projects', (req, res) => res.status(201).json(save(randomUUID(), clean(req.body || {}), true)));
+app.put('/api/projects/:id', (req, res) => {
+  if (!q.get.get(req.params.id)) return res.status(404).json({ error: 'not found' });
+  res.json(save(req.params.id, clean(req.body || {}), false));
+});
+app.delete('/api/projects/:id', (req, res) => {
+  const { changes } = q.del.run(req.params.id);
+  changes ? res.status(204).end() : res.status(404).json({ error: 'not found' });
+});
 
 const port = process.env.PORT || 4000;
 app.listen(port, () => console.log(`usable-space API on http://localhost:${port}`));

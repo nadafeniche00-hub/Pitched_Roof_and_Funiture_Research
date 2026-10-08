@@ -21,8 +21,8 @@ export const loadProject = createAsyncThunk('projects/load', async (id, { dispat
 });
 
 export const saveProject = createAsyncThunk('projects/save', async (_, { getState, dispatch }) => {
-  const { room, items, ui } = getState();
-  const body = JSON.stringify({ name: ui.projectName, room, items });
+  const { room, items, ui, site } = getState();
+  const body = JSON.stringify({ name: ui.projectName, room, items, site });
   const saved = ui.projectId
     ? await json(`/api/projects/${ui.projectId}`, { method: 'PUT', body })
     : await json('/api/projects', { method: 'POST', body });
@@ -53,4 +53,17 @@ export const autoPlace = createAsyncThunk('layout/solve', async (_, { getState, 
   } finally {
     dispatch(uiActions.setBusy(false));
   }
+});
+
+export const fetchWind = createAsyncThunk('wind/fetch', async ({ lat, lon }, { dispatch }) => {
+  const r = await fetch(`/api/wind?lat=${lat}&lon=${lon}`);
+  const j = await r.json();
+  if (!r.ok) throw new Error(j.error || `wind ${r.status}`);
+  dispatch(fetchWindMeta()); // refresh the cached-cells overlay
+  return j;
+});
+
+export const fetchWindMeta = createAsyncThunk('wind/meta', async () => {
+  const [zones, cells] = await Promise.all([json('/api/wind/zones'), json('/api/wind/cells')]);
+  return { zones, cells };
 });

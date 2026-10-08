@@ -5,6 +5,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { CATALOG } from '@shared/catalog.js';
 import { getGrid, itemRects, stairRect } from '@shared/engine.js';
 import { heatColor, useHeatImage, STATUS_COLOR } from './PlanView.jsx';
+import { sunVectorPlan, sunPath } from '../lib/solar.js';
 
 // plan (x, y) -> three (x, z); height -> y
 
@@ -60,7 +61,10 @@ export default function Scene3D() {
   const result = useSelector((s) => s.analysis.result);
   const showClearances = useSelector((s) => s.ui.showClearances);
   const heat = useHeatImage(room);
+  const site = useSelector((s) => s.site);
+  const wind = useSelector((s) => s.wind.data);
   const [roofOpacity, setRoofOpacity] = useState(0.35);
+  const [showWind, setShowWind] = useState(false);
 
   useEffect(() => {
     const el = mount.current;
@@ -71,12 +75,16 @@ export default function Scene3D() {
     const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 200);
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = false;
-    scene.add(new THREE.HemisphereLight(0xffffff, 0x8a8f98, 1.2));
+    const hemi = new THREE.HemisphereLight(0xffffff, 0x8a8f98, 1.2);
+    scene.add(hemi);
     const sun = new THREE.DirectionalLight(0xffffff, 1.4);
     sun.position.set(6, 12, 4);
     scene.add(sun);
+    scene.add(sun.target);
     const content = new THREE.Group();
     scene.add(content);
+    const sky = new THREE.Group(); // sun marker, sun path, wind streaks
+    scene.add(sky);
 
     const render = () => renderer.render(scene, camera);
     const resize = () => {
@@ -90,7 +98,7 @@ export default function Scene3D() {
     controls.addEventListener('change', render);
     const ro = new ResizeObserver(resize);
     ro.observe(el);
-    T.current = { scene, camera, controls, content, render, resize };
+    T.current = { scene, camera, controls, content, sky, sun, hemi, render, resize };
     resize();
     return () => {
       ro.disconnect();
@@ -184,10 +192,83 @@ export default function Scene3D() {
     t.render();
   }, [room, items, result, heat, roofOpacity, showClearances]);
 
+  // sun: light direction, marker and the day's path
+  useEffect(() => {
+    const t = T.current;
+    if (!t) return;
+    const { sky, sun } = t;
+    [...sky.children].filter((c) => c.userData.kind === 'sun').forEach((c) => { sky.remove(c); disposeAll(c); });
+    const cx = room.width / 2, cz = room.depth / 2, R = Math.max(room.width, room.depth) * 1.3 + 3;
+    const toWorld = (v) => new THREE.Vector3(cx + v.x * R, Math.max(0, v.z) * R, cz + v.y * R);
+    const now = sunVectorPlan(site, site.date, site.hour);
+    const pos = toWorld(now);
+    const up = now.alt > 0;
+    sun.position.copy(up ? pos : new THREE.Vector3(cx, 20, cz));
+    sun.target.position.set(cx, 0, cz);
+    sun.intensity = up ? 0.4 + 1.2 * Math.min(1, now.alt / 30) : 0.05;
+    t.hemi.intensity = up ? 1.2 : 0.5;
+
+    const g = new THREE.Group();
+    g.userData.kind = 'sun';
+    const path = sunPath(site).map((v) => toWorld(v));
+    if (path.length > 1) g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(path), new THREE.LineBasicMaterial({ color: 0xf0a500 })));
+    if (up) {
+      const orb = new THREE.Mesh(new THREE.SphereGeometry(0.35, 16, 12), new THREE.MeshBasicMaterial({ color: 0xffc933 }));
+      orb.position.copy(pos);
+      g.add(orb);
+      const ray = new THREE.Line(new THREE.BufferGeometry().setFromPoints([pos, new THREE.Vector3(cx, 0.5, cz)]), new THREE.LineDashedMaterial({ color: 0xffc933, dashSize: 0.3, gapSize: 0.2 }));
+      ray.computeLineDistances();
+      g.add(ray);
+    }
+    sky.add(g);
+    t.render();
+  }, [site, room.width, room.depth]);
+
+  // wind: animated streaks flowing along the prevailing storm direction (plan-space coordinates)
+  useEffect(() => {
+    const t = T.current;
+    if (!t || !showWind || !wind || wind.stormDir == null) return undefined;
+    const { sky } = t;
+    const N = 90, LEN = 0.9, H = 6;
+    const cx = room.width / 2, cz = room.depth / 2;
+    const span = Math.max(room.width, room.depth) + 8;
+    const rel = ((wind.stormDir + 180 - site.azimuth) * Math.PI) / 180; // direction the wind blows TO
+    const dx = Math.sin(rel), dz = -Math.cos(rel);
+    const speed = wind.vbEst * 0.22;
+    // pos = distance along the wind (-span/2..span/2) and across it, relative to the building centre
+    const across = (p) => [(-dz) * p.c, dx * p.c];
+    const seed = Array.from({ length: N }, () => ({ a: (Math.random() - 0.5) * span, c: (Math.random() - 0.5) * span, y: 0.3 + Math.random() * H }));
+    const geo = new THREE.BufferGeometry();
+    const arr = new Float32Array(N * 6);
+    geo.setAttribute('position', new THREE.BufferAttribute(arr, 3));
+    const lines = new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ color: 0x6fb7f0, transparent: true, opacity: 0.7 }));
+    lines.frustumCulled = false;
+    sky.add(lines);
+    let last = performance.now(), raf = 0;
+    const tick = (now) => {
+      const dt = Math.min(0.05, (now - last) / 1000);
+      last = now;
+      seed.forEach((p, i) => {
+        p.a += speed * dt;
+        if (p.a > span / 2) { p.a = -span / 2; p.c = (Math.random() - 0.5) * span; p.y = 0.3 + Math.random() * H; }
+        const [ox, oz] = across(p);
+        const x = cx + dx * p.a + ox, z = cz + dz * p.a + oz;
+        arr.set([x - dx * LEN, p.y, z - dz * LEN, x, p.y, z], i * 6);
+      });
+      geo.attributes.position.needsUpdate = true;
+      t.render();
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => { cancelAnimationFrame(raf); sky.remove(lines); disposeAll(lines); t.render(); };
+  }, [showWind, wind, site.azimuth, room.width, room.depth]);
+
   return (
     <div className="card">
       <div className="cardhead">
         <h2>3D <small>drag to orbit, scroll to zoom, right-drag to pan</small></h2>
+        <label><input type="checkbox" checked={showWind} disabled={!wind || wind.stormDir == null} onChange={(e) => setShowWind(e.target.checked)} /> wind</label>
+
         <label>roof <input type="range" min="0" max="0.9" step="0.05" value={roofOpacity} onChange={(e) => setRoofOpacity(+e.target.value)} aria-label="Roof opacity" /></label>
         <button className="mini" onClick={fit}>reset view</button>
       </div>

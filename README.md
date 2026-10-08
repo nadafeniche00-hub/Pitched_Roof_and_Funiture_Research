@@ -17,12 +17,18 @@ the roof's height field decides where that is satisfiable.
 - **Usable-Space Index** = 0.4 furnishability + 0.3 usable-area ratio + 0.3 circulation.
 - Automatic layout: randomised greedy search (server side), best index wins.
 
+## Site, sun and wind
+- **Map** (Leaflet + OpenStreetMap): click or search to place the building, turn it with the *Building turned* slider; layer previews switch between OSM, light, topography and satellite; overlays for the footprint, the sun ray, the wind-zone cell and all cells detected so far.
+- **Sun** (`suncalc`): date / solar-time sliders move the sun in the map and in 3D (light direction, sun path of the day). Per opening (windows + dormer fronts): direct-sun hours on the summer solstice, equinox and winter solstice, plus glazing ratio vs. the 1/8 rule of thumb. Clear sky, no shading from surroundings.
+- **Wind**: the plot is auto-classified into a wind zone: 10 years of ERA5 daily gust maxima (Open-Meteo, no API key) -> Gumbel 50-year gust -> estimated basic wind velocity (gust / 1.45) -> zone 1-4 (v_b,0 22.5 / 25 / 27.5 / 30 m/s). Also the prevailing storm direction and which openings face it. **Indicative only**: ERA5 is a ~25 km reanalysis; the official zone comes from the code/map. A manual override is available. Animated wind streaks in 3D.
+- **SQLite** (`server/data/usable-space.db`, `node:sqlite`, needs Node >= 22.5): tables `projects`, `sites`, `wind_zone_classes`, `wind_cache` (one row per 0.1 degree cell, 180-day TTL). Earlier `projects.json` files are imported automatically.
+
 ## Stack
 React + Redux Toolkit + three.js 3D preview (events; a listener middleware re-evaluates on every geometry/furniture action) · Express API · shared pure-JS engine in `shared/` (same code runs in browser and Node).
 
 ```
-shared/   engine, catalogue, presets
-server/   Express API (evaluate, solve, projects CRUD in a JSON file) + tests
+shared/   engine, catalogue, presets, site model
+server/   Express API (evaluate, solve, wind detection, projects CRUD) on SQLite + tests
 client/   Vite + React + Redux UI (plan with height map, section view, results)
 ```
 
