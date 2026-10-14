@@ -1,0 +1,87 @@
+/* library, IFC viewer, LPH 5 sheet, tabs, inspector */
+.tabs, .langsw { display: flex; gap: 2px; background: var(--bg); padding: 2px; border-radius: 10px; }
+.tabs button, .langsw button { border: 0; background: transparent; padding: 5px 12px; border-radius: 8px; }
+.tabs button.on, .langsw button.on { background: var(--panel); box-shadow: 0 0 0 1px var(--line); font-weight: 600; }
+.wide { grid-column: 1 / -1; overflow: auto; padding: 16px; }
+
+.libview { display: grid; gap: 16px; max-width: 1400px; margin: 0 auto; }
+.searchbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+.searchbar input[type='search'] { flex: 1; min-width: 240px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); font-size: 15px; }
+.pgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.pcard { display: flex; gap: 10px; padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); }
+.pcard img, .noimg { width: 72px; height: 72px; object-fit: cover; border-radius: 8px; flex: none; }
+.noimg { display: grid; place-items: center; font-weight: 700; color: #fff; opacity: 0.85; }
+.pbody { min-width: 0; flex: 1; }
+.pbody h4 { margin: 0; font-size: 14px; overflow-wrap: anywhere; }
+.pbody .sub { font-size: 11px; color: var(--muted); }
+.meta { display: flex; flex-wrap: wrap; gap: 6px; font-size: 12px; color: var(--muted); margin-top: 3px; }
+.pill { background: var(--bg); border-radius: 999px; padding: 0 7px; }
+.dims { font-size: 12px; margin-top: 4px; font-variant-numeric: tabular-nums; }
+.dims.inh { color: var(--muted); font-style: italic; }
+.pactions { display: flex; gap: 6px; margin-top: 6px; align-items: center; }
+.pactions select { max-width: 130px; font-size: 12px; padding: 2px 4px; }
+.pactions a { text-decoration: none; padding: 1px 8px; border: 1px solid var(--line); border-radius: 6px; color: var(--ink); }
+.libview textarea { width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); font: inherit; margin-bottom: 8px; }
+.scrape { list-style: none; padding: 0; margin: 8px 0 0; font-size: 13px; overflow-wrap: anywhere; }
+.tablewrap { max-height: 420px; overflow: auto; }
+table.gloss { width: 100%; border-collapse: collapse; font-size: 13px; }
+table.gloss th, table.gloss td { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--line); }
+table.gloss th { position: sticky; top: 0; background: var(--panel); color: var(--muted); font-weight: 500; }
+button.mini.primary { background: var(--accent); color: var(--accentInk); border-color: var(--accent); }
+
+.ifcview { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; height: calc(100vh - 110px); }
+.ifcmain { display: flex; flex-direction: column; min-height: 0; }
+.ifcscene { flex: 1; min-height: 360px; border-radius: 8px; overflow: hidden; background: var(--paper); }
+.ifcscene canvas { display: block; width: 100%; height: 100%; }
+.ifcside { overflow: auto; }
+.filebtn { padding: 6px 12px; border: 1px solid var(--accent); border-radius: 8px; cursor: pointer; color: var(--accent); }
+.ifctypes { list-style: none; padding: 0; margin: 0 0 12px; font-size: 13px; }
+.ifctypes li { display: flex; justify-content: space-between; gap: 8px; padding: 2px 0; }
+table.psets { width: 100%; font-size: 12px; border-collapse: collapse; }
+table.psets td { padding: 2px 4px; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+details summary { cursor: pointer; font-weight: 600; font-size: 13px; margin: 6px 0; }
+
+.lphview { display: grid; grid-template-columns: 330px minmax(0, 1fr); gap: 16px; max-width: 1500px; margin: 0 auto; align-items: start; }
+.lphside .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.f { display: flex; flex-direction: column; font-size: 11px; color: var(--muted); }
+.f.wide { grid-column: 1 / -1; }
+.f input { padding: 5px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--ink); font-size: 13px; }
+.check { padding-left: 18px; font-size: 13px; margin: 0 0 12px; }
+.btnrow { display: flex; gap: 8px; }
+.sheet { background: #fff; color: #111; border: 1px solid #222; padding: 0; font-size: 12px; }
+.plankopf { display: grid; grid-template-columns: 1.4fr 1.2fr 2.6fr 1fr 0.7fr 0.9fr; border-bottom: 2px solid #111; }
+.plankopf > div { padding: 6px 10px; border-right: 1px solid #111; display: flex; flex-direction: column; }
+.plankopf > div:last-child { border-right: 0; }
+.plankopf small { font-size: 9px; text-transform: uppercase; letter-spacing: 0.05em; color: #555; }
+.sheetbody { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 0; }
+.sheetplan { width: 100%; max-height: 70vh; display: block; border-right: 1px solid #111; background: #fff; }
+.sheetdata { padding: 10px; display: grid; gap: 14px; align-content: start; }
+.sheet table { width: 100%; border-collapse: collapse; }
+.sheet caption { text-align: left; font-weight: 700; padding-bottom: 4px; }
+.sheet th, .sheet td { border: 1px solid #999; padding: 3px 6px; text-align: left; vertical-align: top; }
+.sheet thead th { background: #eee; }
+.sheet .src { color: #666; }
+.dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; }
+
+.inspector { padding-top: 0; }
+table.params { width: 100%; font-size: 12px; border-collapse: collapse; }
+table.params td { padding: 2px 4px; border-bottom: 1px solid var(--line); }
+table.params input { width: 66px; padding: 2px 4px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); color: var(--ink); }
+table.params tr.own td:first-child { font-weight: 600; }
+table.params .layer { color: var(--muted); font-size: 11px; }
+table.params tr.own .layer { color: var(--accent); }
+
+@media print {
+  @page { size: A3 landscape; margin: 8mm; }
+  body { background: #fff; }
+  .toolbar, .noprint, .toast { display: none !important; }
+  .app { display: block; height: auto; }
+  .wide { padding: 0; overflow: visible; }
+  .lphview { display: block; }
+  .sheet { border: 1px solid #000; }
+  .sheetplan { max-height: none; }
+}
+
+@media (max-width: 1000px) {
+  .ifcview, .lphview, .sheetbody { grid-template-columns: 1fr; height: auto; }
+}

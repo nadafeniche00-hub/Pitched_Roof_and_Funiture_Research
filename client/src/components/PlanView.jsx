@@ -1,6 +1,6 @@
 import { useMemo, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { CATALOG } from '@shared/catalog.js';
+import { defOf } from '@shared/params.js';
 import { FRONT, bodySize, doorRect, dormerRect, getGrid, itemRects, stairRect, windowRect } from '@shared/engine.js';
 import { itemsActions } from '../store/itemsSlice.js';
 import { uiActions } from '../store/uiSlice.js';
@@ -108,7 +108,7 @@ export default function PlanView() {
         <text x={-0.25} y={D / 2} textAnchor="middle" className="dim" transform={`rotate(-90 ${-0.25} ${D / 2})`}>{D.toFixed(1)} m</text>
 
         {items.filter((i) => i.placed).map((it) => {
-          const def = CATALOG[it.type];
+          const def = defOf(it);
           const res = byId[it.id];
           const rects = itemRects(def, it);
           const b = rects.body;
@@ -146,7 +146,7 @@ export default function PlanView() {
           <strong>Not on the plan:</strong>
           {unplaced.map((i) => (
             <button key={i.id} className="mini" onClick={() => dispatch(itemsActions.placeAt({ id: i.id, x: snap(W / 2 - 0.5), y: snap(D / 2) }))}>
-              {CATALOG[i.type].label} ↳ place
+              {defOf(i).label} ↳ place
             </button>
           ))}
         </div>

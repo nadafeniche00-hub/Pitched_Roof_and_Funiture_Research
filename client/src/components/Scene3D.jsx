@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { CATALOG } from '@shared/catalog.js';
+import { defOf } from '@shared/params.js';
 import { getGrid, itemRects, stairRect } from '@shared/engine.js';
 import { heatColor, useHeatImage, STATUS_COLOR } from './PlanView.jsx';
 import { sunVectorPlan, sunPath } from '../lib/solar.js';
@@ -157,7 +157,7 @@ export default function Scene3D() {
     const byId = Object.fromEntries((result?.items || []).map((r) => [r.id, r]));
     for (const it of items) {
       if (!it.placed) continue;
-      const def = CATALOG[it.type];
+      const def = defOf(it);
       const rects = itemRects(def, it);
       const status = byId[it.id]?.status || 'ok';
       const b = rects.body;

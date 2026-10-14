@@ -2,6 +2,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { CATALOG, PROGRAMS } from '@shared/catalog.js';
 import { roomActions } from '../store/roomSlice.js';
 import { itemsActions } from '../store/itemsSlice.js';
+import { resolveDormer } from '@shared/params.js';
 
 function Slider({ label, value, min, max, step, unit, onChange }) {
   return (
@@ -13,10 +14,12 @@ function Slider({ label, value, min, max, step, unit, onChange }) {
   );
 }
 
-function Num({ label, value, step = 0.1, onChange }) {
+// `source` = name of the inheritance layer the value comes from; `onReset` clears an override.
+function Num({ label, value, step = 0.1, onChange, source, onReset }) {
+  const inherited = source && source !== 'This dormer';
   return (
-    <label className="num">
-      <span>{label}</span>
+    <label className={`num ${inherited ? 'inherited' : ''}`} title={source ? `from: ${source}` : undefined}>
+      <span>{label}{source && !inherited && <button type="button" className="reset" title="Back to the inherited value" onClick={(e) => { e.preventDefault(); onReset?.(); }}>↺</button>}</span>
       <input type="number" step={step} value={Number(value).toFixed(2)} onChange={(e) => Number.isFinite(+e.target.value) && onChange(+e.target.value)} />
     </label>
   );
@@ -63,15 +66,26 @@ export default function RoomPanel() {
 
       <section>
         <h3>Dormers <button className="mini" onClick={() => dispatch(roomActions.addDormer())}>+ add</button></h3>
-        {room.dormers.map((d, i) => {
+        <p className="hint" style={{ margin: '0 0 6px' }}>Defaults for every dormer - a dormer only stores what it overrides:</p>
+        <div className="line wrap">
+          {['width', 'depth', 'height'].map((k) => (
+            <Num key={k} label={k} value={room.dormerDefaults[k]} onChange={(v) => dispatch(roomActions.setDormerDefault({ key: k, value: v }))} />
+          ))}
+        </div>
+        {room.dormers.map((raw, i) => {
+          const d = resolveDormer(room, raw);
           const patch = (p) => dispatch(roomActions.patchDormer({ i, patch: p }));
+          const field = (k, label) => (
+            <Num label={label} value={d[k]} source={d.source[k]} onChange={(v) => patch({ [k]: v })}
+              onReset={() => dispatch(roomActions.resetDormerField({ i, key: k }))} />
+          );
           return (
             <div className="line wrap" key={i}>
               <select value={d.side} onChange={(e) => patch({ side: e.target.value })}><option>left</option><option>right</option></select>
               <Num label="at y" value={d.center} onChange={(v) => patch({ center: v })} />
-              <Num label="width" value={d.width} onChange={(v) => patch({ width: v })} />
-              <Num label="depth" value={d.depth} onChange={(v) => patch({ depth: v })} />
-              <Num label="height" value={d.height} onChange={(v) => patch({ height: v })} />
+              {field('width', 'width')}
+              {field('depth', 'depth')}
+              {field('height', 'height')}
               <button className="mini" onClick={() => dispatch(roomActions.removeDormer(i))}>×</button>
             </div>
           );

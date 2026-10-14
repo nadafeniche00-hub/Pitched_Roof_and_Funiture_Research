@@ -1,9 +1,10 @@
 import { useDispatch, useSelector } from 'react-redux';
-import { CATALOG } from '@shared/catalog.js';
+import { defOf } from '@shared/params.js';
 import { uiActions } from '../store/uiSlice.js';
 import { itemsActions } from '../store/itemsSlice.js';
 import { STATUS_COLOR } from './PlanView.jsx';
 import SiteResults from './SiteResults.jsx';
+import ItemInspector from './ItemInspector.jsx';
 
 const pc = (v) => `${Math.round(v * 100)}%`;
 const ICON = { ok: '✓', warn: '!', fail: '✕', unplaced: '–' };
@@ -52,6 +53,8 @@ export default function ResultsPanel() {
         </div>
       </section>
 
+      <ItemInspector />
+
       <SiteResults />
 
       <section>
@@ -65,7 +68,7 @@ export default function ResultsPanel() {
               <li key={it.id} className={it.id === selectedId ? 'sel' : ''} onClick={() => dispatch(uiActions.select(it.id))}>
                 <span className="badge" style={{ background: STATUS_COLOR[s] }}>{ICON[s]}</span>
                 <div>
-                  <div className="itname">{CATALOG[it.type].label}
+                  <div className="itname">{defOf(it).label}
                     <button className="mini ghost" title="Remove" onClick={(e) => { e.stopPropagation(); dispatch(itemsActions.removeItem(it.id)); }}>×</button>
                   </div>
                   {s !== 'ok' && res?.issues.map((x, i) => <div key={i} className="issue">{x.msg}</div>)}

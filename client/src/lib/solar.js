@@ -1,6 +1,7 @@
 // Sun + daylight maths on top of suncalc. "hour" is local mean solar time (no time-zone / DST needed).
 import { getPosition } from 'suncalc';
 import { wallBearing } from '@shared/site.js';
+import { resolveDormer } from '@shared/params.js';
 
 const RAD = Math.PI / 180;
 const SILL_TO_HEAD = 1.2; // assumed glazing height of a window / dormer front [m]
@@ -24,7 +25,7 @@ export function sunVectorPlan(site, dateStr, hour) {
 /** All glazed openings with their outward bearing: wall windows + the front of every dormer. */
 export function openings(room, site) {
   const out = room.windows.map((w, i) => ({ label: `Window ${w.wall}${i + 1}`, wall: w.wall, area: w.width * SILL_TO_HEAD }));
-  room.dormers.forEach((d, i) => out.push({ label: `Dormer ${d.side === 'left' ? 'L' : 'R'}${i + 1}`, wall: d.side === 'left' ? 'W' : 'E', area: d.width * SILL_TO_HEAD }));
+  room.dormers.forEach((dm, i) => { const d = resolveDormer(room, dm); out.push({ label: `Dormer ${d.side === 'left' ? 'L' : 'R'}${i + 1}`, wall: d.side === 'left' ? 'W' : 'E', area: d.width * SILL_TO_HEAD }); });
   return out.map((o) => ({ ...o, bearing: wallBearing(o.wall, site.azimuth) }));
 }
 
