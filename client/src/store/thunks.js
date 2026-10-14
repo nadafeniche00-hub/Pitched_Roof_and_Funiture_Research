@@ -21,8 +21,8 @@ export const loadProject = createAsyncThunk('projects/load', async (id, { dispat
 });
 
 export const saveProject = createAsyncThunk('projects/save', async (_, { getState, dispatch }) => {
-  const { room, items, ui, site } = getState();
-  const body = JSON.stringify({ name: ui.projectName, room, items, site });
+  const { room, items, ui, site, lph } = getState();
+  const body = JSON.stringify({ name: ui.projectName, room, items, site, lph });
   const saved = ui.projectId
     ? await json(`/api/projects/${ui.projectId}`, { method: 'PUT', body })
     : await json('/api/projects', { method: 'POST', body });
@@ -61,6 +61,27 @@ export const fetchWind = createAsyncThunk('wind/fetch', async ({ lat, lon }, { d
   if (!r.ok) throw new Error(j.error || `wind ${r.status}`);
   dispatch(fetchWindMeta()); // refresh the cached-cells overlay
   return j;
+});
+
+export const searchProducts = createAsyncThunk('lib/search', async (_, { getState }) => {
+  const { q, type, source, project } = getState().lib;
+  const p = new URLSearchParams({ limit: '60' });
+  if (q) p.set('q', q);
+  if (type) p.set('type', type);
+  if (source) p.set('source', source);
+  if (project) p.set('project', project);
+  return json(`/api/products/search?${p}`);
+});
+
+export const fetchFacets = createAsyncThunk('lib/facets', () => json('/api/products/facets'));
+
+export const fetchGlossary = createAsyncThunk('lib/glossary', async (kind) => json(`/api/glossary?kind=${kind}&limit=500`));
+
+export const scrapeUrls = createAsyncThunk('lib/scrape', async (urls, { dispatch }) => {
+  const r = await json('/api/scrape', { method: 'POST', body: JSON.stringify({ urls }) });
+  dispatch(searchProducts());
+  dispatch(fetchFacets());
+  return r.results;
 });
 
 export const fetchWindMeta = createAsyncThunk('wind/meta', async () => {

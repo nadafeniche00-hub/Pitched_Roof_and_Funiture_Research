@@ -4,6 +4,7 @@
 // Plan coordinates: x to the right, y downwards, metres. Room = [0,W] x [0,D].
 // Gable roof, ridge parallel to y at x = W/2, eaves (knee walls) on x = 0 and x = W.
 import { CATALOG } from './catalog.js';
+import { defOf, resolveDormer, DORMER_DEFAULTS, DORMER_FIELDS } from './params.js';
 
 const EPS = 1e-6;
 
@@ -25,7 +26,8 @@ export const DEFAULT_ROOM = {
   kneeWall: 0.9,
   pitch: 38,
   maxHeight: 3.0, // flat collar-tie ceiling
-  dormers: [{ side: 'left', center: 3.5, width: 2.0, depth: 1.4, height: 2.4 }],
+  dormerDefaults: { ...DORMER_DEFAULTS }, // inherited by every dormer that does not set its own value
+  dormers: [{ side: 'left', center: 3.5 }],
   stair: { x: 2.0, y: 0.2, w: 0.9, d: 2.0 },
   doors: [],
   windows: [{ wall: 'N', pos: 2.5, width: 1.0 }, { wall: 'S', pos: 2.5, width: 1.0 }],
@@ -44,13 +46,18 @@ export function sanitizeRoom(r = {}) {
     kneeWall: clamp(r.kneeWall, 0, 2.5, D.kneeWall),
     pitch: clamp(r.pitch, 5, 75, D.pitch),
     maxHeight: clamp(r.maxHeight, 1, 6, D.maxHeight),
-    dormers: (Array.isArray(r.dormers) ? r.dormers : []).slice(0, 6).map((d) => ({
-      side: d.side === 'right' ? 'right' : 'left',
-      center: clamp(d.center, 0, depth, depth / 2),
-      width: clamp(d.width, 0.5, depth, 2),
-      depth: clamp(d.depth, 0.3, width, 1.4),
-      height: clamp(d.height, 1, 6, 2.4),
-    })),
+    dormerDefaults: {
+      width: clamp(r.dormerDefaults?.width, 0.5, depth, DORMER_DEFAULTS.width),
+      depth: clamp(r.dormerDefaults?.depth, 0.3, width, DORMER_DEFAULTS.depth),
+      height: clamp(r.dormerDefaults?.height, 1, 6, DORMER_DEFAULTS.height),
+    },
+    // dormers keep only the values they override; the rest is inherited (see params.js)
+    dormers: (Array.isArray(r.dormers) ? r.dormers : []).slice(0, 6).map((d) => {
+      const o = { side: d.side === 'right' ? 'right' : 'left', center: clamp(d.center, 0, depth, depth / 2) };
+      const lim = { width: [0.5, depth], depth: [0.3, width], height: [1, 6] };
+      for (const k of DORMER_FIELDS) if (d[k] !== undefined && d[k] !== null && Number.isFinite(+d[k])) o[k] = clamp(d[k], ...lim[k], DORMER_DEFAULTS[k]);
+      return o;
+    }),
     stair: r.stair
       ? { x: clamp(r.stair.x, 0, width, 2), y: clamp(r.stair.y, 0, depth, 0.2), w: clamp(r.stair.w, 0.5, 3, 0.9), d: clamp(r.stair.d, 0.5, 5, 2) }
       : null,
@@ -63,14 +70,37 @@ export function sanitizeItems(items) {
   return (Array.isArray(items) ? items : [])
     .filter((it) => it && CATALOG[it.type])
     .slice(0, 40)
-    .map((it, i) => ({
-      id: String(it.id ?? `i${i}`).slice(0, 40),
-      type: it.type,
-      x: clamp(it.x, -20, 40, 0),
-      y: clamp(it.y, -20, 40, 0),
-      rot: [0, 1, 2, 3].includes(it.rot) ? it.rot : 0,
-      placed: !!it.placed,
-    }));
+    .map((it, i) => {
+      const out = {
+        id: String(it.id ?? `i${i}`).slice(0, 40),
+        type: it.type,
+        x: clamp(it.x, -20, 40, 0),
+        y: clamp(it.y, -20, 40, 0),
+        rot: [0, 1, 2, 3].includes(it.rot) ? it.rot : 0,
+        placed: !!it.placed,
+      };
+      if (it.product && typeof it.product === 'object') {
+        const p = it.product;
+        const dim = (v) => (Number.isFinite(+v) && +v > 0.05 && +v < 6 ? +(+v).toFixed(3) : undefined);
+        out.product = {
+          id: p.id != null ? String(p.id).slice(0, 40) : undefined,
+          name: String(p.name || '').slice(0, 120),
+          name_de: p.name_de ? String(p.name_de).slice(0, 120) : undefined,
+          name_en: p.name_en ? String(p.name_en).slice(0, 120) : undefined,
+          brand: String(p.brand || '').slice(0, 60),
+          url: /^https?:\/\//.test(p.url) ? String(p.url).slice(0, 500) : undefined,
+          image: /^https?:\/\//.test(p.image) ? String(p.image).slice(0, 500) : undefined,
+          w: dim(p.w), d: dim(p.d), h: dim(p.h),
+        };
+      }
+      if (it.overrides && typeof it.overrides === 'object') {
+        const o = {};
+        for (const k of ['w', 'd', 'h', 'bodyH', 'useH', 'front', 'back', 'side'])
+          if (it.overrides[k] !== undefined && Number.isFinite(+it.overrides[k])) o[k] = clamp(it.overrides[k], 0, 6, 0);
+        if (Object.keys(o).length) out.overrides = o;
+      }
+      return out;
+    });
 }
 
 // ---------------------------------------------------------------- geometry
@@ -117,7 +147,8 @@ export function itemRects(def, item) {
   return out;
 }
 
-export function dormerRect(room, d) {
+export function dormerRect(room, dormer) {
+  const d = resolveDormer(room, dormer);
   const x0 = d.side === 'left' ? 0 : room.width - d.depth;
   return [x0, d.center - d.width / 2, x0 + d.depth, d.center + d.width / 2];
 }
@@ -156,7 +187,7 @@ export function roofHeight(room, x, y) {
   let hh = room.kneeWall + tan * Math.min(x, room.width - x);
   for (const d of room.dormers) {
     const r = dormerRect(room, d);
-    if (x >= r[0] && x <= r[2] && y >= r[1] && y <= r[3]) hh = Math.max(hh, d.height);
+    if (x >= r[0] && x <= r[2] && y >= r[1] && y <= r[3]) hh = Math.max(hh, resolveDormer(room, d).height);
   }
   return Math.min(hh, room.maxHeight);
 }
@@ -186,7 +217,7 @@ export function buildGrid(room, res = 0.05) {
   const n = nx * ny;
   const g = { nx, ny, res, h: new Float32Array(n), stair: new Uint8Array(n), door: new Uint8Array(n), win: new Uint8Array(n) };
   const tan = Math.tan((room.pitch * Math.PI) / 180);
-  const dorms = room.dormers.map((d) => ({ r: dormerRect(room, d), h: d.height }));
+  const dorms = room.dormers.map((d) => ({ r: dormerRect(room, d), h: resolveDormer(room, d).height }));
   for (let j = 0; j < ny; j++) {
     const y = (j + 0.5) * res;
     for (let i = 0; i < nx; i++) {
@@ -324,7 +355,7 @@ export function evaluate(room, items, opts = {}) {
   const occ = new Uint8Array(n);
 
   for (const it of items) {
-    const def = CATALOG[it.type];
+    const def = CATALOG[it.type] ? defOf(it) : null;
     if (!it.placed || !def) continue;
     const [i0, i1, j0, j1] = cellRange(itemRects(def, it).body, res);
     for (let j = Math.max(0, j0); j <= Math.min(ny - 1, j1); j++)
@@ -333,7 +364,7 @@ export function evaluate(room, items, opts = {}) {
 
   // per-item geometry checks
   const per = items.map((it) => {
-    const def = CATALOG[it.type];
+    const def = CATALOG[it.type] ? defOf(it) : null;
     if (!def) return { id: it.id, status: 'fail', ratio: 0, zones: {}, issues: [{ code: 'type', msg: 'Unknown furniture type' }], reachable: false };
     if (!it.placed) return { id: it.id, status: 'unplaced', ratio: 0, zones: {}, issues: [{ code: 'unplaced', msg: 'Not placed' }], reachable: false };
     return { id: it.id, ...evalOne(g, occ, true, def, it, rules, true) };
@@ -381,7 +412,7 @@ export function evaluate(room, items, opts = {}) {
 
   for (const p of per) {
     if (p.status === 'unplaced' || p.hard) continue;
-    if (p.access.length === 0) { p.reachable = !(CATALOG[items.find((i) => i.id === p.id).type].clear); }
+    if (p.access.length === 0) { const c = defOf(items.find((i) => i.id === p.id)).clear; p.reachable = !(c.front > 0 || c.back > 0 || c.side > 0); }
     else {
       let hit = 0;
       for (const k of p.access) if (touched(k)) hit++;
@@ -464,7 +495,7 @@ export function solve(room, items, opts = {}) {
   const g = getGrid(room, 0.1);
   const step = 0.1;
   const base = items.map((it) => ({ ...it, placed: false }));
-  const difficulty = (it) => { const d = CATALOG[it.type]; return d.bodyH * 10 + d.w * d.d; };
+  const difficulty = (it) => { const d = defOf(it); return d.bodyH * 10 + d.w * d.d; };
   const baseOrder = base.map((_, i) => i).sort((a, b) => difficulty(base[b]) - difficulty(base[a]));
 
   let best = null;
@@ -476,7 +507,7 @@ export function solve(room, items, opts = {}) {
 
     for (const idx of order) {
       const it = cur[idx];
-      const def = CATALOG[it.type];
+      const def = defOf(it);
       const cands = [];
       for (let rot = 0; rot < 4; rot++) {
         const { w, d } = bodySize(def, rot);
