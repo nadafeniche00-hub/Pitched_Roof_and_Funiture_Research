@@ -7,6 +7,9 @@ import SectionView from './components/SectionView.jsx';
 import Scene3D from './components/Scene3D.jsx';
 import MapPanel from './components/MapPanel.jsx';
 import ResultsPanel from './components/ResultsPanel.jsx';
+import LibraryView from './components/LibraryView.jsx';
+import IfcViewer from './components/IfcViewer.jsx';
+import Lph5View from './components/Lph5View.jsx';
 import { fetchPresets, fetchProjects } from './store/thunks.js';
 import { itemsActions } from './store/itemsSlice.js';
 import { uiActions } from './store/uiSlice.js';
@@ -16,6 +19,7 @@ export default function App() {
   const selectedId = useSelector((s) => s.ui.selectedId);
   const toast = useSelector((s) => s.ui.toast);
   const note = useSelector((s) => s.ui.note);
+  const view = useSelector((s) => s.ui.view);
 
   useEffect(() => {
     dispatch(fetchPresets());
@@ -41,15 +45,22 @@ export default function App() {
   return (
     <div className="app">
       <Toolbar />
-      <aside className="left"><RoomPanel /></aside>
-      <main className="center">
-        {note && <p className="note">{note}</p>}
-        <PlanView />
-        <Scene3D />
-        <MapPanel />
-        <SectionView />
-      </main>
-      <aside className="right"><ResultsPanel /></aside>
+      {view === 'planner' && (
+        <>
+          <aside className="left"><RoomPanel /></aside>
+          <main className="center">
+            {note && <p className="note">{note}</p>}
+            <PlanView />
+            <Scene3D />
+            <MapPanel />
+            <SectionView />
+          </main>
+          <aside className="right"><ResultsPanel /></aside>
+        </>
+      )}
+      {view === 'library' && <main className="wide"><LibraryView /></main>}
+      {view === 'ifc' && <main className="wide"><IfcViewer /></main>}
+      {view === 'lph5' && <main className="wide"><Lph5View /></main>}
       {toast && <div className="toast">{toast}</div>}
     </div>
   );

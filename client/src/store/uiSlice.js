@@ -4,6 +4,8 @@ import { loadScenario } from './actions.js';
 const slice = createSlice({
   name: 'ui',
   initialState: {
+    view: 'planner', // planner | library | ifc | lph5
+    lang: 'en', // en | de
     selectedId: null,
     sectionY: 3.5,
     showClearances: true,
@@ -16,6 +18,8 @@ const slice = createSlice({
   },
   reducers: {
     select: (s, { payload }) => { s.selectedId = payload; },
+    setView: (s, { payload }) => { s.view = payload; },
+    setLang: (s, { payload }) => { s.lang = payload; },
     setSectionY: (s, { payload }) => { s.sectionY = payload; },
     toggle: (s, { payload }) => { s[payload] = !s[payload]; },
     setName: (s, { payload }) => { s.projectName = payload; },

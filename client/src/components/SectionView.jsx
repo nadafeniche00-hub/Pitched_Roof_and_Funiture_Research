@@ -1,5 +1,6 @@
 import { useDispatch, useSelector } from 'react-redux';
-import { CATALOG } from '@shared/catalog.js';
+import { defOf } from '@shared/params.js';
+import { resolveDormer } from '@shared/params.js';
 import { itemRects, roofHeight, DEFAULT_RULES } from '@shared/engine.js';
 import { uiActions } from '../store/uiSlice.js';
 import { STATUS_COLOR } from './PlanView.jsx';
@@ -11,7 +12,7 @@ export default function SectionView() {
   const result = useSelector((s) => s.analysis.result);
   const y = Math.min(useSelector((s) => s.ui.sectionY), room.depth);
   const W = room.width;
-  const top = Math.max(room.maxHeight, ...room.dormers.map((d) => d.height)) + 0.4;
+  const top = Math.max(room.maxHeight, ...room.dormers.map((d) => resolveDormer(room, d).height)) + 0.4;
   const Y = (h) => top - h; // svg y for a height
 
   const pts = [];
@@ -33,9 +34,9 @@ export default function SectionView() {
         ))}
         <line x1="-0.3" x2={W + 0.3} y1={Y(0)} y2={Y(0)} stroke="var(--ink)" strokeWidth="0.05" />
         {items.filter((i) => i.placed).map((it) => {
-          const b = itemRects(CATALOG[it.type], it).body;
+          const b = itemRects(defOf(it), it).body;
           if (y < b[1] || y > b[3]) return null;
-          const def = CATALOG[it.type];
+          const def = defOf(it);
           return <rect key={it.id} x={b[0]} y={Y(def.h)} width={b[2] - b[0]} height={def.h} fill={def.color} stroke={STATUS_COLOR[byId[it.id]?.status || 'ok']} strokeWidth="0.04" />;
         })}
         <g transform={`translate(${W / 2} 0)`} opacity="0.75">

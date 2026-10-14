@@ -23,6 +23,14 @@ the roof's height field decides where that is satisfiable.
 - **Wind**: the plot is auto-classified into a wind zone: 10 years of ERA5 daily gust maxima (Open-Meteo, no API key) -> Gumbel 50-year gust -> estimated basic wind velocity (gust / 1.45) -> zone 1-4 (v_b,0 22.5 / 25 / 27.5 / 30 m/s). Also the prevailing storm direction and which openings face it. **Indicative only**: ERA5 is a ~25 km reanalysis; the official zone comes from the code/map. A manual override is available. Animated wind streaks in 3D.
 - **SQLite** (`server/data/usable-space.db`, `node:sqlite`, needs Node >= 22.5): tables `projects`, `sites`, `wind_zone_classes`, `wind_cache` (one row per 0.1 degree cell, 180-day TTL). Earlier `projects.json` files are imported automatically.
 
+## Library, IFC and LPH 5
+- **Library** (`Library` tab): live search (SQLite FTS5, prefix + accent-insensitive, fr/de/en names) over furniture from the office projects, built-in types, IFC imports and scraped pages. A product can be used in the plan; it inherits missing dimensions from its category.
+- **Scraper** (`POST /api/scrape`): reads schema.org JSON-LD / OpenGraph from product pages you give it, honours robots.txt, identifies itself, waits 1.5 s per host, refuses private/loopback addresses. Dimensions come from structured data or from names like "140 x 70 x 75 cm".
+- **IFC viewer** (`IFC viewer` tab): `web-ifc` + three.js, runs entirely in the browser. Element-type toggles, click for property sets, and "add furnishings to the library" from `IfcFurnishingElement` bounding boxes.
+- **Parameter inheritance** (`shared/params.js`): every value is resolved through ordered layers and remembers where it came from. Furniture: category -> product -> this piece. Dormers: built-in -> room default -> this dormer. The inspector and dormer fields show the source and let you reset an override.
+- **LPH 5** (`LPH 5` tab, HOAI Leistungsphase 5): plan header (Plankopf), room book entry with finishes picked from the German material vocabulary, position-numbered furnishing plan with dimensions and north arrow, furnishing schedule, checklist, CSV export (German Excel) and print layout (A3 landscape).
+- **Revit vocabulary** (`data/revit/*.json`, `tools/rvt/`): rooms, levels, materials, linked sub-projects, views and furniture families of two office models, translated to German and English. See `tools/rvt/README.md`; the data is a name inventory, not geometry.
+
 ## Stack
 React + Redux Toolkit + three.js 3D preview (events; a listener middleware re-evaluates on every geometry/furniture action) · Express API · shared pure-JS engine in `shared/` (same code runs in browser and Node).
 

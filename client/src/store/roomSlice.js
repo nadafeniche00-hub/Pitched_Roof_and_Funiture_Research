@@ -8,7 +8,9 @@ const slice = createSlice({
   reducers: {
     setParam: (s, { payload: { key, value } }) => { s[key] = value; },
     patchDormer: (s, { payload: { i, patch } }) => { Object.assign(s.dormers[i], patch); },
-    addDormer: (s) => { s.dormers.push({ side: 'right', center: s.depth / 2, width: 2, depth: 1.4, height: 2.4 }); },
+    addDormer: (s) => { s.dormers.push({ side: 'right', center: s.depth / 2 }); }, // inherits width / depth / height
+    resetDormerField: (s, { payload: { i, key } }) => { delete s.dormers[i][key]; },
+    setDormerDefault: (s, { payload: { key, value } }) => { s.dormerDefaults[key] = value; },
     removeDormer: (s, { payload }) => { s.dormers.splice(payload, 1); },
     toggleStair: (s) => { s.stair = s.stair ? null : { x: s.width / 2 - 0.45, y: 0.2, w: 0.9, d: 2 }; },
     patchStair: (s, { payload }) => { if (s.stair) Object.assign(s.stair, payload); },

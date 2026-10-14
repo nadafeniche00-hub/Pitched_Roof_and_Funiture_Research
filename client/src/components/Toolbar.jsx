@@ -3,15 +3,24 @@ import { loadScenario } from '../store/actions.js';
 import { uiActions } from '../store/uiSlice.js';
 import { itemsActions } from '../store/itemsSlice.js';
 import { autoPlace, saveProject, loadProject, deleteProject } from '../store/thunks.js';
+import { useT, useLang } from '../lib/i18n.js';
 
 export default function Toolbar() {
   const dispatch = useDispatch();
-  const { projectName, busy } = useSelector((s) => s.ui);
+  const { projectName, busy, view } = useSelector((s) => s.ui);
+  const t = useT();
+  const lang = useLang();
   const { list, presets, serverUp } = useSelector((s) => s.projects);
 
   return (
     <header className="toolbar">
       <h1>Usable Space <span>roof storey × furniture fit</span></h1>
+
+      <nav className="tabs" aria-label="Views">
+        {['planner', 'library', 'ifc', 'lph5'].map((v) => (
+          <button key={v} className={view === v ? 'on' : ''} onClick={() => dispatch(uiActions.setView(v))}>{t(`tab_${v}`)}</button>
+        ))}
+      </nav>
 
       <label className="inline">Example
         <select value="" onChange={(e) => {
@@ -27,6 +36,9 @@ export default function Toolbar() {
       <button onClick={() => dispatch(itemsActions.unplaceAll())}>Clear layout</button>
 
       <span className="spacer" />
+      <div className="langsw" role="group" aria-label="Language">
+        {['en', 'de'].map((l) => <button key={l} className={lang === l ? 'on' : ''} onClick={() => dispatch(uiActions.setLang(l))}>{l.toUpperCase()}</button>)}
+      </div>
 
       <input className="name" value={projectName} onChange={(e) => dispatch(uiActions.setName(e.target.value))} aria-label="Project name" />
       <button disabled={!serverUp} onClick={() => dispatch(saveProject()).unwrap().catch(() => dispatch(uiActions.setToast('Save failed')))}>Save</button>
