@@ -94,6 +94,7 @@ export default function PlanView() {
         {room.dormers.map((d, i) => { const r = dormerRect(room, d); return <rect key={i} x={r[0]} y={r[1]} width={r[2] - r[0]} height={r[3] - r[1]} fill="none" stroke="var(--ink)" strokeWidth="0.03" strokeDasharray="0.12 0.08" />; })}
         {room.windows.map((w, i) => { const r = windowRect(room, w); return <rect key={i} x={r[0]} y={r[1]} width={r[2] - r[0]} height={r[3] - r[1]} fill="#6aa9e0" opacity="0.55" />; })}
         {room.doors.map((w, i) => { const r = doorRect(room, w); return <rect key={i} x={r[0]} y={r[1]} width={r[2] - r[0]} height={r[3] - r[1]} fill="none" stroke="var(--ink)" strokeWidth="0.03" strokeDasharray="0.05" />; })}
+        {(room.posts || []).map((p, i) => <rect key={`post${i}`} x={p.x - p.s / 2} y={p.y - p.s / 2} width={p.s} height={p.s} fill="#6b4a2b" stroke="#fff" strokeWidth="0.02"><title>roof post</title></rect>)}
         {sr && (
           <g>
             <rect x={sr[0]} y={sr[1]} width={sr[2] - sr[0]} height={sr[3] - sr[1]} fill="url(#hatch)" stroke="var(--ink)" strokeWidth="0.04" />

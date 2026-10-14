@@ -8,8 +8,15 @@ Scope of this branch: the roof side of the research question - *how much of the 
 - Walkable (>= 1.9 m) share, stair arrival and circulation connectivity, placeholder full-storey test.
 - Daylight and wind exposure per opening (`client/src/lib/solar.js`, `server/wind.js`).
 
+## Traditional frames (added on this branch)
+- Rule base and region data: [`shared/timber.js`](../shared/timber.js); research notes with sources and gaps:
+  [`docs/research/traditional-frames/`](research/traditional-frames/README.md).
+- UI: the **Traditional frame / Fachwerk** tab applies a regional frame (pitch, knee wall, collar-beam height,
+  interior posts) to the roof model; posts are real obstacles in the engine.
+- Tests: `server/test/timber.test.js`.
+
 ## Open questions for this branch
-1. **Real roofs**: only a symmetric gable with rectangular dormers. Needed: hip roofs, asymmetric pitch, shed dormers, roof windows, collar ties.
+1. **Real roofs**: only a symmetric gable with rectangular dormers. Needed: hip roofs / half-hips (Krüppelwalm, common in Sauerland and Lower Saxony), asymmetric pitch, shed dormers, roof windows, collar ties.
 2. **Rules**: area-counting and full-storey thresholds are placeholders - replace with the regulation of the case-study municipality and cite it.
 3. **Validation**: run the evaluation on real attic plans (open planning data / roof models) and check whether it separates storeys that work from those that do not.
 4. **Daylight**: direct-sun hours only; add a daylight-factor estimate for roof windows and dormer cheeks.

@@ -12,6 +12,11 @@ const slice = createSlice({
     resetDormerField: (s, { payload: { i, key } }) => { delete s.dormers[i][key]; },
     setDormerDefault: (s, { payload: { key, value } }) => { s.dormerDefaults[key] = value; },
     removeDormer: (s, { payload }) => { s.dormers.splice(payload, 1); },
+    setFrame: (s, { payload }) => { s.frame = payload; },
+    applyFrame: (s, { payload: { pitch, kneeWall, maxHeight, posts, frame } }) => {
+      s.pitch = pitch; s.kneeWall = kneeWall; s.maxHeight = maxHeight; s.posts = posts; s.frame = frame;
+    },
+    clearPosts: (s) => { s.posts = []; },
     toggleStair: (s) => { s.stair = s.stair ? null : { x: s.width / 2 - 0.45, y: 0.2, w: 0.9, d: 2 }; },
     patchStair: (s, { payload }) => { if (s.stair) Object.assign(s.stair, payload); },
     addOpening: (s, { payload: kind }) => { s[kind].push(kind === 'doors' ? { wall: 'S', pos: s.width / 2, width: 0.9 } : { wall: 'N', pos: s.width / 2, width: 1 }); },

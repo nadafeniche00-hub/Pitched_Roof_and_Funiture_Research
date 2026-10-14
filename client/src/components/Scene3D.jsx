@@ -3,7 +3,7 @@ import { useSelector } from 'react-redux';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { defOf } from '@shared/params.js';
-import { getGrid, itemRects, stairRect } from '@shared/engine.js';
+import { getGrid, itemRects, stairRect, roofHeight } from '@shared/engine.js';
 import { heatColor, useHeatImage, STATUS_COLOR } from './PlanView.jsx';
 import { sunVectorPlan, sunPath } from '../lib/solar.js';
 
@@ -150,6 +150,14 @@ export default function Scene3D() {
     if (sr) {
       const m = new THREE.Mesh(new THREE.PlaneGeometry(sr[2] - sr[0], sr[3] - sr[1]).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x20232a }));
       m.position.set((sr[0] + sr[2]) / 2, 0.01, (sr[1] + sr[3]) / 2);
+      content.add(m);
+    }
+
+    // roof posts of a traditional frame
+    for (const p of room.posts || []) {
+      const hh = Math.min(roofHeight(room, p.x, p.y), room.maxHeight);
+      const m = new THREE.Mesh(new THREE.BoxGeometry(p.s, hh, p.s), new THREE.MeshStandardMaterial({ color: 0x7a5230, roughness: 0.9 }));
+      m.position.set(p.x, hh / 2, p.y);
       content.add(m);
     }
 

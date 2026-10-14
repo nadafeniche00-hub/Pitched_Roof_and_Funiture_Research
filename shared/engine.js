@@ -31,6 +31,8 @@ export const DEFAULT_ROOM = {
   stair: { x: 2.0, y: 0.2, w: 0.9, d: 2.0 },
   doors: [],
   windows: [{ wall: 'N', pos: 2.5, width: 1.0 }, { wall: 'S', pos: 2.5, width: 1.0 }],
+  posts: [], // interior roof posts of a traditional frame (see shared/timber.js): [{ x, y, s }]
+  frame: null, // { system, region, covering, windy, kehlFraction } - what the posts / pitch were derived from
 };
 
 const clamp = (v, lo, hi, dflt) => (Number.isFinite(+v) ? Math.min(hi, Math.max(lo, +v)) : dflt);
@@ -61,6 +63,16 @@ export function sanitizeRoom(r = {}) {
     stair: r.stair
       ? { x: clamp(r.stair.x, 0, width, 2), y: clamp(r.stair.y, 0, depth, 0.2), w: clamp(r.stair.w, 0.5, 3, 0.9), d: clamp(r.stair.d, 0.5, 5, 2) }
       : null,
+    posts: (Array.isArray(r.posts) ? r.posts : []).slice(0, 80).map((p) => ({
+      x: clamp(p.x, 0, width, width / 2), y: clamp(p.y, 0, depth, depth / 2), s: clamp(p.s, 0.08, 0.6, 0.2),
+    })),
+    frame: r.frame && typeof r.frame === 'object' ? {
+      system: ['sparren', 'kehlbalken', 'pfetten_stehend', 'pfetten_liegend', 'staenderbau'].includes(r.frame.system) ? r.frame.system : 'sparren',
+      region: typeof r.frame.region === 'string' ? r.frame.region.slice(0, 20) : null,
+      covering: ['reet', 'hohlpfanne', 'dachziegel', 'sollingplatte', 'schiefer'].includes(r.frame.covering) ? r.frame.covering : 'hohlpfanne',
+      windy: !!r.frame.windy,
+      kehlFraction: clamp(r.frame.kehlFraction, 0.35, 0.8, 0.5),
+    } : null,
     doors: (Array.isArray(r.doors) ? r.doors : []).slice(0, 6).map((d) => ({ wall: wall(d.wall), pos: clamp(d.pos, 0, 14, 1), width: clamp(d.width, 0.6, 1.5, 0.9) })),
     windows: (Array.isArray(r.windows) ? r.windows : []).slice(0, 8).map((d) => ({ wall: wall(d.wall), pos: clamp(d.pos, 0, 14, 1), width: clamp(d.width, 0.4, 4, 1) })),
   };
@@ -215,7 +227,7 @@ export function buildGrid(room, res = 0.05) {
   const nx = Math.round(room.width / res);
   const ny = Math.round(room.depth / res);
   const n = nx * ny;
-  const g = { nx, ny, res, h: new Float32Array(n), stair: new Uint8Array(n), door: new Uint8Array(n), win: new Uint8Array(n) };
+  const g = { nx, ny, res, h: new Float32Array(n), stair: new Uint8Array(n), door: new Uint8Array(n), win: new Uint8Array(n), post: new Uint8Array(n) };
   const tan = Math.tan((room.pitch * Math.PI) / 180);
   const dorms = room.dormers.map((d) => ({ r: dormerRect(room, d), h: resolveDormer(room, d).height }));
   for (let j = 0; j < ny; j++) {
@@ -231,6 +243,7 @@ export function buildGrid(room, res = 0.05) {
   if (sr) markRect(g.stair, g, sr);
   for (const d of room.doors) markRect(g.door, g, doorRect(room, d));
   for (const d of room.windows) markRect(g.win, g, windowRect(room, d));
+  for (const p of room.posts || []) markRect(g.post, g, [p.x - p.s / 2, p.y - p.s / 2, p.x + p.s / 2, p.y + p.s / 2]);
   return g;
 }
 
@@ -251,19 +264,20 @@ const pct = (a, b) => Math.round((100 * a) / Math.max(1, b));
 
 function evalOne(g, occ, selfMarked, def, item, rules, wantAccess) {
   const rects = itemRects(def, item);
-  const { nx, ny, res, h, stair, door, win } = g;
+  const { nx, ny, res, h, stair, door, win, post } = g;
   const occLimit = selfMarked ? 1 : 0; // occ > occLimit  => someone else is there too
   const issues = [];
 
   const [i0, i1, j0, j1] = cellRange(rects.body, res);
   const total = Math.max(0, (i1 - i0 + 1) * (j1 - j0 + 1));
-  let out = 0, low = 0, st = 0, dr = 0, wn = 0, ov = 0;
+  let out = 0, low = 0, st = 0, dr = 0, wn = 0, ov = 0, po = 0;
   for (let j = j0; j <= j1; j++) {
     for (let i = i0; i <= i1; i++) {
       if (i < 0 || j < 0 || i >= nx || j >= ny) { out++; continue; }
       const k = j * nx + i;
       if (h[k] < def.bodyH - EPS) low++;
       if (stair[k]) st++;
+      if (post[k]) po++;
       if (door[k]) dr++;
       if (win[k] && def.h > 0.9) wn++;
       if (occ[k] > occLimit) ov++;
@@ -272,6 +286,7 @@ function evalOne(g, occ, selfMarked, def, item, rules, wantAccess) {
   if (out) issues.push({ code: 'outside', msg: 'Sticks out of the room' });
   if (low) issues.push({ code: 'headroom', msg: `Roof too low over ${pct(low, total)}% of it (needs ${def.bodyH.toFixed(2)} m)` });
   if (st) issues.push({ code: 'stair', msg: 'Blocks the stair opening' });
+  if (po) issues.push({ code: 'post', msg: 'Stands where a roof post is' });
   if (dr) issues.push({ code: 'door', msg: 'Blocks a door swing' });
   if (wn) issues.push({ code: 'window', msg: 'Blocks a window' });
   if (ov) issues.push({ code: 'overlap', msg: 'Overlaps other furniture' });
@@ -291,7 +306,7 @@ function evalOne(g, occ, selfMarked, def, item, rules, wantAccess) {
         for (let i = a0; i <= a1; i++) {
           if (i < 0 || j < 0 || i >= nx || j >= ny) continue;
           const k = j * nx + i;
-          if (occ[k] === 0 && !stair[k] && h[k] >= def.useH - EPS) {
+          if (occ[k] === 0 && !stair[k] && !post[k] && h[k] >= def.useH - EPS) {
             ok++;
             if (access) access.push(k);
           }
@@ -350,7 +365,7 @@ export function evaluate(room, items, opts = {}) {
   const rules = { ...DEFAULT_RULES, ...(opts.rules || {}) };
   const res = opts.res ?? 0.05;
   const g = getGrid(room, res);
-  const { nx, ny, h, stair } = g;
+  const { nx, ny, h, stair, post } = g;
   const n = nx * ny;
   const occ = new Uint8Array(n);
 
@@ -372,7 +387,7 @@ export function evaluate(room, items, opts = {}) {
 
   // circulation: walkable cells, eroded by half the passage width, flood-filled from the entries
   const rr = Math.max(1, Math.round(rules.passage / 2 / res));
-  const blocked = (k) => h[k] < rules.walkH - EPS || occ[k] > 0 || stair[k] === 1;
+  const blocked = (k) => h[k] < rules.walkH - EPS || occ[k] > 0 || stair[k] === 1 || post[k] === 1;
   const sBlocked = sat(nx, ny, blocked);
   const E = new Uint8Array(n);
   for (let j = rr; j < ny - rr; j++)
@@ -434,7 +449,7 @@ export function evaluate(room, items, opts = {}) {
     counted += hh >= rules.fullH - EPS ? 1 : hh >= rules.halfH - EPS ? rules.halfFactor : 0;
     if (hh < rules.halfH - EPS) noCount++;
     if (hh >= rules.fullStorey.height - EPS) tall++;
-    if (hh >= rules.walkH - EPS) {
+    if (hh >= rules.walkH - EPS && !post[k]) {
       walkBase++;
       if (occ[k] === 0) { freeWalk++; if (touched(k)) freeReach++; }
     }

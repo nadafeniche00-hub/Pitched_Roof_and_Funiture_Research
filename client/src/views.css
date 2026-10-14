@@ -85,3 +85,28 @@ table.params tr.own .layer { color: var(--accent); }
 @media (max-width: 1000px) {
   .ifcview, .lphview, .sheetbody { grid-template-columns: 1fr; height: auto; }
 }
+
+.frameview { display: grid; grid-template-columns: 300px minmax(0, 1fr) 340px; gap: 16px; max-width: 1600px; margin: 0 auto; align-items: start; }
+.regions ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+.regionbtn { width: 100%; text-align: left; display: flex; flex-direction: column; gap: 3px; padding: 8px 10px; border-radius: 10px; }
+.regionbtn.on { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent) inset; }
+.regionbtn span { font-size: 12px; color: var(--muted); }
+.regionbtn .h { color: var(--ink); }
+.tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.tags i { font-style: normal; font-size: 11px; background: var(--bg); border-radius: 999px; padding: 0 7px; color: var(--ink); }
+.tags i.assumed { background: #d99a1c33; }
+.framesvg { width: 100%; max-height: 380px; display: block; background: var(--paper); border-radius: 8px; }
+.proposal { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; margin: 12px 0; }
+.proposal > div { background: var(--bg); border-radius: 8px; padding: 6px 10px; display: flex; flex-direction: column; }
+.proposal small { color: var(--muted); font-size: 11px; }
+.proposal b { font-size: 18px; }
+.proposal em { font-size: 11px; color: var(--muted); font-style: normal; }
+.frameopts { display: flex; gap: 14px; flex-wrap: wrap; align-items: end; }
+.frameopts label { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--muted); }
+.frameopts label.chk { flex-direction: row; align-items: center; }
+.checks, .rules, .sources { list-style: none; padding: 0; margin: 0 0 14px; font-size: 13px; }
+.checks li { display: flex; gap: 8px; margin: 5px 0; align-items: flex-start; }
+.rules li { margin: 6px 0; }
+.rules .src, .sources a { font-size: 11px; color: var(--muted); display: block; }
+.sources li { margin: 3px 0; }
+@media (max-width: 1100px) { .frameview { grid-template-columns: 1fr; } }

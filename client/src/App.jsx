@@ -10,6 +10,7 @@ import ResultsPanel from './components/ResultsPanel.jsx';
 import LibraryView from './components/LibraryView.jsx';
 import IfcViewer from './components/IfcViewer.jsx';
 import Lph5View from './components/Lph5View.jsx';
+import FrameView from './components/FrameView.jsx';
 import { fetchPresets, fetchProjects } from './store/thunks.js';
 import { itemsActions } from './store/itemsSlice.js';
 import { uiActions } from './store/uiSlice.js';
@@ -61,6 +62,7 @@ export default function App() {
       {view === 'library' && <main className="wide"><LibraryView /></main>}
       {view === 'ifc' && <main className="wide"><IfcViewer /></main>}
       {view === 'lph5' && <main className="wide"><Lph5View /></main>}
+      {view === 'frame' && <main className="wide"><FrameView /></main>}
       {toast && <div className="toast">{toast}</div>}
     </div>
   );

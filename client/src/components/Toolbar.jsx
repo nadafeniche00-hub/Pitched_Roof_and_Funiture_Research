@@ -17,7 +17,7 @@ export default function Toolbar() {
       <h1>Usable Space <span>roof storey × furniture fit</span></h1>
 
       <nav className="tabs" aria-label="Views">
-        {['planner', 'library', 'ifc', 'lph5'].map((v) => (
+        {['planner', 'frame', 'library', 'ifc', 'lph5'].map((v) => (
           <button key={v} className={view === v ? 'on' : ''} onClick={() => dispatch(uiActions.setView(v))}>{t(`tab_${v}`)}</button>
         ))}
       </nav>
