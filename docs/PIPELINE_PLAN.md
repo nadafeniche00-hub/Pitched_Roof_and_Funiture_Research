@@ -118,3 +118,9 @@ Each step ends in something you can show. Steps 1 to 4 are for 4 Nov.
 - Surveyed gable pitch: median 43.3° (10 to 90 %: 27.8° to 53.1°); outer span median 8.9 m, length 11.7 m, eave 6.2 m. Our default attic (38°, 5 m wide) is shallower than the median and narrower than 95 % of real spans: new preset "Median gable house, Detmold centre".
 - Our usable-area rule on the real cross sections (knee wall 0.9 m assumed, not in LoD2) counts a median 85 % of the floor (68 to 90 %).
 - Only 39 % of the dwellings in the centre are plain gable roofs, 33 % are mixed forms, 10 % shed, 9 % flat, 5 % hipped: the OSM district-wide shares (83 % gabled) and the surveyed centre differ. More tiles are needed before generalising.
+
+## Status 1 Nov 2026 (LoD2, 11 tiles)
+
+- Added 7 residential tiles south of the centre (90 MB): now 11 tiles, 10,949 buildings and parts, 2,978 dwellings, 1,379 gable dwellings with a usable pitch (`docs/LOD2_PATTERNS.md`).
+- Median gable pitch 40.6° overall; **43.3° in the old centre, 38.5° in the outskirts**: our default of 38° matches the suburbs. Outer span median 9.1 m in both zones. Gable roofs are 39 % of the dwellings in the centre and 55 % outside; about a third carry the "mixed form" code in both. Our usable-area rule counts a median 83.8 % of the floor on the real cross sections (knee wall 0.9 m assumed).
+- Preset "Median gable house, Detmold (LoD2)" updated to the 11-tile medians (41°, 8.2 m x 10.2 m inside).

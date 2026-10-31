@@ -1,4 +1,4 @@
-"""Roof patterns from NRW LoD2 (surveyed 3D building models, CityGML), Detmold city centre.
+"""Roof patterns from NRW LoD2 (surveyed 3D building models, CityGML): Detmold centre and the residential area to the south (Hiddesen).
 
 Input : pipeline/data/lod2/*.gml   (opengeodata.nrw.de, 3D-Gebaeudemodell LoD2, open data; not committed)
 Output: shared/lod2Patterns.json   (aggregates only; read by the app)
@@ -90,6 +90,7 @@ for f in sorted((ROOT / "pipeline/data/lod2").glob("*.gml")):
         if el.tag in (B + "Building", B + "BuildingPart"):
             r = one(el)
             if r:
+                r["tile"] = f.name
                 rows.append(r)
         if el.tag == "{%s}cityObjectMember" % NS["core"]:
             el.clear()
@@ -99,7 +100,9 @@ import pandas as pd
 
 df = pd.DataFrame(rows)
 df["group"] = df["fn"].str[:1].map({"1": "dwelling", "2": "commercial", "3": "public"}).fillna("other")
-out = {"source": "NRW LoD2 (CityGML), 4 tiles of 1 km around the centre of Detmold, opengeodata.nrw.de, open data", "n": int(len(df)), "tiles": 4}
+CENTRE = {"LoD2_32_490_5752_1_NW.gml", "LoD2_32_490_5753_1_NW.gml", "LoD2_32_491_5752_1_NW.gml", "LoD2_32_491_5753_1_NW.gml"}
+df["zone"] = np.where(df["tile"].isin(CENTRE), "centre", "outskirts")
+out = {"source": f"NRW LoD2 (CityGML), {df['tile'].nunique()} tiles of 1 km: the centre of Detmold (4) and the residential area to the south (7), opengeodata.nrw.de, open data", "n": int(len(df)), "tiles": int(df["tile"].nunique())}
 out["by_group"] = {k: int(v) for k, v in df["group"].value_counts().items()}
 dw = df[df["group"] == "dwelling"]
 out["dwellings_n"] = int(len(dw))
@@ -134,13 +137,20 @@ for k in (0.5, 0.9, 1.3):
     res[str(k)] = {"median_counted_pct": round(100 * float(np.median(s)), 1), "p10": round(100 * float(np.quantile(s, 0.1)), 1), "p90": round(100 * float(np.quantile(s, 0.9)), 1)}
 out["counted_share_by_knee_wall_m"] = res
 app_pitch, app_span = 38.0, 5.0
+def zone_stats(g):
+    gg = g[(g["roof"] == "gabled") & g["pitch"].between(10, 70)]
+    return {"dwellings": int(len(g)), "roof_share": {k: round(100 * v, 1) for k, v in g["roof"].value_counts(normalize=True).head(6).items()}, "gabled_n": int(len(gg)),
+            "pitch": q(gg["pitch"]) if len(gg) >= 20 else None, "span": q(gg["span"]) if len(gg) >= 20 else None,
+            "counted_pct_k0.9": round(100 * float(np.median([counted_share(a, b, 0.9) for a, b in zip(gg["span"], gg["pitch"])])), 1) if len(gg) >= 20 else None}
+out["zones"] = {z: zone_stats(dw[dw["zone"] == z]) for z in ("centre", "outskirts")}
 out["app_default"] = {"pitch_deg": app_pitch, "pitch_percentile": round(100 * float((gab["pitch"] < app_pitch).mean()), 0), "span_m": app_span, "span_percentile": round(100 * float((gab["span"] < app_span).mean()), 0), "counted_pct_k0.9": round(100 * counted_share(app_span, app_pitch, 0.9), 1)}
 (ROOT / "shared/lod2Patterns.json").write_text(json.dumps(out, indent=1, ensure_ascii=False), encoding="utf-8")
 
 md = ["# Roof patterns from NRW LoD2 (Detmold centre)", "", f"Source: {out['source']}. {out['n']:,} buildings and building parts with roof and ground surfaces; {out['dwellings_n']:,} dwellings; {out['gabled_n']:,} dwellings with a gable roof and a usable pitch.", "",
-      "Surveyed geometry, not volunteered tags. It covers four 1 km tiles of the centre only, which is denser and older than the region: repeat on more tiles before generalising. Roof-type and function codes are from memory of the AdV/ALKIS code lists.", "",
+      "Surveyed geometry, not volunteered tags. It covers eleven 1 km tiles around Detmold (centre and a residential area): still one town, repeat on more tiles before generalising. Roof-type and function codes are from memory of the AdV/ALKIS code lists.", "",
       "## Roof types of dwellings", ", ".join(f"{k} {v} %" for k, v in out["dwelling_roof_share"].items()), "",
       f"## Gable roofs: pitch (degrees), span, eave and ridge heights", f"- pitch: {out['gabled_pitch']}", f"- span (short side of the footprint, m): {out['gabled_span_m']}", f"- length (m): {out['gabled_length_m']}", f"- eave height above ground (m): {out['gabled_eave_m']}", f"- ridge height above ground (m): {out['gabled_ridge_m']}", f"- footprint (m2): {out['gabled_footprint_m2']}", f"- correlation of pitch and span: {out['pitch_vs_span_corr']}", "",
+      "## Centre against outskirts (dwellings)"] + [f"- {z}: {v['dwellings']} dwellings, {v['gabled_n']} gable with pitch; roofs {v['roof_share']}; pitch {v['pitch']}; span {v['span']}; counted share at the median {v['counted_pct_k0.9']} %" for z, v in out["zones"].items()] + ["",
       "## Median pitch by roof type (dwellings)"] + [f"- {k}: {v['median_deg']}° ({v['n']})" for k, v in out["pitch_by_roof"].items()] + ["",
       "## What our usable-area rule counts on these real cross sections", "Share of the floor counted (100 % above 2.0 m, 50 % between 1.0 and 2.0 m) for a gable roof of the real span and pitch, with the attic floor a knee wall above the eave line (not in LoD2: assumed):"] + [f"- knee wall {k} m: median {v['median_counted_pct']} % (p10 {v['p10']} %, p90 {v['p90']} %)" for k, v in res.items()] + ["",
       f"## Our default roof against the region", f"- pitch {app_pitch}°: {out['app_default']['pitch_percentile']:.0f} % of the gable dwellings are shallower; span {app_span} m: {out['app_default']['span_percentile']:.0f} % are narrower (the footprint span is the outer width; the usable attic floor is narrower)", f"- our default room counts {out['app_default']['counted_pct_k0.9']} % of its floor"]

@@ -39,13 +39,13 @@ export const PRESETS = [
   },
   {
     id: 'median',
-    name: 'Median gable house, Detmold centre',
-    note: 'Built from the surveyed LoD2 medians: 43° pitch, about 8.9 m outer span and 11.7 m length (minus the walls). The knee wall is an assumption: LoD2 does not record it.',
+    name: 'Median gable house, Detmold (LoD2)',
+    note: 'Built from the surveyed LoD2 medians of 11 tiles around Detmold: 41° pitch, about 9.1 m outer span and 11.4 m length (minus the walls). The knee wall is an assumption: LoD2 does not record it.',
     room: {
-      ...DEFAULT_ROOM, width: 8.0, depth: 10.5, kneeWall: 0.9, pitch: 43, maxHeight: 3.0,
+      ...DEFAULT_ROOM, width: 8.2, depth: 10.2, kneeWall: 0.9, pitch: 41, maxHeight: 3.0,
       dormers: [{ side: 'left', center: 5.2, width: 2.4, depth: 1.5, height: 2.4 }],
-      stair: { x: 3.55, y: 0.2, w: 0.9, d: 2.0 },
-      windows: [{ wall: 'N', pos: 4, width: 1.2 }, { wall: 'S', pos: 4, width: 1.2 }],
+      stair: { x: 3.65, y: 0.2, w: 0.9, d: 2.0 },
+      windows: [{ wall: 'N', pos: 4.1, width: 1.2 }, { wall: 'S', pos: 4.1, width: 1.2 }],
     },
     items: program(BEDROOM),
   },

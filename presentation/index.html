@@ -363,7 +363,7 @@ h1 { font-size: clamp(2rem, 5vw, 3.6rem); } h2 { font-size: clamp(1.4rem, 3vw, 2
           </div>
         </div>
         <div class="panel" style="display:grid;gap:10px">
-          <h3>Surveyed instead of tagged: gable pitch in the centre of Detmold (NRW LoD2, 602 dwellings)</h3>
+          <h3>Surveyed instead of tagged: gable pitch around Detmold (NRW LoD2, 11 tiles, 1,379 dwellings)</h3>
           <div class="lodhist" id="lodHist" role="img" aria-label="Histogram of roof pitch of gable dwellings"></div>
           <div class="lodlabels" id="lodLabels"></div>
           <p style="margin:0;font-size:.9rem" id="lodNote"></p>
@@ -1130,7 +1130,7 @@ function drawPatterns() {
   box(0, 178, 82, 'gabled', false); box(70, 178, 82, 'hipped', false); box(160, 178, 100, 'half-hipped', false);
   $('#patNote').textContent = `Default the roof question to a gable roof for a dwelling (${PAT.dwell.gabled} %), offer hipped and half-hipped (${(PAT.dwell.hipped + PAT.dwell['half-hipped']).toFixed(1)} %), and treat flat as the garage case. The engine models gable roofs: that covers about ${PAT.dwell.gabled} % of the dwellings here; hipped roofs are the next gap. About ${PAT.two} % of gabled dwellings report two or more roof levels.`;
 }
-const LOD = {"hist":{"10-15":18,"15-20":6,"20-25":21,"25-30":50,"30-35":84,"35-40":67,"40-45":101,"45-50":100,"50-55":130,"55-60":22,"60-65":1,"65-70":2},"pitch":{"p10":27.78,"p25":33.15,"median":43.29,"p75":50.22,"p90":53.11},"span":{"p10":5.97,"p25":7.59,"median":8.94,"p75":10.2,"p90":11.49},"len":{"p10":8.29,"p25":10.02,"median":11.65,"p75":13.51,"p90":16.42},"eave":{"p10":3.65,"p25":4.66,"median":6.2,"p75":7.95,"p90":9.41},"counted":{"median_counted_pct":85,"p10":68.4,"p90":90},"app":{"pitch_deg":38,"pitch_percentile":38,"span_m":5,"span_percentile":5,"counted_pct_k0.9":68.8},"n":602,"mixed":33.3,"gab":39.1};
+const LOD = {"hist":{"10-15":29,"15-20":34,"20-25":67,"25-30":155,"30-35":209,"35-40":179,"40-45":226,"45-50":217,"50-55":232,"55-60":28,"60-65":1,"65-70":2},"pitch":{"p10":25.24,"p25":31.25,"median":40.6,"p75":47.97,"p90":52.12},"span":{"p10":6.38,"p25":7.82,"median":9.06,"p75":10.35,"p90":11.47},"len":{"p10":8.9,"p25":10.04,"median":11.35,"p75":12.99,"p90":15.13},"eave":{"p10":3.29,"p25":4.24,"median":5.56,"p75":6.93,"p90":8.38},"counted":{"median_counted_pct":83.8,"p10":67.9,"p90":89.2},"app":{"pitch_deg":38,"pitch_percentile":44,"span_m":5,"span_percentile":4,"counted_pct_k0.9":68.8},"n":1379,"mixed":32.1,"gab":46.5,"tiles":11,"zc":43.29,"zo":38.52,"gc":39.1,"go":54.7};
 function drawLod() {
   const ks = Object.keys(LOD.hist), max = Math.max(...Object.values(LOD.hist));
   const appBin = ks.find((k) => { const [a, b] = k.split('-').map(Number); return 38 >= a && 38 < b; });
@@ -1138,7 +1138,7 @@ function drawLod() {
   $('#lodLabels').innerHTML = ks.map((k) => `<span>${k.split('-')[0]}°</span>`).join('');
   requestAnimationFrame(() => $$('#lodHist i').forEach((i) => { i.style.height = i.dataset.h + '%'; }));
   $$('#lodHist i').forEach((i) => { if (reduced) i.style.height = i.dataset.h + '%'; });
-  $('#lodNote').innerHTML = `Median pitch <b>${LOD.pitch.median}°</b> (10 to 90 %: ${LOD.pitch.p10}° to ${LOD.pitch.p90}°); our default of 38° (red) is shallower than the median. Median outer span <b>${LOD.span.median} m</b> and length ${LOD.len.median} m, eave at ${LOD.eave.median} m: our default attic is only 5 m wide, narrower than ${LOD.app.span_percentile}% of real spans, so a new preset uses the median house. Applying our usable-area rule to these real cross sections (knee wall 0.9 m assumed) counts a median <b>${LOD.counted.median_counted_pct} %</b> of the floor, ${LOD.counted.p10} to ${LOD.counted.p90} % for the middle 80 %. Only ${LOD.gab} % of the dwellings here are plain gable roofs and ${LOD.mixed} % are mixed forms: the engine's single gable is a simplification.`;
+  $('#lodNote').innerHTML = `Median pitch <b>${LOD.pitch.median}°</b> (10 to 90 %: ${LOD.pitch.p10}° to ${LOD.pitch.p90}°). The old centre is steeper (<b>${LOD.zc}°</b>) than the residential outskirts (<b>${LOD.zo}°</b>); our default of 38° (red) matches the suburbs. Median outer span <b>${LOD.span.median} m</b> and length ${LOD.len.median} m, eave at ${LOD.eave.median} m: our default attic is only 5 m wide, narrower than ${LOD.app.span_percentile}% of real spans, so a new preset uses the median house. Applying our usable-area rule to these real cross sections (knee wall 0.9 m assumed) counts a median <b>${LOD.counted.median_counted_pct} %</b> of the floor, ${LOD.counted.p10} to ${LOD.counted.p90} % for the middle 80 %. Only ${LOD.gab} % of the dwellings are plain gable roofs (${LOD.gc} % in the centre, ${LOD.go} % outside) and about ${LOD.mixed} % carry the code for mixed forms: the engine's single gable is a simplification.`;
 }
 $$('#patSeg button').forEach((b) => b.addEventListener('click', () => { patKind = b.dataset.k; drawPatterns(); }));
 

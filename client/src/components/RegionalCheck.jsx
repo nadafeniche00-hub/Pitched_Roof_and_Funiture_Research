@@ -24,13 +24,13 @@ export default function RegionalCheck() {
   const counted = lod2.counted_share_by_knee_wall_m['0.9'];
   return (
     <section>
-      <h3>Roofs in the region <small className="count">{lod2.gabled_n} surveyed gables</small></h3>
+      <h3>Roofs in the region <small className="count">{lod2.gabled_n.toLocaleString('en')} surveyed gables</small></h3>
       <p className="hint" style={{ marginTop: 0 }}>
-        Surveyed (NRW LoD2, centre of Detmold): gable dwellings have a median pitch of <b>{lod2.gabled_pitch.median}°</b> (10 to 90 %: {lod2.gabled_pitch.p10}° to {lod2.gabled_pitch.p90}°). Yours is {room.pitch}°, steeper than about <b>{percentile(lod2.gabled_pitch, room.pitch)} %</b> of them.
+        Surveyed (NRW LoD2, {lod2.tiles} tiles around Detmold): gable dwellings have a median pitch of <b>{lod2.gabled_pitch.median}°</b> (10 to 90 %: {lod2.gabled_pitch.p10}° to {lod2.gabled_pitch.p90}°); {lod2.zones.centre.pitch.median}° in the old centre, {lod2.zones.outskirts.pitch.median}° in the outskirts. Yours is {room.pitch}°, steeper than about <b>{percentile(lod2.gabled_pitch, room.pitch)} %</b> of them.
       </p>
       <p className="hint">Median outer span {lod2.gabled_span_m.median} m (middle half {lod2.gabled_span_m.p25} to {lod2.gabled_span_m.p75} m). Your attic is about {outerSpan.toFixed(1)} m outside: wider than about <b>{percentile(lod2.gabled_span_m, outerSpan)} %</b>.</p>
       {metrics && <p className="hint">Usable share of the floor under the slope: yours <b>{Math.round(metrics.usableRatio * 100)} %</b>, the real roofs {counted.median_counted_pct} % at the median ({counted.p10} to {counted.p90} %), assuming a {0.9} m knee wall that LoD2 does not record.</p>}
-      <p className="hint">Tagged shapes (OpenStreetMap, {patterns.dwellings_n.toLocaleString('en')} dwellings in Kreis Lippe): {gabled} % gabled, {hip} % hipped or half-hipped (not modelled here yet), {share('flat')} % flat, mostly outbuildings. The centre has more mixed roofs than the district, so the two sources differ.</p>
+      <p className="hint">Tagged shapes (OpenStreetMap, {patterns.dwellings_n.toLocaleString('en')} dwellings in Kreis Lippe): {gabled} % gabled, {hip} % hipped or half-hipped (not modelled here yet), {share('flat')} % flat, mostly outbuildings. LoD2 codes about a third of the dwellings as mixed forms, so its gabled share is lower than the tags'.</p>
     </section>
   );
 }
