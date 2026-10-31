@@ -80,3 +80,19 @@ test('a hand-drawn layout is scored once every piece is placed', async () => {
   const r = planFromRects(DEFAULT_ROOM, brief, { hall, a: [hall[2], 0, 5, 3.5] });
   assert.ok(r && r.score > 0 && r.doors.length === 1);
 });
+
+test('a plan file becomes a brief and puzzle pieces, scaled to the roof', async () => {
+  const { roomsFromPlanJson, guessType } = await import('../../shared/planImport.js');
+  const data = { version: 1, footprint: { w: 10, d: 8 }, rooms: [
+    { id: 'a', x: 0, y: 0, w: 4, d: 4, type: 'bedroom' }, { id: 'b', x: 4, y: 0, w: 4, d: 4 }, { id: 'c', x: 0, y: 4, w: 8, d: 4 }, { id: 'tiny', x: 9, y: 7, w: 0.5, d: 0.5 },
+  ] };
+  const out = roomsFromPlanJson(data, DEFAULT_ROOM);
+  assert.equal(out.brief.rooms.length, 3, 'a closet of 0.25 m2 is dropped');
+  assert.ok(out.brief.rooms.every((r) => r.area >= 2 && r.area <= 40));
+  assert.equal(out.guessed, 2);
+  const placed = Object.values(out.pieces).filter((p) => p.x !== null);
+  for (const p of placed) assert.ok(p.x >= 0 && p.x + p.w <= DEFAULT_ROOM.width + 1e-6 && p.y + p.d <= DEFAULT_ROOM.depth + 1e-6, 'pieces lie inside the roof storey');
+  assert.throws(() => roomsFromPlanJson({ rooms: [] }, DEFAULT_ROOM), /Not a plan file/);
+  assert.equal(guessType(20), 'living');
+  assert.equal(guessType(3), 'bath');
+});

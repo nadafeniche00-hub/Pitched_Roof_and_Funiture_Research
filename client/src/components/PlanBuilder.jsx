@@ -8,6 +8,7 @@ import { layoutActions } from '../store/layoutSlice.js';
 import RoomTree from './RoomTree.jsx';
 import PuzzleEditor, { initialPieces } from './PuzzleEditor.jsx';
 import { fitBrief } from '@shared/roomTree.js';
+import { roomsFromPlanJson } from '@shared/planImport.js';
 import BubbleEditor, { linksFrom, ringPositions } from './BubbleEditor.jsx';
 import { EXAMPLE_BRIEF, ROOM_TYPES, capacity, generatePlans, hallRect, planFromRects, sanitizeBrief, typeOf } from '@shared/plans.js';
 
@@ -74,6 +75,15 @@ export default function PlanBuilder() {
     if (!best) return;
     setPz(Object.fromEntries(best.rooms.filter((r) => r.id !== 'hall').map((r) => [r.id, { w: +(r.rect[2] - r.rect[0]).toFixed(2), d: +(r.rect[3] - r.rect[1]).toFixed(2), x: +r.rect[0].toFixed(2), y: +r.rect[1].toFixed(2), area: brief.rooms.find((q) => q.id === r.id)?.area }])));
   };
+  const importPlan = (data, name) => {
+    try {
+      const out = roomsFromPlanJson(data, room);
+      setBrief(out.brief); setPos(ringPositions(out.brief.rooms)); setPz(out.pieces); setMode('puzzle');
+      const unplaced = Object.values(out.pieces).filter((p) => p.x === null).length;
+      dispatch(uiActions.setToast(`${name}: ${out.brief.rooms.length} rooms read${out.guessed ? `, ${out.guessed} types guessed from the size (check them in "Type rooms")` : ''}${unplaced ? `, ${unplaced} waiting in the tray` : ''}.`));
+    } catch (e) { dispatch(uiActions.setToast(e.message)); }
+  };
+  const openPlanFile = async (file) => { try { importPlan(JSON.parse(await file.text()), file.name); } catch { dispatch(uiActions.setToast('That file is not valid JSON.')); } };
   const useTreeBrief = (b) => {
     const fitted = fitBrief(b, capacity(room, b).have);
     setBrief(fitted); setPos(ringPositions(fitted.rooms)); setPz({}); setMode('bubbles');
@@ -106,6 +116,8 @@ export default function PlanBuilder() {
           <button className={mode === 'puzzle' ? 'on' : ''} onClick={() => setMode('puzzle')}>Puzzle</button>
           <button className={mode === 'form' ? 'on' : ''} onClick={() => setMode('form')}>Type rooms</button>
         </nav>
+        <button onClick={async () => importPlan(await (await fetch('/samples/sample-plan.json')).json(), 'sample plan')}>Sample plan</button>
+        <label className="filebtn">Import plan…<input type="file" accept=".json,application/json" hidden onChange={(e) => e.target.files[0] && openPlanFile(e.target.files[0])} /></label>
         {mode === 'puzzle' ? <button onClick={solve}>Solve it for me</button> : <button onClick={generate}>Generate again</button>}
         <button className="primary" onClick={furnish} disabled={!plan}>Furnish this layout</button>
       </div>

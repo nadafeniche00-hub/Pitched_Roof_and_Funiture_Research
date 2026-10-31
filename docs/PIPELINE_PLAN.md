@@ -95,3 +95,12 @@ Each step ends in something you can show. Steps 1 to 4 are for 4 Nov.
 - Do not scrape plan portals. Use open datasets and cite them. Ask the university about the text-and-data-mining exception
   before crawling anything.
 - The server is shared (121 GiB between CPU and GPU, the team LLM already reserves 0.60 of GPU memory): cap every container.
+
+## Status 31 Oct 2026 (evening)
+
+- Step 1 (inventory): done, `pipeline/inventory-2026-10-31.md`.
+- Step 3 (plan reading), first working version: `01_plan_reading.ipynb` ran on the server and read all 5 rooms of a synthetic test plan to
+  within 4 cm (OpenCV wall segmentation; door gaps up to 0.9 m sealed). The app imports the JSON through **Import plan** / **Sample plan**
+  in the Rooms tab (`shared/planImport.js`, tested). Not yet tried on a real plan image: expect L-shaped rooms to be dropped and room types
+  to be guessed from the size until SAM 2.1 / Grounding DINO labelling is added.
+- Step 2 (Airflow) not started. GeoPandas is missing in the container (`pip install geopandas pyproj` first).

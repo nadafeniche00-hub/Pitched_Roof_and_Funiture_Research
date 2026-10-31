@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "source": "read from a synthetic test plan image by pipeline/notebooks/01_plan_reading.ipynb on the GX10 (OpenCV wall segmentation, 31 Oct 2026); not a real building",
+  "footprint": { "w": 9.0, "d": 7.02 },
+  "rooms": [
+    { "id": "r1", "x": 0.04, "y": 0.04, "w": 4.46, "d": 3.57 },
+    { "id": "r2", "x": 4.5, "y": 0.04, "w": 4.46, "d": 3.57 },
+    { "id": "r3", "x": 0.04, "y": 3.61, "w": 3.57, "d": 3.37 },
+    { "id": "r4", "x": 3.61, "y": 3.61, "w": 1.99, "d": 3.37 },
+    { "id": "r5", "x": 5.59, "y": 3.61, "w": 3.37, "d": 3.37 }
+  ]
+}
