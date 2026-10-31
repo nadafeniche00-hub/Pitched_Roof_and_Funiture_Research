@@ -1,0 +1,213 @@
+{
+ "source": "OpenStreetMap, buildings with roof:shape in Kreis Lippe, Overpass API, 31 Oct 2026 (ODbL)",
+ "n": 12413,
+ "shape_share": {
+  "gabled": 68.4,
+  "flat": 19.3,
+  "hipped": 6.1,
+  "half-hipped": 3.3,
+  "other": 1.0,
+  "pyramidal": 0.7,
+  "skillion": 0.5,
+  "mansard": 0.3,
+  "gambrel": 0.3
+ },
+ "dwellings_n": 8332,
+ "dwelling_shape_share": {
+  "gabled": 82.8,
+  "hipped": 6.7,
+  "flat": 3.9,
+  "half-hipped": 3.9,
+  "other": 0.9,
+  "pyramidal": 0.7,
+  "gambrel": 0.4,
+  "mansard": 0.4,
+  "skillion": 0.3
+ },
+ "roof_level_by_shape": {
+  "gabled": {
+   "n": 5213,
+   "with_roof_level_pct": 96.2,
+   "two_or_more_pct": 19.2
+  },
+  "hipped": {
+   "n": 349,
+   "with_roof_level_pct": 95.7,
+   "two_or_more_pct": 8.6
+  },
+  "half-hipped": {
+   "n": 275,
+   "with_roof_level_pct": 100.0,
+   "two_or_more_pct": 17.1
+  },
+  "mansard": {
+   "n": 28,
+   "with_roof_level_pct": 100.0,
+   "two_or_more_pct": 50.0
+  },
+  "flat": {
+   "n": 120,
+   "with_roof_level_pct": 15.0,
+   "two_or_more_pct": 0.0
+  },
+  "pyramidal": {
+   "n": 33,
+   "with_roof_level_pct": 81.8,
+   "two_or_more_pct": 3.0
+  }
+ },
+ "roof_level_known_n": 6136,
+ "attic_by_building_levels_pitched": {
+  "1": {
+   "n": 2280,
+   "attic_pct": 98.9
+  },
+  "2": {
+   "n": 3105,
+   "attic_pct": 94.9
+  },
+  "3": {
+   "n": 324,
+   "attic_pct": 96.6
+  },
+  "4": {
+   "n": 55,
+   "attic_pct": 69.1
+  }
+ },
+ "material_share_pitched": {
+  "roof_tiles": 100.0,
+  "slate": 0.0
+ },
+ "material_n": 2832,
+ "roof_angle": {
+  "n": 40,
+  "note": "too few tagged to give a pitch distribution"
+ },
+ "tree": {
+  "accuracy_cv5": 79.7,
+  "majority_baseline": 68.4,
+  "rules": [
+   "|--- is_outbuilding <= 0.50",
+   "|   |--- roof_levels <= 0.50",
+   "|   |   |--- levels <= 0.00",
+   "|   |   |   |--- class: gabled",
+   "|   |   |--- levels >  0.00",
+   "|   |   |   |--- class: gabled",
+   "|   |--- roof_levels >  0.50",
+   "|   |   |--- is_house <= 0.50",
+   "|   |   |   |--- class: gabled",
+   "|   |   |--- is_house >  0.50",
+   "|   |   |   |--- class: gabled",
+   "|--- is_outbuilding >  0.50",
+   "|   |--- roof_levels <= -0.50",
+   "|   |   |--- levels <= -0.10",
+   "|   |   |   |--- class: flat",
+   "|   |   |--- levels >  -0.10",
+   "|   |   |   |--- class: flat",
+   "|   |--- roof_levels >  -0.50",
+   "|   |   |--- class: gabled"
+  ]
+ },
+ "rules": [
+  {
+   "if": [
+    "material_tagged",
+    "outbuilding"
+   ],
+   "then": [
+    "levels=1",
+    "shape=flat"
+   ],
+   "support": 6.8,
+   "confidence": 85.4,
+   "lift": 6.49
+  },
+  {
+   "if": [
+    "outbuilding"
+   ],
+   "then": [
+    "levels=1",
+    "shape=flat"
+   ],
+   "support": 11.2,
+   "confidence": 74.0,
+   "lift": 5.62
+  },
+  {
+   "if": [
+    "levels=1",
+    "material_tagged",
+    "outbuilding"
+   ],
+   "then": [
+    "shape=flat"
+   ],
+   "support": 6.8,
+   "confidence": 95.6,
+   "lift": 4.96
+  },
+  {
+   "if": [
+    "material_tagged",
+    "outbuilding"
+   ],
+   "then": [
+    "shape=flat"
+   ],
+   "support": 7.5,
+   "confidence": 93.7,
+   "lift": 4.86
+  },
+  {
+   "if": [
+    "levels=1",
+    "outbuilding"
+   ],
+   "then": [
+    "shape=flat"
+   ],
+   "support": 11.2,
+   "confidence": 87.6,
+   "lift": 4.54
+  },
+  {
+   "if": [
+    "outbuilding"
+   ],
+   "then": [
+    "shape=flat"
+   ],
+   "support": 12.8,
+   "confidence": 84.4,
+   "lift": 4.38
+  },
+  {
+   "if": [
+    "levels=1",
+    "shape=gabled"
+   ],
+   "then": [
+    "house",
+    "roof_level"
+   ],
+   "support": 15.8,
+   "confidence": 77.9,
+   "lift": 2.59
+  },
+  {
+   "if": [
+    "levels=1",
+    "roof_level"
+   ],
+   "then": [
+    "house",
+    "shape=gabled"
+   ],
+   "support": 15.8,
+   "confidence": 80.1,
+   "lift": 2.09
+  }
+ ]
+}

@@ -2,3 +2,5 @@ node_modules/
 dist/
 server/data/
 *.log
+.venv/
+pipeline/data/

@@ -6,6 +6,7 @@ import { STATUS_COLOR } from './PlanView.jsx';
 import SiteResults from './SiteResults.jsx';
 import ItemInspector from './ItemInspector.jsx';
 import RulesPanel from './RulesPanel.jsx';
+import RegionalCheck from './RegionalCheck.jsx';
 
 const pc = (v) => `${Math.round(v * 100)}%`;
 const ICON = { ok: '✓', warn: '!', fail: '✕', unplaced: '–' };
@@ -55,6 +56,8 @@ export default function ResultsPanel() {
       </section>
 
       <RulesPanel />
+
+      <RegionalCheck />
 
       <ItemInspector />
 

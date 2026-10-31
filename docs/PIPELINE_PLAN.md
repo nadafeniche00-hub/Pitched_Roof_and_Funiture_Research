@@ -104,3 +104,10 @@ Each step ends in something you can show. Steps 1 to 4 are for 4 Nov.
   in the Rooms tab (`shared/planImport.js`, tested). Not yet tried on a real plan image: expect L-shaped rooms to be dropped and room types
   to be guessed from the size until SAM 2.1 / Grounding DINO labelling is added.
 - Step 2 (Airflow) not started. GeoPandas is missing in the container (`pip install geopandas pyproj` first).
+
+## Status 1 Nov 2026
+
+- **AI part:** `02_vision_clip.ipynb` ran on the GX10 on 3 real photos of the Real2Twin building (a stone church): Grounding DINO found doors, windows, dormers and roofs from words, SAM 2.1 cut the roof out, Depth Anything gave depth maps, CLIP named the style ("stone building", 91 to 96 %) and searched all 25 photos by text. Zero-shot, no accuracy measured. CLIP's roof-type guesses are not used: the roofs are barely visible. Results in `presentation/ai/`, slide "The AI part".
+- **Roof patterns:** `pipeline/analysis/roof_patterns.py` mined 12,413 OpenStreetMap buildings with a roof shape in Kreis Lippe (`docs/ROOF_PATTERNS.md`, `shared/roofPatterns.json`). Dwellings: 82.8 % gabled, 6.7 % hipped, 3.9 % half-hipped, 3.9 % flat; flat roofs are mostly outbuildings. Attic and material tags mostly show how mappers tag. The app shows a "Roofs in the region" card; the deck has a "Patterns from real roofs" slide. Next: repeat on NRW LoD2 (surveyed) for pitch and roof-type distributions.
+- **Local tools:** Python 3.12 and a `.venv` (not committed) with pandas, scikit-learn, xgboost, lightgbm, mlxtend, duckdb, shapely, geopandas, statsmodels, networkx, JupyterLab. First imports of statsmodels and geopandas are slow (over 25 s).
+- **Airflow locally:** not possible natively on Windows. WSL2 core was enabled, but Windows reports that CPU virtualization is off in the firmware: it must be enabled in the BIOS/UEFI first (then reboot, `wsl --install -d Ubuntu`, Airflow inside). Docker Desktop has the same requirement. The server stack `pipeline/airflow/` is the alternative.
