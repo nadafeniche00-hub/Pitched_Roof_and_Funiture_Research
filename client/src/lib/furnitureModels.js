@@ -176,7 +176,7 @@ const BUILDERS = { bed_double: bed, bed_single: bed, wardrobe, chest, shelf, des
 // ---------------------------------------------------------------- real models (Poly Haven, CC0, see public/CREDITS.txt)
 
 // catalogue type -> model folder in public/models, and the yaw (radians) that turns the model's front towards +z
-const REAL = {
+const POLY = {
   bed_double: { id: 'GothicBed_01', yaw: 0 },
   bed_single: { id: 'vintage_day_bed', yaw: 0 },
   sofa: { id: 'sofa_02', yaw: 0 },
@@ -186,6 +186,17 @@ const REAL = {
   shelf: { id: 'wooden_display_shelves_01', yaw: 0 },
   desk: { id: 'metal_office_desk', yaw: 0 },
 };
+// ?furn=revit shows the families exported from Revit 2025 (tools/revit-export, German content library) where we have a good one
+const REVIT = {
+  bed_double: { url: '/furniture/bed_double.glb', yaw: 0 },
+  bed_single: { url: '/furniture/bed_single.glb', yaw: 0 },
+  wardrobe: { url: '/furniture/wardrobe.glb', yaw: 0 },
+  chest: { url: '/furniture/chest.glb', yaw: 0 },
+  shelf: { url: '/furniture/shelf.glb', yaw: 0 },
+  desk: { url: '/furniture/desk.glb', yaw: 0 },
+};
+const REAL = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('furn') === 'revit' ? REVIT : POLY;
+const urlOf = (r) => r.url || `/models/${r.id}/${r.id}.gltf`;
 const loaded = new Map(); // model id -> { scene, size }
 let loading = null;
 
@@ -193,12 +204,12 @@ let loading = null;
 export function preloadModels() {
   if (loading) return loading;
   const loader = new GLTFLoader();
-  const ids = [...new Set(Object.values(REAL).map((r) => r.id))];
-  loading = Promise.all(ids.map((id) => new Promise((resolve) => {
-    loader.load(`/models/${id}/${id}.gltf`, (g) => {
+  const urls = [...new Set(Object.values(REAL).map(urlOf))];
+  loading = Promise.all(urls.map((url) => new Promise((resolve) => {
+    loader.load(url, (g) => {
       g.scene.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; if (o.material) o.material.envMapIntensity = 0.8; } });
       const box = new THREE.Box3().setFromObject(g.scene), size = box.getSize(new THREE.Vector3());
-      loaded.set(id, { scene: g.scene, size, min: box.min });
+      loaded.set(url, { scene: g.scene, size, min: box.min });
       resolve(true);
     }, undefined, () => resolve(false));
   })));
@@ -207,7 +218,7 @@ export function preloadModels() {
 
 /** The real model scaled to the catalogue footprint (w x d) and height (h), standing on the floor at the origin. */
 function real(type, w, d, h) {
-  const r = REAL[type], m = r && loaded.get(r.id);
+  const r = REAL[type], m = r && loaded.get(urlOf(r));
   if (!m) return null;
   const inner = m.scene.clone(true);
   const pivot = new THREE.Group();

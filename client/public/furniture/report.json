@@ -1,0 +1,110 @@
+[
+  {
+    "type": "bed_double",
+    "path": "C:\\ProgramData\\Autodesk\\RVT 2025\\Libraries\\German\\Architektur - Bauteil\\M\u00F6bel\\Bett\\Bett-07 Boxspring.rfa",
+    "ok": true,
+    "w": 2.1,
+    "d": 2.08,
+    "h": 1.6,
+    "ifc": "bed_double.ifc"
+  },
+  {
+    "type": "bed_single",
+    "path": "C:\\ProgramData\\Autodesk\\RVT 2025\\Libraries\\German\\Architektur - Bauteil\\M\u00F6bel\\Bett\\Bett-01.rfa",
+    "ok": true,
+    "w": 2,
+    "d": 2,
+    "h": 0.483,
+    "ifc": "bed_single.ifc"
+  },
+  {
+    "type": "wardrobe",
+    "path": "C:\\ProgramData\\Autodesk\\RVT 2025\\Libraries\\German\\Architektur - Bauteil\\M\u00F6bel\\Schrank\\Schrank-01 Generisch.rfa",
+    "ok": true,
+    "w": 1.8,
+    "d": 0.6,
+    "h": 2.2,
+    "ifc": "wardrobe.ifc"
+  },
+  {
+    "type": "chest",
+    "path": "C:\\ProgramData\\Autodesk\\RVT 2025\\Libraries\\German\\Architektur - Bauteil\\M\u00F6bel\\Schrank\\Kommode-01.rfa",
+    "ok": true,
+    "w": 1.5,
+    "d": 0.69,
+    "h": 1,
+    "ifc": "chest.ifc"
+  },
+  {
+    "type": "shelf",
+    "path": "C:\\ProgramData\\Autodesk\\RVT 2025\\Libraries\\German\\Architektur - Bauteil\\M\u00F6bel\\Schrank\\Regal-02.rfa",
+    "ok": true,
+    "w": 0.6,
+    "d": 0.25,
+    "h": 0.8,
+    "ifc": "shelf.ifc"
+  },
+  {
+    "type": "desk",
+    "path": "C:\\ProgramData\\Autodesk\\RVT 2025\\Libraries\\German\\Architektur - Bauteil\\M\u00F6bel\\Tisch\\Schreibtisch-01.rfa",
+    "ok": true,
+    "w": 2.5,
+    "d": 1.23,
+    "h": 0.75,
+    "ifc": "desk.ifc"
+  },
+  {
+    "type": "chair",
+    "path": "C:\\ProgramData\\Autodesk\\RVT 2025\\Libraries\\German\\Architektur - Bauteil\\M\u00F6bel\\Sitzm\u00F6bel\\Stuhl-01.rfa",
+    "ok": true,
+    "w": 0.41,
+    "d": 0.445,
+    "h": 0.8,
+    "ifc": "chair.ifc"
+  },
+  {
+    "type": "sofa",
+    "path": "C:\\ProgramData\\Autodesk\\RVT 2025\\Libraries\\German\\Architektur - Bauteil\\M\u00F6bel\\Sitzm\u00F6bel\\Sofa-01.rfa",
+    "ok": true,
+    "w": 0.8,
+    "d": 0.61,
+    "h": 0.9,
+    "ifc": "sofa.ifc"
+  },
+  {
+    "type": "armchair",
+    "path": "C:\\ProgramData\\Autodesk\\RVT 2025\\Libraries\\German\\Architektur - Bauteil\\M\u00F6bel\\Sitzm\u00F6bel\\Sofa-04.rfa",
+    "ok": true,
+    "w": 1.448,
+    "d": 0.698,
+    "h": 0.673,
+    "ifc": "armchair.ifc"
+  },
+  {
+    "type": "toilet",
+    "path": "C:\\ProgramData\\Autodesk\\RVT 2025\\Libraries\\German\\Architektur - Bauteil\\Sanit\u00E4rinstallationen\\Toiletten und Bidets\\WC 01.rfa",
+    "ok": true,
+    "w": 0.4,
+    "d": 0.519,
+    "h": 0.39,
+    "ifc": "toilet.ifc"
+  },
+  {
+    "type": "basin",
+    "path": "C:\\ProgramData\\Autodesk\\RVT 2025\\Libraries\\German\\Architektur - Bauteil\\Sanit\u00E4rinstallationen\\Waschbecken\\Waschbecken 01.rfa",
+    "ok": true,
+    "w": 1.524,
+    "d": 1.218,
+    "h": 0.185,
+    "ifc": "basin.ifc"
+  },
+  {
+    "type": "shower",
+    "path": "C:\\ProgramData\\Autodesk\\RVT 2025\\Libraries\\German\\Architektur - Bauteil\\Sanit\u00E4rinstallationen\\Duschen\\Duschwanne 01.rfa",
+    "ok": true,
+    "w": 1.6,
+    "d": 0.9,
+    "h": 0.9,
+    "ifc": "shower.ifc"
+  }
+]

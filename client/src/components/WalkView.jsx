@@ -6,6 +6,15 @@ import { getGrid, itemRects, roofHeight, stairRect, windowRect } from '@shared/e
 import { buildFurniture, FRONT_ANGLE, preloadModels } from '../lib/furnitureModels.js';
 import { makeTextures, pbr } from '../lib/textures.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { GTAOPass } from 'three/examples/jsm/postprocessing/GTAOPass.js';
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
+import { SMAAPass } from 'three/examples/jsm/postprocessing/SMAAPass.js';
+import { VignetteShader } from 'three/examples/jsm/shaders/VignetteShader.js';
+import { RectAreaLightUniformsLib } from 'three/examples/jsm/lights/RectAreaLightUniformsLib.js';
 
 // plan (x, y) -> three (x, z); height -> y. The attic sits on a lower storey (y from -3 to 0) so it reads as a house.
 const EYE = 1.65, RADIUS = 0.22, MIN_HEAD = 1.25, WALL_MAX = 2.6, DOOR_H = 2.05, STOREY = 3;
@@ -139,7 +148,7 @@ export default function WalkView() {
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.05;
+    renderer.toneMappingExposure = 0.8;
     el.appendChild(renderer.domElement);
     renderer.domElement.tabIndex = 0;
     const scene = new THREE.Scene();
@@ -147,19 +156,37 @@ export default function WalkView() {
     scene.fog = new THREE.Fog(0xa9c6e6, 30, 90);
     const pmrem = new THREE.PMREMGenerator(renderer);
     scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-    scene.environmentIntensity = 0.55;
+    scene.environmentIntensity = 0.32;
     const camera = new THREE.PerspectiveCamera(72, 1, 0.05, 200);
     camera.rotation.order = 'YXZ';
+    // post-processing: ambient occlusion for contact shadows, a little bloom on the bright windows, vignette, then tone mapping and anti-aliasing
+    RectAreaLightUniformsLib.init();
+    const composer = new EffectComposer(renderer);
+    composer.addPass(new RenderPass(scene, camera));
+    const gtao = new GTAOPass(scene, camera, 300, 150);
+    gtao.updateGtaoMaterial({ radius: 0.7, distanceExponent: 1.4, thickness: 1.2, scale: 1.3, samples: 16 });
+    gtao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 4, rings: 2, samples: 16 });
+    composer.addPass(gtao);
+    const bloom = new UnrealBloomPass(new THREE.Vector2(300, 150), 0.22, 0.5, 0.92);
+    composer.addPass(bloom);
+    const vig = new ShaderPass(VignetteShader);
+    vig.uniforms.offset.value = 0.9; vig.uniforms.darkness.value = 1.05;
+    composer.addPass(vig);
+    composer.addPass(new OutputPass());
+    const smaa = new SMAAPass();
+    composer.addPass(smaa);
     const content = new THREE.Group();
     scene.add(content);
     const S = { yaw: Math.PI, pitch: 0, x: 0, z: 0, eye: EYE, keys: {}, outside: false, orbit: 0, colliders: [], tick: 0, last: performance.now(), locked: false, drag: false };
-    T.current = { scene, camera, content, S, renderer };
+    T.current = { scene, camera, content, S, renderer, composer };
     if (import.meta.env.DEV) window.__walk = T;
 
     const resize = () => {
       const w = el.clientWidth, h = el.clientHeight;
       if (!w || !h) return;
       renderer.setSize(w, h);
+      composer.setPixelRatio(renderer.getPixelRatio());
+      composer.setSize(w, h);
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
     };
@@ -224,7 +251,7 @@ export default function WalkView() {
         const r = t.layout?.rooms.find((q) => S.x >= q.rect[0] && S.x <= q.rect[2] && S.z >= q.rect[1] && S.z <= q.rect[3]);
         hud.current.textContent = S.outside ? 'exterior' : r ? `${r.id === 'hall' ? 'Stair hall' : r.type + ' · ' + r.id}  ·  ${r.counted.toFixed(1)} m² usable` : 'roof storey';
       }
-      renderer.render(scene, camera);
+      composer.render();
     };
     const loop = (now) => {
       if (!alive) return;
@@ -247,6 +274,7 @@ export default function WalkView() {
       document.removeEventListener('pointerlockchange', onLock);
       if (document.pointerLockElement === canvas) document.exitPointerLock?.();
       disposeAll(scene);
+      composer.dispose();
       renderer.dispose();
       canvas.remove();
       T.current = null;
@@ -271,8 +299,8 @@ export default function WalkView() {
 
     // lights
     const L = (o) => { o.userData.kind = 'light'; scene.add(o); return o; };
-    L(new THREE.HemisphereLight(0xdfe9ff, 0x7a6a58, 0.5));
-    L(new THREE.AmbientLight(0xffffff, 0.12));
+    L(new THREE.HemisphereLight(0xdfe9ff, 0x7a6a58, 0.28));
+    L(new THREE.AmbientLight(0xffffff, 0.05));
     const sun = L(new THREE.DirectionalLight(0xfff1d6, 2.4));
     sun.position.set(W / 2 + 14, 20, D / 2 + 9);
     sun.target.position.set(W / 2, 0, D / 2);
@@ -339,10 +367,17 @@ export default function WalkView() {
       if (r[3] - r[1] > 0.5 && r[2] - r[0] < 0.5) continue; // E/W windows in the knee wall: not drawn
       const top = Math.min(2.1, roofHeight(room, cx, nS ? 0 : D) - 0.1), sill = 0.9;
       if (top - sill < 0.3) continue;
-      const glass = new THREE.Mesh(new THREE.PlaneGeometry(r[2] - r[0], top - sill), new THREE.MeshBasicMaterial({ color: 0xd8ecff }));
+      const glassMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+      glassMat.color.setRGB(1.6, 1.85, 2.2); // brighter than 1: the bloom pass makes it glow
+      const glass = new THREE.Mesh(new THREE.PlaneGeometry(r[2] - r[0], top - sill), glassMat);
       glass.position.set(cx, (top + sill) / 2, cz);
       glass.rotation.y = nS ? 0 : Math.PI;
       content.add(glass);
+      const area = new THREE.RectAreaLight(0xcfe2ff, 12, r[2] - r[0], top - sill); // soft daylight falling in through the window
+      area.position.set(cx, (top + sill) / 2, cz + (nS ? 0.05 : -0.05));
+      area.lookAt(cx, (top + sill) / 2 - 0.4, nS ? cz + 2 : cz - 2);
+      area.userData.kind = 'light';
+      scene.add(area);
       const fm = new THREE.MeshStandardMaterial({ color: 0xf2f2f2, roughness: 0.5 });
       const hw = r[2] - r[0], hh = top - sill;
       for (const [fw, fh, fx, fy] of [[hw + 0.08, 0.05, 0, hh / 2], [hw + 0.08, 0.05, 0, -hh / 2], [0.05, hh, hw / 2, 0], [0.05, hh, -hw / 2, 0], [0.03, hh, 0, 0]]) {

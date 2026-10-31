@@ -80,8 +80,10 @@ export function pbr(slot, repeat) {
   const key = slot + repeat;
   if (pbrCache.has(key)) return pbrCache.get(key);
   const loader = new THREE.TextureLoader();
+  // ?tex=gen uses the textures generated on the server (public/textures/gen_<slot>_*.jpg) instead of the scanned ones
+  const pack = new URLSearchParams(window.location.search).get('tex') === 'gen' ? 'gen_' : '';
   const load = (suffix, srgb) => {
-    const t = loader.load(`/textures/${slot}_${suffix}.jpg`);
+    const t = loader.load(`/textures/${pack}${slot}_${suffix}.jpg`);
     t.wrapS = t.wrapT = THREE.RepeatWrapping;
     t.repeat.set(repeat, repeat);
     t.anisotropy = 8;
