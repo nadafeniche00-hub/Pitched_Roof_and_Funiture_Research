@@ -1,0 +1,126 @@
+{
+ "source": "NRW LoD2 (CityGML), 4 tiles of 1 km around the centre of Detmold, opengeodata.nrw.de, open data",
+ "n": 5324,
+ "tiles": 4,
+ "by_group": {
+  "other": 2668,
+  "dwelling": 1551,
+  "commercial": 998,
+  "public": 107
+ },
+ "dwellings_n": 1551,
+ "dwelling_roof_share": {
+  "gabled": 39.1,
+  "mixed": 33.3,
+  "shed": 9.9,
+  "flat": 9.3,
+  "hipped": 4.6,
+  "other": 2.6,
+  "half-hipped": 0.7,
+  "tent": 0.4
+ },
+ "gabled_n": 602,
+ "gabled_pitch": {
+  "p10": 27.78,
+  "p25": 33.15,
+  "median": 43.29,
+  "p75": 50.22,
+  "p90": 53.11
+ },
+ "gabled_pitch_hist": {
+  "10-15": 18,
+  "15-20": 6,
+  "20-25": 21,
+  "25-30": 50,
+  "30-35": 84,
+  "35-40": 67,
+  "40-45": 101,
+  "45-50": 100,
+  "50-55": 130,
+  "55-60": 22,
+  "60-65": 1,
+  "65-70": 2
+ },
+ "gabled_span_m": {
+  "p10": 5.97,
+  "p25": 7.59,
+  "median": 8.94,
+  "p75": 10.2,
+  "p90": 11.49
+ },
+ "gabled_length_m": {
+  "p10": 8.29,
+  "p25": 10.02,
+  "median": 11.65,
+  "p75": 13.51,
+  "p90": 16.42
+ },
+ "gabled_eave_m": {
+  "p10": 3.65,
+  "p25": 4.66,
+  "median": 6.2,
+  "p75": 7.95,
+  "p90": 9.41
+ },
+ "gabled_ridge_m": {
+  "p10": 8.04,
+  "p25": 9.43,
+  "median": 10.68,
+  "p75": 12.65,
+  "p90": 14.03
+ },
+ "gabled_footprint_m2": {
+  "p10": 52.7,
+  "p25": 76.66,
+  "median": 96.35,
+  "p75": 123.97,
+  "p90": 170.28
+ },
+ "pitch_by_roof": {
+  "gabled": {
+   "n": 606,
+   "median_deg": 43.2
+  },
+  "hipped": {
+   "n": 72,
+   "median_deg": 42.4
+  },
+  "mixed": {
+   "n": 516,
+   "median_deg": 39.0
+  },
+  "other": {
+   "n": 30,
+   "median_deg": 47.3
+  },
+  "shed": {
+   "n": 102,
+   "median_deg": 12.0
+  }
+ },
+ "pitch_vs_span_corr": -0.14,
+ "counted_share_by_knee_wall_m": {
+  "0.5": {
+   "median_counted_pct": 75.0,
+   "p10": 47.6,
+   "p90": 83.3
+  },
+  "0.9": {
+   "median_counted_pct": 85.0,
+   "p10": 68.4,
+   "p90": 90.0
+  },
+  "1.3": {
+   "median_counted_pct": 91.2,
+   "p10": 81.7,
+   "p90": 94.2
+  }
+ },
+ "app_default": {
+  "pitch_deg": 38.0,
+  "pitch_percentile": 38.0,
+  "span_m": 5.0,
+  "span_percentile": 5.0,
+  "counted_pct_k0.9": 68.8
+ }
+}

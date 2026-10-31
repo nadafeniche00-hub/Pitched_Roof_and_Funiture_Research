@@ -111,3 +111,10 @@ Each step ends in something you can show. Steps 1 to 4 are for 4 Nov.
 - **Roof patterns:** `pipeline/analysis/roof_patterns.py` mined 12,413 OpenStreetMap buildings with a roof shape in Kreis Lippe (`docs/ROOF_PATTERNS.md`, `shared/roofPatterns.json`). Dwellings: 82.8 % gabled, 6.7 % hipped, 3.9 % half-hipped, 3.9 % flat; flat roofs are mostly outbuildings. Attic and material tags mostly show how mappers tag. The app shows a "Roofs in the region" card; the deck has a "Patterns from real roofs" slide. Next: repeat on NRW LoD2 (surveyed) for pitch and roof-type distributions.
 - **Local tools:** Python 3.12 and a `.venv` (not committed) with pandas, scikit-learn, xgboost, lightgbm, mlxtend, duckdb, shapely, geopandas, statsmodels, networkx, JupyterLab. First imports of statsmodels and geopandas are slow (over 25 s).
 - **Airflow locally:** not possible natively on Windows. WSL2 core was enabled, but Windows reports that CPU virtualization is off in the firmware: it must be enabled in the BIOS/UEFI first (then reboot, `wsl --install -d Ubuntu`, Airflow inside). Docker Desktop has the same requirement. The server stack `pipeline/airflow/` is the alternative.
+
+## Status 1 Nov 2026 (LoD2)
+
+- `pipeline/analysis/lod2_roofs.py` read 4 NRW LoD2 tiles of 1 km around the centre of Detmold (98 MB, not committed): 5,324 buildings and parts, 1,551 dwellings, 602 gable dwellings with a usable pitch. Findings in `docs/LOD2_PATTERNS.md`, aggregates in `shared/lod2Patterns.json`.
+- Surveyed gable pitch: median 43.3° (10 to 90 %: 27.8° to 53.1°); outer span median 8.9 m, length 11.7 m, eave 6.2 m. Our default attic (38°, 5 m wide) is shallower than the median and narrower than 95 % of real spans: new preset "Median gable house, Detmold centre".
+- Our usable-area rule on the real cross sections (knee wall 0.9 m assumed, not in LoD2) counts a median 85 % of the floor (68 to 90 %).
+- Only 39 % of the dwellings in the centre are plain gable roofs, 33 % are mixed forms, 10 % shed, 9 % flat, 5 % hipped: the OSM district-wide shares (83 % gabled) and the surveyed centre differ. More tiles are needed before generalising.
