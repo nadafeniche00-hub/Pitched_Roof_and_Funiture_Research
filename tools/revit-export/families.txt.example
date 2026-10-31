@@ -1,0 +1,7 @@
+# Copy to families.txt next to RevitIfcExport.dll and fill in the paths of the families on this machine.
+# Format: catalogue-type=full path to the .rfa   (types: bed_double, bed_single, wardrobe, chest, shelf, desk, sofa, armchair, toilet, basin, shower)
+# out=C:\Users\nadaf\Desktop\Pitched_Roof_and_Furniture\client\public\furniture
+#
+# out=C:\Users\nadaf\Desktop\Pitched_Roof_and_Furniture\client\public\furniture
+# bed_double=C:\ProgramData\Autodesk\RVT 2025\Libraries\...\Bed-Double.rfa
+# wardrobe=C:\ProgramData\Autodesk\RVT 2025\Libraries\...\Wardrobe.rfa

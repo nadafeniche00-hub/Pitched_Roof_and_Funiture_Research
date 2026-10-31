@@ -5,6 +5,7 @@ const slice = createSlice({
   name: 'ui',
   initialState: {
     view: 'planner', // planner | library | ifc | lph5
+    centerTab: 'plan', // plan | 3d | section | site (workspace in the planner view)
     lang: 'en', // en | de
     selectedId: null,
     sectionY: 3.5,
@@ -19,6 +20,7 @@ const slice = createSlice({
   reducers: {
     select: (s, { payload }) => { s.selectedId = payload; },
     setView: (s, { payload }) => { s.view = payload; },
+    setCenterTab: (s, { payload }) => { s.centerTab = payload; },
     setLang: (s, { payload }) => { s.lang = payload; },
     setSectionY: (s, { payload }) => { s.sectionY = payload; },
     toggle: (s, { payload }) => { s[payload] = !s[payload]; },

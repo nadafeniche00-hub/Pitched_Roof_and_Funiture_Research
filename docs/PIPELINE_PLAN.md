@@ -1,0 +1,97 @@
+# From tools to one pipeline: step by step
+
+Written 31 Oct 2026 for the MID 3000 mid-term (4 Nov) and the finals (Feb). CRISP-DM is the frame: every loop below is one
+turn of business understanding, data understanding, preparation, modelling, evaluation, deployment.
+
+## The idea in one sentence
+
+Pretrained models already read plans and segment images. Nobody scores what a person can use under a pitched roof.
+So we **do not train a generator**: we collect what exists, wire the pieces into one pipeline, and put our own engine
+(height field, usable area, rules, circulation) at the centre as the part that is new.
+
+```
+site + law  ─┐
+plan image ──┼─► read (CV / VLM) ─► rooms JSON ─► Rooms builder ─► Furnish ─► Evaluate (engine, rules, escape routes) ─► explain
+bubble brief ┘                                      ▲                                         │
+                                                    └──────────── Repeat loop (Swalloop style) ┘
+```
+
+## What exists now (verified by running it)
+
+| Piece | Where | State |
+|---|---|---|
+| Engine: height field, usable area, fit, circulation | `shared/engine.js` | tested |
+| Fact check and 10 layout rules | `shared/rules.js` | tested |
+| Pattern tree and Repeat/Fold loop | `shared/patterns.js`, `shared/iterate.js` | tested |
+| Room builder: brief to 3 scored layouts, escape routes | `shared/plans.js`, tab **Rooms** | tested |
+| Furnish the rooms of a layout | `shared/furnish.js` | tested |
+| Knowledge base: 35 sources (data, models, vocabularies, law, tools) | `shared/sources.json`, view **Knowledge** | written; licences marked "to verify" |
+| Airflow stack and a data-audit DAG | `pipeline/airflow/` | written, **not run yet** |
+| Server inventory notebook | `pipeline/notebooks/00_inventory.ipynb` | written, **not run yet** |
+
+## Steps
+
+Each step ends in something you can show. Steps 1 to 4 are for 4 Nov.
+
+### 1. Look before building (Sat 1 Nov)
+- Run `00_inventory.ipynb` in your Real2Twin lab. It writes `inventory.json`: GPU and memory, which of geopandas, SAM,
+  Grounding DINO, rdflib, momepy and others are installed, and whether the team LLM serves an image model.
+- Ask Hrithik Shetty (GX10 contact) two things: is a vision model behind vllm, and is a 4 GB Airflow container fine.
+- **Learn:** read a Dockerfile and a compose file line by line (yours in `Real2Twin/gx10-server/real2twin-stack`).
+- **Show:** the inventory table as a slide: "what we already have on the server".
+
+### 2. Airflow, small (Sat to Sun)
+- Deploy `pipeline/airflow/docker-compose.yml` in Portainer as stack `nada-airflow` (check the volume name and port first).
+- Upload `pipeline/airflow/dags/catalog_audit.py` and `shared/sources.json` to `/workspace/usable-space/` through JupyterLab
+  (`dags/` and the file next to it). Trigger the DAG `catalog_audit` in the web UI.
+- **Learn:** what a DAG, a task and a run are; why a pipeline beats a notebook for repeatable work; XCom and task mapping later.
+- **Show:** the green DAG graph and `catalog_audit.json` (how many sources reachable, which licences still to verify).
+- **Risk:** if the container does not start by Sunday evening, skip it and show the DAG file with the same output made by
+  a plain script. Airflow is for learning and for February, not a blocker.
+
+### 3. Plan reading, first working version (Sun to Mon)
+- Next notebook `01_plan_reading.ipynb` (I write it after the inventory): a plan image goes in, SAM cuts regions, Grounding
+  DINO or a vision-language model names them, the result is the same room JSON our Rooms tab uses.
+- The app gets an **Import plan** button that accepts that JSON, so "image to scored attic" runs end to end.
+- **Learn:** how segmentation masks become polygons and rectangles; how to judge a model with a handful of hand-labelled plans
+  (Real2Twin already has `hand-labelling-sample-protocol.md`: reuse its protocol).
+- **Show:** upload a plan image, see rooms appear, see the attic score. This is the moment that feels relevant to Tareef:
+  his plans, our second opinion.
+
+### 4. Knowledge in the loop (Mon)
+- The Knowledge view is the catalogue; make three entries actually do something: the AAT terms label rooms in German and
+  English, WoFlV is the cited source of the 100 / 50 / 0 % rule, BauO NRW citations sit next to the escape-route and
+  daylight rules.
+- **Learn:** SKOS and SPARQL basics (Real2Twin notebook `02_vocabulary_aat_subset.ipynb` is the model).
+- **Show:** hover a rule and see its legal source or "rule of thumb, to verify".
+
+### 5. Presentation and rehearsal (Tue 4 Nov)
+- Add two slides to the deck: **available tools** (the catalogue by track) and **the pipeline run live**.
+- Rehearse the demo path once with the projector. Keep a recorded fallback.
+
+### After 4 Nov (towards Feb)
+6. **Data audit as CRISP-DM loop 1:** CubiCasa5K and MSD downloaded to the server (check licences first), counts and examples, a
+   hand-labelled set of 50 attic or roof-level plans (nobody has one: this is your dataset).
+7. **Site and roof:** NRW LoD2 roof shapes for Detmold through GeoPandas; BauNVO and ALKIS attributes; three regional
+   archetypes (Freilichtmuseum Detmold as the case study).
+8. **Learned layer:** collect pairwise ratings of layouts inside the app (architects, classmates), fit a small preference
+   model, and compare it to the rule score. Baseline first, always.
+9. **Comparison with generators:** run House-GAN++ / HouseDiffusion on the same briefs and score their plans with our engine.
+   The expected finding, to be tested and not assumed: they ignore slopes.
+10. **Real2Twin bridge:** as-built roof geometry from scan or splat as the engine's input; the same Airflow for both projects.
+
+## What we borrow from your other projects
+
+- **Real2Twin:** numbered smoke-test notebooks (`00` check, `01` smoke test, ...), a `findings.md` per step, "checked / to verify"
+  labels on every source. We use the same habits so the two projects read alike.
+- **Sportify:** one pure engine file with its rules written at the top (R1 to R7) and a seeded solver with tests. The Rooms
+  builder follows that shape.
+- **Swalloop:** the loop with Max iter., Tolerance and a replayable history. Already in the Repeat/Fold loop.
+
+## Honest limits
+
+- Licences, repository states and model names are from memory or from the Real2Twin notes: the Knowledge view says which.
+- Nothing here is a code-compliance check. Thresholds are rules of thumb until a professor or the source confirms them.
+- Do not scrape plan portals. Use open datasets and cite them. Ask the university about the text-and-data-mining exception
+  before crawling anything.
+- The server is shared (121 GiB between CPU and GPU, the team LLM already reserves 0.60 of GPU memory): cap every container.

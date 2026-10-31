@@ -14,46 +14,51 @@ export default function Toolbar() {
 
   return (
     <header className="toolbar">
-      <h1>Usable Space <span>roof storey × furniture fit</span></h1>
+      <div className="brand">
+        <h1>Usable Space</h1>
+        <span>roof storey × furniture fit</span>
+      </div>
 
       <nav className="tabs" aria-label="Views">
-        {['planner', 'library', 'ifc', 'lph5'].map((v) => (
+        {['planner', 'library', 'ifc', 'lph5', 'knowledge'].map((v) => (
           <button key={v} className={view === v ? 'on' : ''} onClick={() => dispatch(uiActions.setView(v))}>{t(`tab_${v}`)}</button>
         ))}
       </nav>
 
-      <label className="inline">Example
-        <select value="" onChange={(e) => {
-          const p = presets.find((x) => x.id === e.target.value);
-          if (p) dispatch(loadScenario({ name: p.name, note: p.note, room: p.room, items: p.items }));
-        }}>
-          <option value="">load…</option>
-          {presets.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-        </select>
-      </label>
-
-      <button className="primary" disabled={busy} onClick={() => dispatch(autoPlace())}>{busy ? 'Searching…' : 'Auto-place furniture'}</button>
-      <button onClick={() => dispatch(itemsActions.unplaceAll())}>Clear layout</button>
+      {view === 'planner' && (
+        <div className="tgroup" role="group" aria-label="Layout">
+          <select aria-label="Load an example" value="" onChange={(e) => {
+            const p = presets.find((x) => x.id === e.target.value);
+            if (p) dispatch(loadScenario({ name: p.name, note: p.note, room: p.room, items: p.items }));
+          }}>
+            <option value="">Load example…</option>
+            {presets.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+          <button className="primary" disabled={busy} onClick={() => dispatch(autoPlace())}>{busy ? 'Searching…' : 'Auto-place furniture'}</button>
+          <button onClick={() => dispatch(itemsActions.unplaceAll())}>Clear layout</button>
+        </div>
+      )}
 
       <span className="spacer" />
+
+      <div className="tgroup" role="group" aria-label="Project">
+        <input className="name" value={projectName} onChange={(e) => dispatch(uiActions.setName(e.target.value))} aria-label="Project name" />
+        <button disabled={!serverUp} onClick={() => dispatch(saveProject()).unwrap().catch(() => dispatch(uiActions.setToast('Save failed')))}>Save</button>
+        <select aria-label="Open a saved project" value="" disabled={!serverUp || !list.length} onChange={(e) => e.target.value && dispatch(loadProject(e.target.value))}>
+          <option value="">{serverUp ? (list.length ? 'Open saved…' : 'No saved projects') : 'API offline'}</option>
+          {list.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+        </select>
+        {list.some((p) => p.name === projectName) && (
+          <button className="ghost" title="Delete the saved project with this name"
+            onClick={() => { const p = list.find((x) => x.name === projectName); if (p && confirm(`Delete saved project “${p.name}”?`)) dispatch(deleteProject(p.id)); }}>
+            Delete
+          </button>
+        )}
+      </div>
+
       <div className="langsw" role="group" aria-label="Language">
         {['en', 'de'].map((l) => <button key={l} className={lang === l ? 'on' : ''} onClick={() => dispatch(uiActions.setLang(l))}>{l.toUpperCase()}</button>)}
       </div>
-
-      <input className="name" value={projectName} onChange={(e) => dispatch(uiActions.setName(e.target.value))} aria-label="Project name" />
-      <button disabled={!serverUp} onClick={() => dispatch(saveProject()).unwrap().catch(() => dispatch(uiActions.setToast('Save failed')))}>Save</button>
-      <label className="inline">Saved
-        <select value="" disabled={!serverUp || !list.length} onChange={(e) => e.target.value && dispatch(loadProject(e.target.value))}>
-          <option value="">{serverUp ? (list.length ? 'open…' : 'none yet') : 'API offline'}</option>
-          {list.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-        </select>
-      </label>
-      {list.some((p) => p.name === projectName) && (
-        <button className="ghost" title="Delete the saved project with this name"
-          onClick={() => { const p = list.find((x) => x.name === projectName); if (p && confirm(`Delete saved project “${p.name}”?`)) dispatch(deleteProject(p.id)); }}>
-          Delete
-        </button>
-      )}
     </header>
   );
 }

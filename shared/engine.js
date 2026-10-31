@@ -33,6 +33,9 @@ export const DEFAULT_ROOM = {
   windows: [{ wall: 'N', pos: 2.5, width: 1.0 }, { wall: 'S', pos: 2.5, width: 1.0 }],
 };
 
+// where the back of a piece may stand: against the slope side (x = 0 / W), a gable wall (y = 0 / D), any wall, or free-standing
+export const BACK_TO = ['slope', 'gable', 'wall', 'free'];
+
 const clamp = (v, lo, hi, dflt) => (Number.isFinite(+v) ? Math.min(hi, Math.max(lo, +v)) : dflt);
 
 export function sanitizeRoom(r = {}) {
@@ -92,6 +95,15 @@ export function sanitizeItems(items) {
           image: /^https?:\/\//.test(p.image) ? String(p.image).slice(0, 500) : undefined,
           w: dim(p.w), d: dim(p.d), h: dim(p.h),
         };
+      }
+      if (it.spec && typeof it.spec === 'object') {
+        // pattern anchor chosen in the design tree (shared/patterns.js); unknown values are dropped
+        const spec = {};
+        if (BACK_TO.includes(it.spec.backTo)) spec.backTo = it.spec.backTo;
+        if (it.spec.near === 'light') spec.near = 'light';
+        if (Array.isArray(it.spec.within) && it.spec.within.length === 4 && it.spec.within.every(Number.isFinite)) spec.within = it.spec.within.map((v) => +(+v).toFixed(3));
+        if (typeof it.spec.room === 'string') spec.room = it.spec.room.slice(0, 16);
+        if (Object.keys(spec).length) out.spec = spec;
       }
       if (it.overrides && typeof it.overrides === 'object') {
         const o = {};
@@ -192,7 +204,7 @@ export function roofHeight(room, x, y) {
   return Math.min(hh, room.maxHeight);
 }
 
-function cellRange(r, res) {
+export function cellRange(r, res) {
   return [
     Math.ceil(r[0] / res - 0.5 - EPS),
     Math.floor(r[2] / res - 0.5 + EPS),
@@ -473,13 +485,56 @@ export function evaluate(room, items, opts = {}) {
 
 // ---------------------------------------------------------------- automatic layout
 
-function mulberry32(a) {
+export function mulberry32(a) {
   return () => {
     a |= 0; a = (a + 0x6d2b79f5) | 0;
     let t = Math.imul(a ^ (a >>> 15), 1 | a);
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
+}
+
+/**
+ * Every valid position of one piece (all four rotations, 10 cm lattice): no hard issue, clearances >= minRatio.
+ * Cheapest first - low headroom, wall contact and little lost walkable floor are cheap.
+ * `opts.filter(cand, body, rot)` rejects positions (pattern anchors), `opts.jitter()` adds noise to the cost.
+ */
+export function candidatesFor(g, occ, room, it, rules, opts = {}) {
+  const def = defOf(it);
+  const step = 0.1;
+  const cands = [];
+  for (let rot = 0; rot < 4; rot++) {
+    const { w, d } = bodySize(def, rot);
+    for (let y = 0; y <= room.depth - d + EPS; y += step) {
+      for (let x = 0; x <= room.width - w + EPS; x += step) {
+        const cand = { ...it, x: Math.round(x * 20) / 20, y: Math.round(y * 20) / 20, rot };
+        const r = evalOne(g, occ, false, def, cand, rules, false);
+        if (r.hard || r.ratio < (opts.minRatio ?? 0.95)) continue;
+        const b = r.rects.body;
+        if (opts.filter && !opts.filter(cand, b, rot)) continue;
+        const [i0, i1, j0, j1] = cellRange(b, g.res);
+        let sum = 0, cnt = 0, walk = 0;
+        for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { const hh = g.h[j * g.nx + i]; sum += hh; cnt++; if (hh >= rules.walkH) walk++; }
+        const touch = (b[0] < 0.06) + (b[1] < 0.06) + (b[2] > room.width - 0.06) + (b[3] > room.depth - 0.06);
+        const cost = 0.4 * (sum / cnt) + walk / cnt - 0.3 * Math.min(touch, 2) + (opts.jitter ? opts.jitter() : 0);
+        cands.push({ cost, cand });
+      }
+    }
+  }
+  return cands.sort((a, b) => a.cost - b.cost);
+}
+
+/** Grid + body occupancy of every placed piece except `skipId` (10 cm lattice, as candidatesFor expects). */
+export function occupancy(room, items, skipId) {
+  const g = getGrid(room, 0.1);
+  const occ = new Uint8Array(g.nx * g.ny);
+  for (const it of items) {
+    if (!it.placed || it.id === skipId || !CATALOG[it.type]) continue;
+    const [i0, i1, j0, j1] = cellRange(itemRects(defOf(it), it).body, g.res);
+    for (let j = Math.max(0, j0); j <= Math.min(g.ny - 1, j1); j++)
+      for (let i = Math.max(0, i0); i <= Math.min(g.nx - 1, i1); i++) occ[j * g.nx + i]++;
+  }
+  return { g, occ };
 }
 
 /**
@@ -493,7 +548,6 @@ export function solve(room, items, opts = {}) {
   const rng = mulberry32(opts.seed ?? 1);
   const tries = opts.tries ?? 10;
   const g = getGrid(room, 0.1);
-  const step = 0.1;
   const base = items.map((it) => ({ ...it, placed: false }));
   const difficulty = (it) => { const d = defOf(it); return d.bodyH * 10 + d.w * d.d; };
   const baseOrder = base.map((_, i) => i).sort((a, b) => difficulty(base[b]) - difficulty(base[a]));
@@ -508,26 +562,8 @@ export function solve(room, items, opts = {}) {
     for (const idx of order) {
       const it = cur[idx];
       const def = defOf(it);
-      const cands = [];
-      for (let rot = 0; rot < 4; rot++) {
-        const { w, d } = bodySize(def, rot);
-        for (let y = 0; y <= room.depth - d + EPS; y += step) {
-          for (let x = 0; x <= room.width - w + EPS; x += step) {
-            const cand = { ...it, x: Math.round(x * 20) / 20, y: Math.round(y * 20) / 20, rot };
-            const r = evalOne(g, occ, false, def, cand, rules, false);
-            if (r.hard || r.ratio < 0.95) continue;
-            const [i0, i1, j0, j1] = cellRange(r.rects.body, g.res);
-            let sum = 0, cnt = 0, walk = 0;
-            for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { const hh = g.h[j * g.nx + i]; sum += hh; cnt++; if (hh >= rules.walkH) walk++; }
-            const b = r.rects.body;
-            const touch = (b[0] < 0.06) + (b[1] < 0.06) + (b[2] > room.width - 0.06) + (b[3] > room.depth - 0.06);
-            const cost = 0.4 * (sum / cnt) + walk / cnt - 0.3 * Math.min(touch, 2) + (t > 0 ? rng() * 0.5 : 0);
-            cands.push({ cost, cand });
-          }
-        }
-      }
+      const cands = candidatesFor(g, occ, room, it, rules, { jitter: t > 0 ? () => rng() * 0.5 : null });
       if (!cands.length) continue;
-      cands.sort((a, b) => a.cost - b.cost);
       const pick = cands[t === 0 ? 0 : Math.floor(rng() * Math.min(3, cands.length))].cand;
       cur[idx] = { ...pick, placed: true };
       const [i0, i1, j0, j1] = cellRange(itemRects(def, pick).body, g.res);

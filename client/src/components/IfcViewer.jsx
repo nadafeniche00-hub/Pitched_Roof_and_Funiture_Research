@@ -1,3 +1,4 @@
+import WalkView from './WalkView.jsx';
 import { useEffect, useRef, useState } from 'react';
 import { useDispatch } from 'react-redux';
 import * as THREE from 'three';
@@ -214,7 +215,10 @@ export default function IfcViewer() {
           </label>
         </div>
         <p className="hint" style={{ marginTop: 0 }}>{t('ifc_hint')}</p>
-        <div ref={mount} className="ifcscene" onClick={onClick} />
+        <div className="ifcstage">
+          <div ref={mount} className="ifcscene" onClick={onClick} />
+          {!fileName && <div className="ifcwalk"><WalkView /></div>}
+        </div>
       </div>
 
       <aside className="card ifcside">

@@ -6,10 +6,11 @@ import { defOf } from '@shared/params.js';
 import { getGrid, itemRects, stairRect } from '@shared/engine.js';
 import { heatColor, useHeatImage, STATUS_COLOR } from './PlanView.jsx';
 import { sunVectorPlan, sunPath } from '../lib/solar.js';
+import { buildFurniture, FRONT_ANGLE, preloadModels } from '../lib/furnitureModels.js';
 
 // plan (x, y) -> three (x, z); height -> y
 
-function roofGeometry(room) {
+export function roofGeometry(room) {
   const g = getGrid(room, 0.1);
   const { nx, ny, res, h } = g;
   const tan = Math.tan((room.pitch * Math.PI) / 180);
@@ -65,6 +66,8 @@ export default function Scene3D() {
   const wind = useSelector((s) => s.wind.data);
   const [roofOpacity, setRoofOpacity] = useState(0.35);
   const [showWind, setShowWind] = useState(false);
+  const [ready, setReady] = useState(false);
+  useEffect(() => { let on = true; preloadModels().then(() => on && setReady(true)); return () => { on = false; }; }, []);
 
   useEffect(() => {
     const el = mount.current;
@@ -190,7 +193,7 @@ export default function Scene3D() {
     content.add(person);
 
     t.render();
-  }, [room, items, result, heat, roofOpacity, showClearances]);
+  }, [room, items, result, heat, roofOpacity, showClearances, ready]);
 
   // sun: light direction, marker and the day's path
   useEffect(() => {

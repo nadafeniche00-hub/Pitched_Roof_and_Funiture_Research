@@ -3,6 +3,7 @@ import { CATALOG, PROGRAMS } from '@shared/catalog.js';
 import { roomActions } from '../store/roomSlice.js';
 import { itemsActions } from '../store/itemsSlice.js';
 import { resolveDormer } from '@shared/params.js';
+import DesignPanel from './DesignPanel.jsx';
 
 function Slider({ label, value, min, max, step, unit, onChange }) {
   return (
@@ -105,6 +106,8 @@ export default function RoomPanel() {
 
       <Openings kind="windows" title="Windows" />
       <Openings kind="doors" title="Doors" />
+
+      <DesignPanel />
 
       <section>
         <h3>Furniture programme</h3>

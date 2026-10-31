@@ -1,0 +1,33 @@
+# Apache Airflow for the Usable Space data pipeline, as its own small stack next to the Real2Twin lab.
+# Deploy in Portainer: local > Stacks > Add stack > Web editor, name it  nada-airflow , paste this file, Deploy.
+#
+# - One container ("standalone": scheduler, web server and a SQLite metadata database). Fine for a demo and for learning,
+#   not for production. It needs about 2-4 GB of memory, capped below so the shared server stays healthy.
+# - The DAGs are read from the Real2Twin workspace volume, so you upload them through JupyterLab
+#   (folder /workspace/usable-space/dags) and there is nothing to rebuild.
+# - No password is stored here: standalone creates the admin login on first start and prints it in the container log.
+# - Check in Portainer > Volumes what the workspace volume is really called (for the stack nada-r2t it should be
+#   nada-r2t_r2t-workspace) and put that name below. Check that host port 8085 is free, otherwise change the left number.
+services:
+  airflow:
+    image: apache/airflow:2.10.5   # multi-arch, runs on the Arm GX10; pin a newer 2.x or 3.x tag later after reading its notes
+    container_name: nada-airflow
+    restart: unless-stopped
+    command: standalone
+    mem_limit: 4g
+    cpus: 2
+    environment:
+      - AIRFLOW__CORE__LOAD_EXAMPLES=false
+      - AIRFLOW__CORE__DAGS_FOLDER=/workspace/usable-space/dags
+      - AIRFLOW__CORE__DEFAULT_TIMEZONE=Europe/Berlin
+      - AIRFLOW__WEBSERVER__EXPOSE_CONFIG=false
+      - USABLE_SPACE_HOME=/workspace/usable-space
+    ports:
+      - "8085:8080"
+    volumes:
+      - ws:/workspace
+
+volumes:
+  ws:
+    external: true
+    name: nada-r2t_r2t-workspace

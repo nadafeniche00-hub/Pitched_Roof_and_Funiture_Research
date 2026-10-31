@@ -4,6 +4,9 @@ import { PRESETS } from '@shared/presets.js';
 import { loadScenario } from './actions.js';
 import { itemsActions } from './itemsSlice.js';
 import { uiActions } from './uiSlice.js';
+import { designActions } from './designSlice.js';
+import { loopSteps } from '@shared/iterate.js';
+import { buildPattern, itemsFromPattern } from '@shared/patterns.js';
 
 const json = async (url, opts) => {
   const r = await fetch(url, { headers: { 'content-type': 'application/json' }, ...opts });
@@ -87,4 +90,37 @@ export const scrapeUrls = createAsyncThunk('lib/scrape', async (urls, { dispatch
 export const fetchWindMeta = createAsyncThunk('wind/meta', async () => {
   const [zones, cells] = await Promise.all([json('/api/wind/zones'), json('/api/wind/cells')]);
   return { zones, cells };
+});
+
+const pause = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/** Run the iteration loop and play it: every pass lands in the history and on the plan, so the layout visibly evolves. */
+export const runIteration = createAsyncThunk('design/run', async (over = {}, { getState, dispatch }) => {
+  const { room, items, design } = getState();
+  const opts = { kind: design.kind, maxIter: design.maxIter, tolerance: design.tolerance, disabled: design.disabled, seed: Math.floor(Math.random() * 1e6), ...over };
+  dispatch(designActions.startRun());
+  try {
+    const frames = [];
+    for (const f of loopSteps(room, items, opts)) {
+      frames.push(f);
+      dispatch(designActions.pushFrame(f));
+      dispatch(itemsActions.setItems(f.items));
+      await pause(f.i === 0 ? 0 : 140);
+    }
+    // Repeat keeps the best pass, Fold the last one (the finished layout)
+    const pick = opts.kind === 'fold' ? frames.length - 1 : frames.reduce((b, f, i) => (f.score > frames[b].score ? i : b), 0);
+    dispatch(designActions.setFrame(pick));
+    dispatch(itemsActions.setItems(frames[pick].items));
+  } finally {
+    dispatch(designActions.endRun());
+  }
+});
+
+/** Build the pattern chosen in the tree: replace the furniture with its pieces and fold them into the room. */
+export const applyPattern = createAsyncThunk('design/apply', async (_, { getState, dispatch }) => {
+  const pattern = buildPattern(getState().design.path);
+  if (!pattern) return;
+  dispatch(itemsActions.setItems(itemsFromPattern(pattern)));
+  dispatch(uiActions.select(null));
+  await dispatch(runIteration({ kind: 'fold', maxIter: 40 }));
 });

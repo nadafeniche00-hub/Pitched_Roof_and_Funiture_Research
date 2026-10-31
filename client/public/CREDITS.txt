@@ -1,0 +1,4 @@
+Furniture models and textures: Poly Haven (polyhaven.com), published as CC0 (public domain). Verify at https://polyhaven.com/license
+Models: GothicBed_01, vintage_day_bed, sofa_02, modern_arm_chair_01, modern_wooden_cabinet, drawer_cabinet, wooden_display_shelves_01, metal_office_desk
+Textures: laminate_floor_02, beige_wall_001, clay_roof_tiles_02
+Downloaded 2026-10-31 at 1k resolution.

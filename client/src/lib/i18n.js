@@ -7,6 +7,7 @@ const D = {
   tab_library: { en: 'Library', de: 'Bibliothek' },
   tab_ifc: { en: 'IFC viewer', de: 'IFC-Viewer' },
   tab_lph5: { en: 'LPH 5', de: 'LPH 5' },
+  tab_knowledge: { en: 'Knowledge', de: 'Wissen' },
   search_ph: { en: 'Search furniture - chair, Schreibtisch, armoire…', de: 'Möbel suchen – Stuhl, desk, armoire…' },
   all: { en: 'all', de: 'alle' },
   type: { en: 'Type', de: 'Typ' },

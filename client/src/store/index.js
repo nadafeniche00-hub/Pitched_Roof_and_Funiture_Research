@@ -1,8 +1,11 @@
 import { configureStore, createListenerMiddleware, isAnyOf } from '@reduxjs/toolkit';
 import { evaluate } from '@shared/engine.js';
+import { factCheckItem } from '@shared/rules.js';
 import room, { roomActions } from './roomSlice.js';
 import items, { itemsActions } from './itemsSlice.js';
-import ui from './uiSlice.js';
+import ui, { uiActions } from './uiSlice.js';
+import design from './designSlice.js';
+import layout from './layoutSlice.js';
 import analysis, { setResult } from './analysisSlice.js';
 import projects from './projectsSlice.js';
 import site from './siteSlice.js';
@@ -22,6 +25,16 @@ listener.startListening({
   },
 });
 
+// Fact check at the door: a piece that is added or resized is checked for believable dimensions right away.
+listener.startListening({
+  matcher: isAnyOf(itemsActions.addItem, itemsActions.addProduct, itemsActions.setOverride),
+  effect: (a, api) => {
+    const it = api.getState().items.find((i) => i.id === a.payload.id);
+    const issue = it && factCheckItem(it).find((f) => f.severity === 'warn');
+    if (issue) api.dispatch(uiActions.setToast(issue.msg));
+  },
+});
+
 // live search: debounce typing / filter changes, a newer keystroke cancels the pending request
 listener.startListening({
   matcher: isAnyOf(libActions.setQuery, libActions.setFilter),
@@ -33,7 +46,7 @@ listener.startListening({
 });
 
 export const store = configureStore({
-  reducer: { room, items, ui, analysis, projects, site, wind, lib, lph },
+  reducer: { room, items, ui, design, layout, analysis, projects, site, wind, lib, lph },
   middleware: (gdm) => gdm().prepend(listener.middleware),
 });
 

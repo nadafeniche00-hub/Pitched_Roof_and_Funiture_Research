@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { setSite } from '../store/siteSlice.js';
-import { fetchWind, fetchWindMeta } from '../store/thunks.js';
+import { fetchWindMeta } from '../store/thunks.js';
 import { sunAt, compass } from '../lib/solar.js';
 
 const BASES = {
@@ -65,13 +65,6 @@ export default function MapPanel() {
     layer.bringToBack();
     return () => map.removeLayer(layer);
   }, [base]);
-
-  // --- auto-detect wind for the clicked cell (server caches per 0.1° cell)
-  const cell = `${site.lat.toFixed(1)}:${site.lon.toFixed(1)}`;
-  useEffect(() => {
-    const t = setTimeout(() => dispatch(fetchWind({ lat: site.lat, lon: site.lon })), 500);
-    return () => clearTimeout(t);
-  }, [cell]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // --- overlays
   const sun = useMemo(() => sunAt(site), [site]);

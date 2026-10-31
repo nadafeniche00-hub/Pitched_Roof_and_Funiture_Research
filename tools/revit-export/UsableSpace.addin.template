@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Copy to %APPDATA%\Autodesk\Revit\Addins\2025\UsableSpace.addin and replace __DLL__ with the full path of RevitIfcExport.dll.
+     It appears in Revit under Add-Ins > External Tools. Revit asks once whether to load it: choose "Load Once". -->
+<RevitAddIns>
+  <AddIn Type="Command">
+    <Name>Usable Space IFC export</Name>
+    <Assembly>__DLL__</Assembly>
+    <AddInId>6f1e7d0c-3b9a-4f7e-8a52-2c1d9e4b7a10</AddInId>
+    <FullClassName>UsableSpace.ExportFurniture</FullClassName>
+    <VendorId>USPC</VendorId>
+    <VendorDescription>Usable Space research prototype</VendorDescription>
+  </AddIn>
+</RevitAddIns>

@@ -1,0 +1,966 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+<title>Usable Space Presentation</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=Silkscreen:wght@400;700&display=swap">
+<style>
+/* Layout: a drawing sheet. Header strip with sheet navigation, one slide at a time in the middle, a title block at the foot.
+   Colour: ink-blue neutrals; the three height-map tones of the app (rust / ochre / sage) carry all data meaning; blue is the pipeline. */
+:root {
+  --bg: #ffffff; --panel: #ffffff; --soft: #ececE6; --ink: #14161c; --muted: #4a4f5c; --line: #14161c;
+  --accent: #e8452c; --h0: #c96a5c; --h1: #e8be6e; --h2: #a5d4af; --good: #2a8a52; --bad: #cc3f3f;
+  --display: 'Silkscreen', 'Courier New', monospace;
+  --body: 'Chakra Petch', 'Segoe UI', sans-serif;
+  --mono: 'Chakra Petch', ui-monospace, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 var(--body); }
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:is(button, input, a):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+h1, h2, h3 { font-family: var(--display); font-weight: 700; line-height: 1.05; letter-spacing: -0.01em; text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(2.4rem, 6vw, 4.4rem); }
+h2 { font-size: clamp(1.7rem, 3.6vw, 2.6rem); }
+h3 { font-size: 1.15rem; letter-spacing: 0; }
+p { margin: 0; }
+.mono { font-family: var(--mono); font-size: 0.78rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+.lede { font-size: 1.15rem; max-width: 62ch; color: var(--muted); }
+.lede b { color: var(--ink); font-weight: 600; }
+
+/* ---- shell */
+.deck { height: 100%; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.top { display: flex; align-items: center; gap: 16px; padding-block: 12px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.brand { font-family: var(--display); font-weight: 700; font-size: 1.1rem; margin-right: auto; }
+.brand span { font-family: var(--mono); font-weight: 400; font-size: 0.75rem; color: var(--muted); margin-left: 10px; letter-spacing: 0.04em; }
+.dots { display: flex; gap: 4px; flex-wrap: wrap; }
+.dots button { border: 1px solid var(--line); background: transparent; border-radius: 6px; padding: 3px 10px; font-family: var(--mono); font-size: 0.75rem; color: var(--muted); }
+.dots button:hover { border-color: var(--accent); color: var(--ink); }
+.dots button[aria-current='true'] { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+.stage { position: relative; min-height: 0; }
+.slide { position: absolute; inset: 0; overflow-y: auto; overflow-x: hidden; padding-block: 28px 20px; opacity: 0; pointer-events: none; transform: translateX(28px); transition: opacity 0.45s ease, transform 0.45s ease; visibility: hidden; }
+.slide[data-pos='cur'] { opacity: 1; pointer-events: auto; transform: none; visibility: visible; }
+.slide[data-pos='prev'] { transform: translateX(-28px); }
+.inner { max-width: 1180px; margin: 0 auto; display: grid; gap: 22px; }
+.foot { display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: center; padding-block: 10px; border-top: 1px solid var(--line); }
+.bar { height: 3px; background: var(--line); border-radius: 2px; overflow: hidden; }
+.bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width 0.45s ease; }
+.nav { display: flex; gap: 6px; }
+.nav button { border: 1px solid var(--line); background: var(--panel); border-radius: 8px; padding: 6px 14px; }
+.nav button:hover:not(:disabled) { border-color: var(--accent); }
+.nav button:disabled { opacity: 0.4; cursor: default; }
+.block { display: grid; grid-template-columns: auto auto; gap: 2px 18px; font-family: var(--mono); font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; border: 1px solid var(--line); padding: 4px 10px; }
+
+/* ---- shared parts */
+.cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 28px; align-items: start; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; min-width: 0; }
+.controls { display: grid; gap: 10px; }
+.controls label { display: grid; grid-template-columns: 7.5rem minmax(0, 1fr) 4.2rem; gap: 10px; align-items: center; font-size: 0.9rem; color: var(--muted); }
+.controls output { font-family: var(--mono); font-size: 0.85rem; color: var(--ink); text-align: right; }
+input[type='range'] { accent-color: var(--accent); width: 100%; }
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.stat { border-left: 3px solid var(--line); padding-left: 10px; }
+.stat b { display: block; font-family: var(--display); font-size: 1.7rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.stat span { font-size: 0.8rem; color: var(--muted); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 0.82rem; color: var(--muted); }
+.legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+svg { display: block; max-width: 100%; height: auto; }
+#plan, #plan2 { width: auto; max-height: 54vh; margin: 0 auto; }
+.go { border: 0; border-radius: 10px; padding: 8px 18px; background: var(--ink); color: var(--bg); font-weight: 500; }
+.go:hover:not(:disabled) { background: var(--accent); }
+.go:disabled { opacity: 0.4; cursor: default; }
+svg text { font-family: var(--mono); }
+.t-ink { fill: var(--ink); } .t-muted { fill: var(--muted); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.seg button { border: 0; background: transparent; padding: 7px 16px; }
+.seg button[aria-pressed='true'] { background: var(--ink); color: var(--bg); }
+.pill { display: inline-block; font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.04em; text-transform: uppercase; border: 1px solid var(--line); border-radius: 999px; padding: 1px 9px; color: var(--muted); }
+.checks { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 0.95rem; }
+.checks li { display: grid; grid-template-columns: 1.4rem minmax(0, 1fr); gap: 6px; }
+.ok { color: var(--good); font-weight: 700; } .no { color: var(--bad); font-weight: 700; }
+
+/* ---- pipeline */
+.pipe { overflow-x: auto; }
+.pipe svg { min-width: 760px; width: 100%; }
+.node { cursor: pointer; }
+.node rect { fill: var(--panel); stroke: var(--ink); stroke-width: 1.4; transition: fill 0.25s, stroke 0.25s; }
+.node:hover rect, .node[aria-pressed='true'] rect { fill: var(--soft); stroke: var(--accent); stroke-width: 2.4; }
+.node.broken rect { stroke: var(--bad); stroke-dasharray: 5 4; fill: transparent; }
+.node.broken .nm { fill: var(--bad); }
+.node .nm { font-family: var(--display); font-weight: 700; font-size: 17px; fill: var(--ink); }
+.node .sb { font-size: 9.5px; fill: var(--muted); }
+.node .ct { font-size: 10px; fill: var(--accent); }
+.flow { stroke: var(--ink); stroke-width: 1.4; fill: none; }
+.flow.cut { stroke: var(--bad); stroke-dasharray: 4 5; }
+.loopline { stroke: var(--accent); stroke-width: 1.6; fill: none; stroke-dasharray: 6 5; }
+.loopline.soon { stroke: var(--muted); }
+.detail { min-height: 7.5rem; }
+.detail h3 { margin-bottom: 6px; }
+.detail ul { margin: 8px 0 0; padding-left: 1.1rem; display: grid; gap: 4px; }
+
+/* ---- matrix */
+.matrix { overflow-x: auto; }
+.matrix table { border-collapse: separate; border-spacing: 4px; min-width: 760px; width: 100%; }
+.matrix th { font-family: var(--mono); font-size: 0.72rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); text-align: center; padding: 4px; }
+.matrix th.row { text-align: left; text-transform: none; font-family: var(--body); font-size: 0.9rem; color: var(--ink); font-weight: 600; letter-spacing: 0; width: 15rem; }
+.matrix th.row small { display: block; font-weight: 400; color: var(--muted); font-size: 0.75rem; }
+.cell { width: 100%; height: 38px; border-radius: 8px; border: 1.5px solid transparent; background: var(--soft); opacity: 0.55; }
+.cell[data-s] { opacity: 1; }
+.cell[data-s='prototype'] { background: var(--accent); }
+.cell[data-s='planned'] { background: transparent; border: 1.5px dashed var(--accent); }
+.cell[data-s='literature'] { background: repeating-linear-gradient(135deg, var(--soft) 0 5px, var(--line) 5px 7px); border-color: var(--muted); }
+.cell[data-s='external'] { background: var(--ink); }
+.cell[data-s='gap'] { background: var(--h1); border-color: var(--ink); }
+.cell:hover:not(:disabled), .cell[aria-pressed='true'] { border-color: var(--ink); transform: scale(1.04); }
+.cell:disabled { cursor: default; opacity: 0.35; }
+.matrix tr.hot th.row { color: var(--accent); }
+.matrix th.hotcol { color: var(--accent); }
+.key { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 0.82rem; color: var(--muted); }
+.key i { display: inline-block; width: 22px; height: 12px; border-radius: 4px; margin-right: 6px; vertical-align: -1px; border: 1.5px solid transparent; }
+
+/* ---- proof */
+.audit { display: grid; grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.3fr); gap: 26px; align-items: start; }
+.choices { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.choices label { display: grid; grid-template-columns: 1.4rem minmax(0, 1fr); gap: 8px; padding: 6px 8px; border-radius: 8px; cursor: pointer; align-items: start; }
+.choices label:hover { background: var(--soft); }
+.choices small { display: block; color: var(--muted); font-size: 0.8rem; line-height: 1.35; }
+.choices .tag { font-family: var(--mono); font-size: 0.68rem; color: var(--accent); letter-spacing: 0.03em; }
+.choices li.off label { opacity: 0.5; }
+.choices li.off b { text-decoration: line-through; }
+.verdict { font-family: var(--display); font-weight: 600; font-size: 1.25rem; }
+.verdict.warn { color: var(--bad); }
+.presets { display: flex; flex-wrap: wrap; gap: 6px; }
+.presets button { border: 1px solid var(--line); background: var(--panel); border-radius: 8px; padding: 5px 12px; font-size: 0.88rem; }
+.presets button:hover { border-color: var(--accent); }
+
+/* ---- pattern tree */
+.opts { display: grid; gap: 6px; }
+.opt { text-align: left; border: 1px solid var(--line); background: var(--panel); border-radius: 10px; padding: 9px 12px; display: grid; gap: 1px; }
+.opt:hover:not(:disabled) { border-color: var(--accent); }
+.opt:disabled { opacity: 0.45; cursor: default; }
+.opt small { color: var(--muted); font-size: 0.8rem; line-height: 1.35; }
+.crumbs { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; min-height: 28px; }
+.crumbs button { border: 1px solid var(--line); background: var(--soft); border-radius: 6px; padding: 1px 9px; font-size: 0.82rem; }
+.crumbs span { color: var(--muted); }
+.mapping { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 14px; font-size: 0.88rem; }
+.mapping div { border-top: 1px solid var(--line); padding-top: 6px; }
+.mapping b { font-family: var(--mono); font-size: 0.78rem; color: var(--accent); display: block; font-weight: 500; }
+
+/* ---- timeline */
+.tl { overflow-x: auto; }
+.tl svg { min-width: 760px; width: 100%; }
+.asks { margin: 0; padding-left: 1.2rem; display: grid; gap: 6px; }
+
+@media (max-width: 860px) {
+  .cols, .audit { grid-template-columns: minmax(0, 1fr); }
+  .stats { grid-template-columns: minmax(0, 1fr); }
+  .controls label { grid-template-columns: 6rem minmax(0, 1fr) 3.6rem; }
+  .mapping { grid-template-columns: minmax(0, 1fr); }
+  .block { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .slide, .bar i, .node rect, .cell { transition: none; }
+}
+/* ---- game look: white ground, dark chunky items, hard shadows, square corners */
+h1, h2, h3, .brand, .node .nm, .stat b { text-transform: uppercase; letter-spacing: 0.03em; line-height: 1.15; }
+h1 { font-size: clamp(2rem, 5vw, 3.6rem); } h2 { font-size: clamp(1.4rem, 3vw, 2.1rem); } h3 { font-size: 1rem; }
+.top { border-bottom: 3px solid var(--ink); } .foot { border-top: 3px solid var(--ink); }
+.dots button, .nav button, .seg, .seg button, .pill, .go, .cell, .panel, .key i, .legend i, .bar, .bar i, .block { border-radius: 0 !important; }
+.dots button, .nav button { border: 2px solid var(--ink); background: #fff; box-shadow: 2px 2px 0 var(--ink); font-weight: 600; }
+.dots button:hover, .nav button:hover:not(:disabled) { border-color: var(--ink); box-shadow: 3px 3px 0 var(--accent); transform: translate(-1px, -1px); }
+.dots button[aria-current='true'] { background: var(--ink); color: #fff; box-shadow: 2px 2px 0 var(--accent); }
+.panel { border: 3px solid var(--ink); box-shadow: 6px 6px 0 var(--ink); }
+.seg { border: 2px solid var(--ink); } .seg button[aria-pressed='true'] { background: var(--ink); color: #fff; }
+.go { background: var(--ink); color: #fff; border: 2px solid var(--ink); box-shadow: 3px 3px 0 var(--accent); font-weight: 700; }
+.go:hover:not(:disabled) { background: var(--ink); transform: translate(-1px, -1px); box-shadow: 4px 4px 0 var(--accent); }
+.go:active:not(:disabled) { transform: translate(3px, 3px); box-shadow: none; }
+.bar { height: 10px; border: 2px solid var(--ink); background: #fff; } .bar i { background: var(--ink); }
+.stat { border-left: 6px solid var(--ink); }
+.cell { border: 2px solid var(--ink); background: #fff; opacity: 1; }
+.cell[data-s='prototype'] { background: var(--ink); } .cell[data-s='external'] { background: #5a3d22; }
+.cell[data-s='planned'] { background: #fff; border-style: dashed; } .cell[data-s='gap'] { background: var(--accent); }
+.cell:disabled { opacity: 0.25; border-color: var(--line); }
+.node rect { stroke-width: 3; fill: #fff; rx: 0; ry: 0; } .node:hover rect, .node[aria-pressed='true'] rect { fill: var(--ink); stroke: var(--ink); }
+.node:hover .nm, .node[aria-pressed='true'] .nm { fill: #fff; } .node:hover .sb, .node[aria-pressed='true'] .sb { fill: #ddd; }
+.flow { stroke-width: 3; } .loopline { stroke-width: 3; }
+.block { border: 2px solid var(--ink); }
+.pill { border: 2px solid var(--ink); color: var(--ink); }
+:is(button, input, a):focus-visible { outline: 3px solid var(--accent); }
+</style>
+
+<div class="deck">
+  <header class="top">
+    <div class="brand">Usable Space<span>MID 3000 · Open Research Practice</span></div>
+    <nav class="dots" id="dots" aria-label="Slides"></nav>
+  </header>
+
+  <main class="stage" id="stage">
+
+    <!-- 1 · title -->
+    <section class="slide" id="title" aria-label="Title">
+      <div class="inner">
+        <div class="cols">
+          <div style="display:grid;gap:18px">
+            <p class="mono">Project plan · 4 Nov 2026 · Nada Feniche</p>
+            <h1>How much of this attic can you stand in?</h1>
+            <p class="lede">Under a pitched roof, usability changes across the room. <b>Usable Space</b> measures it, checks whether the furniture fits, and gives a floor-plan generator the feedback it is missing.</p>
+            <div class="panel controls">
+              <label>Roof pitch <input type="range" id="pitch" min="15" max="70" step="1" value="38" aria-label="Roof pitch"><output id="pitchO"></output></label>
+              <label>Knee wall <input type="range" id="knee" min="0" max="2" step="0.05" value="0.9" aria-label="Knee wall height"><output id="kneeO"></output></label>
+            </div>
+            <div class="stats" aria-live="polite">
+              <div class="stat"><b id="sCounted">–</b><span>counted of 35.0 m² gross</span></div>
+              <div class="stat"><b id="sStand">–</b><span>of the floor stands upright (≥ 1.9 m)</span></div>
+              <div class="stat"><b id="sHere">–</b><span id="sHereL">headroom under the walker</span></div>
+            </div>
+          </div>
+          <figure style="margin:0" class="panel">
+            <svg id="sec" viewBox="0 0 620 420" role="img" aria-label="Section through a gable roof room. Colours show where the roof leaves less than 1 m, 1 to 2 m, or more than 2 m of height; a figure walks across and turns red where it cannot stand."></svg>
+            <div class="legend" style="margin-top:10px">
+              <span><i style="background:var(--h0)"></i>&lt; 1 m: not counted</span>
+              <span><i style="background:var(--h1)"></i>1–2 m: counts 50 %</span>
+              <span><i style="background:var(--h2)"></i>≥ 2 m: counts fully</span>
+            </div>
+            <figcaption class="mono" style="margin-top:8px">5.0 × 7.0 m room, gable roof, ceiling at 3.0 m. Same area rule as the app (placeholder thresholds).</figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2 · pain -->
+    <section class="slide" id="pain" aria-label="The problem">
+      <div class="inner">
+        <div style="display:grid;gap:14px">
+          <p class="mono">The pain</p>
+          <h2>A generated plan can pass every rule and still not work.</h2>
+          <p class="lede">A floor-plan generator turns a bubble diagram into rooms that satisfy sizes and adjacencies. Nobody checks whether a person can <b>use</b> the room, and under a roof that is where plans fail. Switch the lens.</p>
+        </div>
+        <div class="cols">
+          <div class="panel" style="display:grid;gap:14px">
+            <div class="seg" role="group" aria-label="Lens">
+              <button id="lensRule" aria-pressed="true">What the generator checks</button>
+              <button id="lensUse" aria-pressed="false">What Usable Space checks</button>
+            </div>
+            <ul class="checks" id="verdicts"></ul>
+            <p class="hint" id="lensNote" style="color:var(--muted);font-size:0.9rem"></p>
+          </div>
+          <figure style="margin:0" class="panel">
+            <svg id="plan" viewBox="0 0 300 400" role="img" aria-label="Floor plan of the same attic room with a bed, a wardrobe and a chest"></svg>
+            <figcaption class="mono" style="margin-top:8px">Same room, same furniture. Only the question changes.</figcaption>
+          </figure>
+        </div>
+        <p class="lede" style="max-width:80ch">So the tool plays one role in a bigger system: it sits <b>after</b> the generator, scores every plan for usable height and furnishability, and returns reasons the generator can act on.</p>
+      </div>
+    </section>
+
+    <!-- 3 · pipeline -->
+    <section class="slide" id="pipeline" aria-label="The global pipeline">
+      <div class="inner">
+        <div style="display:grid;gap:14px">
+          <p class="mono">One pipeline</p>
+          <h2>Every piece of work sits on the same six-stage line.</h2>
+          <p class="lede">From a capture of a real building to an experience of a changed one. Select a stage to see what feeds it and what it hands on.</p>
+        </div>
+        <div class="panel pipe"><svg id="pipe1" viewBox="0 0 1000 215" role="img" aria-label="Pipeline: capture, model, generate, evaluate, adapt and build, experience, with two feedback loops"></svg></div>
+        <div class="panel detail" id="stageDetail" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <!-- 4 · crossings -->
+    <section class="slide" id="crossings" aria-label="Where the courses meet">
+      <div class="inner">
+        <div style="display:grid;gap:14px">
+          <p class="mono">Intersections</p>
+          <h2>Where each course and project meets the pipeline.</h2>
+          <p class="lede">Rows are the things I work on or with; columns are the pipeline. A filled cell means that work feeds or uses that stage. Select a cell for what flows through it.</p>
+        </div>
+        <div class="panel matrix"><table id="matrix"></table></div>
+        <div class="key" id="key"></div>
+        <div class="panel detail" id="cellDetail" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <!-- 5 · proof -->
+    <section class="slide" id="proof" aria-label="Proof">
+      <div class="inner">
+        <div style="display:grid;gap:14px">
+          <p class="mono">The test</p>
+          <h2>Remove any choice and watch the pipeline break.</h2>
+          <p class="lede">Every design choice in this project serves at least one stage, and every stage has at least one choice behind it. Switch choices off: a stage with nothing left turns red, and the loop it belonged to is cut.</p>
+        </div>
+        <div class="audit">
+          <div class="panel" style="display:grid;gap:12px">
+            <div class="presets" id="presets"></div>
+            <ul class="choices" id="choices"></ul>
+          </div>
+          <div style="display:grid;gap:14px;position:sticky;top:0">
+            <div class="panel pipe"><svg id="pipe2" viewBox="0 0 1000 215" role="img" aria-label="The pipeline with stages that lost all their supporting choices shown in red"></svg></div>
+            <div class="panel" style="display:grid;gap:6px">
+              <p class="verdict" id="verdict"></p>
+              <p id="verdictSub" style="color:var(--muted);font-size:0.92rem"></p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6 · pattern + loop -->
+    <section class="slide" id="pattern" aria-label="Pattern tree and loop">
+      <div class="inner">
+        <div style="display:grid;gap:14px">
+          <p class="mono">Generate and iterate</p>
+          <h2>A decision tree picks the pattern. A Swalloop-style loop builds it.</h2>
+          <p class="lede">Answer a few architectural questions and the pieces get anchors: tall things on the gable, low things under the slope. Then the loop places or moves one piece per pass and keeps only what raises the score.</p>
+        </div>
+        <div class="cols">
+          <div class="panel" style="display:grid;gap:12px">
+            <div class="crumbs" id="crumbs" aria-label="Your choices"></div>
+            <h3 id="q"></h3>
+            <div class="opts" id="opts"></div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+              <button class="go" id="buildBtn" disabled>Build this pattern</button>
+              <span class="mono" id="passRead"></span>
+            </div>
+          </div>
+          <figure style="margin:0" class="panel">
+            <svg id="plan2" viewBox="0 0 300 400" role="img" aria-label="Schematic plan of the room with the pieces of the chosen pattern"></svg>
+            <figcaption class="mono" style="margin-top:8px">Schematic: anchors only. The real engine searches exact positions.</figcaption>
+          </figure>
+        </div>
+        <div class="panel">
+          <h3 style="margin-bottom:10px">What came from Swalloop</h3>
+          <div class="mapping">
+            <div><b>Loop Start / Loop End</b>the state goes round: a layout in, a better layout out</div>
+            <div><b>Max iter. · Tolerance</b>same two stop rules; also stops when every piece was tried without gain</div>
+            <div><b>History</b>one frame per pass; a slider replays the design as it evolved</div>
+            <div><b>Repeat · Fold</b>improve what exists, or build piece by piece from nothing</div>
+            <div><b>Limits the optimiser cannot break</b>our rules: bed head to a wall, free stair landing, storage per sleeper</div>
+            <div><b>Data trees</b>become the choice tree: the path of answers is the pattern</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7 · plan -->
+    <section class="slide" id="plan-ahead" aria-label="Plan and questions">
+      <div class="inner">
+        <div style="display:grid;gap:14px">
+          <p class="mono">Plan</p>
+          <h2>Build, test against real rooms, make it physical.</h2>
+          <p class="lede">The prototype is the tool for exploring. The research is whether usable height and furnishability separate a roof storey that works from one that does not.</p>
+        </div>
+        <div class="panel tl"><svg id="tl" viewBox="0 0 1000 250" role="img" aria-label="Timeline from 22 October 2026 to 4 February 2027 with the dates of MID 3000 and MID 3020"></svg></div>
+        <div class="cols">
+          <div class="panel" style="display:grid;gap:8px">
+            <h3>Method</h3>
+            <ol class="asks">
+              <li><b>Evaluate</b> generated and real attic plans with the Usable-Space Index and the rules.</li>
+              <li><b>Compare</b> the verdict with architects' judgement on a small set of real roof storeys.</li>
+              <li><b>Build</b> scaled shading and movable-roof prototypes (SolidWorks, Bambu P1S) and compare measured light with the predicted sun hours.</li>
+              <li><b>Document</b> in the open: method, limits, data, and what did not work.</li>
+            </ol>
+          </div>
+          <div class="panel" style="display:grid;gap:8px">
+            <h3>Questions for you</h3>
+            <ol class="asks">
+              <li>Is "usability feedback for a plan generator" the right pain to relieve?</li>
+              <li>Which output format does the generator produce, so the evaluator can read it directly?</li>
+              <li>How many real roof storeys make a fair validation set?</li>
+              <li>Where should the line between this project and the thesis run?</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <div style="display:grid;gap:8px">
+      <div class="bar" aria-hidden="true"><i id="prog"></i></div>
+      <div class="nav"><button id="prev">← Previous</button><button id="next">Next →</button><span class="mono" style="align-self:center;margin-left:8px">arrow keys work too</span></div>
+    </div>
+    <div class="block" aria-label="Title block"><span>Project</span><span>Usable Space</span><span>Module</span><span>MID 3000</span><span>Sheet</span><span id="sheet">1 / 7</span></div>
+  </footer>
+</div>
+
+<script>
+'use strict';
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const NS = 'http://www.w3.org/2000/svg';
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+/* ================================================================= data */
+const STAGES = [
+  { id: 'capture', name: 'Capture', sub: 'photos · splats · scans', what: 'A real building becomes data: photos, Gaussian splats, laser scans.' },
+  { id: 'model', name: 'Model', sub: 'BIM · IFC · roof geometry', what: 'Captured or drawn geometry becomes a model with the roof, rooms and openings as parameters.' },
+  { id: 'generate', name: 'Generate', sub: 'bubble diagram → plan', what: 'A plan, or a furniture layout inside a plan, is produced: by an LLM, by a pattern tree, by a loop.' },
+  { id: 'evaluate', name: 'Evaluate', sub: 'height · fit · rules', what: 'The plan is scored: usable height, furniture fit, circulation, planning rules, sun.' },
+  { id: 'act', name: 'Adapt & build', sub: 'dormers · shading · prototypes', what: 'The result drives a change: a dormer, a shading system, a movable roof, a printed prototype.' },
+  { id: 'experience', name: 'Experience', sub: 'Revit · Unreal VR', what: 'The changed building is walked through, in Revit or in virtual reality.' },
+];
+const STAGE_IDX = Object.fromEntries(STAGES.map((s, i) => [s.id, i]));
+
+// status: prototype (exists in the app), planned, literature (MID 3020 review), external (someone else's work), gap (the hole we fill)
+const STATUS = {
+  prototype: 'Prototype (exists in the app)',
+  planned: 'Planned',
+  literature: 'Literature (MID 3020 review)',
+  external: 'Others’ work this builds on',
+  gap: 'The gap this project fills',
+};
+const ROWS = [
+  { id: 'app', name: 'Usable Space app', sub: 'MID 3000, this project', cells: {
+    model: ['prototype', 'Room and roof as parameters; IFC files open in the browser and furnishings become library entries.'],
+    generate: ['prototype', 'Pattern tree and a Swalloop-style loop place furniture with anchors and rules.'],
+    evaluate: ['prototype', 'Height field, furniture fit, circulation, Usable-Space Index, fact check and layout rules.'],
+    act: ['prototype', 'Sun hours per opening, glazing ratio and an indicative wind zone. Shading prototypes are planned.'],
+    experience: ['planned', 'Revit export first, Unreal VR later.'],
+  } },
+  { id: 'thesis', name: 'Senior’s thesis', sub: 'LLM floor plans from bubble diagrams', cells: {
+    generate: ['external', 'Bubble diagram to functional floor plan with an LLM. This is the generator the evaluator sits behind.'],
+    evaluate: ['gap', 'Usable height and furnishability: the two briefs were written as gaps in this research.'],
+  } },
+  { id: 'r2t', name: 'Real2Twin', sub: 'job; no project data used here', cells: {
+    capture: ['external', 'Images and Gaussian splats into a synchronised digital twin.'],
+    model: ['external', 'Keeping a model in step with the building. The app’s room parameters are meant to accept captured geometry later.'],
+  } },
+  { id: 'paper', name: 'MID 3020 review', sub: 'systematic literature review', cells: {
+    capture: ['literature', 'Stages 1 to 4 of the review: capture, reconstruction, accuracy, segmentation.'],
+    model: ['literature', 'Scan-to-BIM, scan-vs-BIM and write-back to IFC and Revit.'],
+    act: ['literature', 'Stage 9: kinetic components and dynamic facades, including prototypes linked to a Revit model.'],
+    experience: ['literature', 'Immersive and game-engine environments with BIM.'],
+  } },
+  { id: 'swalloop', name: 'Swalloop', sub: 'loop editor, Grasshopper plugin', cells: {
+    model: ['prototype', 'Same graph format runs in the editor and in Grasshopper, so geometry can come from Rhino.'],
+    generate: ['prototype', 'Loop Start / End, Max iter., Tolerance, History. The iteration logic of the layout loop.'],
+    evaluate: ['prototype', 'Evaluator nodes (wind, sun, structure, metrics) and analysis maths that a layout score can reuse.'],
+    act: ['prototype', 'Form-finding: evaluate, adapt, repeat. The same cycle drives shading and roof changes.'],
+  } },
+  { id: 'fab', name: 'Digital fabrication', sub: 'SolidWorks, Bambu P1S', cells: {
+    evaluate: ['planned', 'Measure light and shade on a scaled model and compare with the predicted sun hours.'],
+    act: ['planned', 'Movable roofs, pergolas and shading systems printed at scale.'],
+  } },
+  { id: 'vr', name: 'Revit and Unreal', sub: 'BIM authoring and VR', cells: {
+    model: ['planned', 'Furniture families and rooms exchanged with Revit through IFC.'],
+    experience: ['planned', 'Walk through the evaluated and adapted attic.'],
+  } },
+];
+
+// every design choice and the stages it serves (the proof slide checks that this mapping is total)
+const CHOICES = [
+  { id: 'react', name: 'React + Vite web app', why: 'Live feedback while furniture is dragged; runs in any browser.', stages: ['evaluate', 'experience'] },
+  { id: 'engine', name: 'One pure-JS engine in /shared', why: 'The same code scores in the browser, on the server, in tests and behind a generator.', stages: ['evaluate', 'generate'] },
+  { id: 'field', name: 'Height field instead of room sizes', why: 'Usability varies across the room, so the model has to as well.', stages: ['model', 'evaluate'] },
+  { id: 'index', name: 'Usable-Space Index', why: 'A single number a generator can optimise, with the reasons beside it.', stages: ['evaluate', 'generate'] },
+  { id: 'rules', name: 'Fact check and layout rules', why: 'Believable numbers and common planning practice, each rule with its reason.', stages: ['evaluate', 'generate'] },
+  { id: 'tree', name: 'Pattern decision tree', why: 'Turns design intent into anchors a search can follow.', stages: ['generate'] },
+  { id: 'loop', name: 'Swalloop-style loop', why: 'Iterate with stop rules and a replayable history.', stages: ['generate', 'evaluate'] },
+  { id: 'library', name: 'Furniture library and scraper', why: 'Real products with real dimensions, inherited from the category when missing.', stages: ['generate', 'evaluate'] },
+  { id: 'ifc', name: 'IFC as exchange format', why: 'Rooms and furnishings travel between tools without a custom format.', stages: ['model', 'experience'] },
+  { id: 'twin', name: 'Room geometry as parameters', why: 'A scan or a splat can fill the same parameters later (Real2Twin link).', stages: ['capture', 'model'] },
+  { id: 'sun', name: 'Sun and wind overlays', why: 'Daylight and exposure decide whether an opening or a shade is worth it.', stages: ['evaluate', 'act'] },
+  { id: 'fab', name: 'Scaled prototypes (P1S)', why: 'Physical test of the predicted light and the movable parts.', stages: ['act', 'evaluate'] },
+  { id: 'revit', name: 'Revit link', why: 'Hands the result to the BIM model architects work in.', stages: ['model', 'experience'] },
+  { id: 'vr', name: 'Unreal VR', why: 'Lets a client stand in the low zone and feel the difference.', stages: ['experience'] },
+  { id: 'review', name: 'Systematic review (MID 3020)', why: 'The literature behind capture, update, dynamic behaviour and VR.', stages: ['capture', 'model', 'act', 'experience'] },
+  { id: 'open', name: 'Open repository and method', why: 'Every stage can be rerun and challenged: data, code, limits.', stages: STAGES.map((s) => s.id) },
+];
+
+/* ================================================================= shell */
+const slides = $$('.slide');
+const dots = $('#dots');
+let cur = 0;
+slides.forEach((s, i) => {
+  const b = document.createElement('button');
+  b.textContent = String(i + 1);
+  b.title = s.getAttribute('aria-label');
+  b.addEventListener('click', () => go(i));
+  dots.append(b);
+});
+function go(i, fromHash) {
+  cur = clamp(i, 0, slides.length - 1);
+  slides.forEach((s, k) => { s.dataset.pos = k === cur ? 'cur' : k < cur ? 'prev' : 'next'; if (k === cur) s.scrollTop = 0; });
+  $$('button', dots).forEach((b, k) => b.setAttribute('aria-current', String(k === cur)));
+  $('#prog').style.width = `${((cur + 1) / slides.length) * 100}%`;
+  $('#sheet').textContent = `${cur + 1} / ${slides.length}`;
+  $('#prev').disabled = cur === 0;
+  $('#next').disabled = cur === slides.length - 1;
+  if (!fromHash) { try { history.replaceState(null, '', `#${slides[cur].id}`); } catch (e) { /* sandboxed frame */ } }
+  if (cur === 0) startWalker(); else stopWalker();
+}
+$('#prev').addEventListener('click', () => go(cur - 1));
+$('#next').addEventListener('click', () => go(cur + 1));
+addEventListener('keydown', (e) => {
+  if (/INPUT|TEXTAREA/.test(e.target.tagName) && e.key.startsWith('Arrow') === false) return;
+  if (e.target.type === 'range') return;
+  if (e.key === 'ArrowRight' || e.key === 'PageDown') go(cur + 1);
+  if (e.key === 'ArrowLeft' || e.key === 'PageUp') go(cur - 1);
+  if (e.key === 'Home') go(0);
+  if (e.key === 'End') go(slides.length - 1);
+});
+let tx = null;
+$('#stage').addEventListener('touchstart', (e) => { tx = e.touches[0].clientX; }, { passive: true });
+$('#stage').addEventListener('touchend', (e) => {
+  if (tx === null) return;
+  const dx = e.changedTouches[0].clientX - tx;
+  tx = null;
+  if (Math.abs(dx) > 70) go(cur + (dx < 0 ? 1 : -1));
+}, { passive: true });
+
+/* ================================================================= roof geometry (same rule as the app) */
+const W = 5, D = 7, MAXH = 3.0;
+function roof(pitchDeg, knee) {
+  const tan = Math.tan((pitchDeg * Math.PI) / 180);
+  const h = (x) => Math.min(knee + tan * Math.min(x, W - x), MAXH);
+  const at = (hh) => (knee >= hh ? 0 : clamp((hh - knee) / tan, 0, W / 2)); // distance from the wall where height hh is reached
+  const a = at(1.0), b = at(2.0), s = at(1.9);
+  return { h, tan, a, b, counted: ((0.5 * (b - a) + (W / 2 - b)) / (W / 2)), stand: (W / 2 - s) / (W / 2) };
+}
+const el = (tag, attrs = {}, parent) => {
+  const n = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+  if (parent) parent.append(n);
+  return n;
+};
+
+/* ================================================================= slide 1: live section with a walker */
+const S = 100, OX = 60, OY = 360;
+let walkerRaf = 0, T0 = 0;
+const state1 = { pitch: 38, knee: 0.9 };
+function drawSection() {
+  const svg = $('#sec');
+  const { pitch, knee } = state1;
+  const r = roof(pitch, knee);
+  const ridge = Math.min(knee + r.tan * (W / 2), MAXH);
+  const xs = (m) => OX + m * S, ys = (m) => OY - m * S;
+  // interior outline: wall, slope to the ceiling, flat ceiling at 3.0 m if the ridge would be higher
+  const pts = [[0, 0], [0, knee]];
+  const xc = ridge >= MAXH ? (MAXH - knee) / r.tan : W / 2;
+  pts.push([xc, Math.min(ridge, MAXH)]);
+  if (ridge >= MAXH) pts.push([W - xc, MAXH]);
+  pts.push([W, knee], [W, 0]);
+  const poly = pts.map(([x, y]) => `${xs(x)},${ys(y)}`).join(' ');
+  svg.innerHTML = '';
+  const defs = el('defs', {}, svg);
+  const cp = el('clipPath', { id: 'roomClip' }, defs);
+  el('polygon', { points: poly }, cp);
+  const g = el('g', { 'clip-path': 'url(#roomClip)' }, svg);
+  const band = (x0, x1, c) => el('rect', { x: xs(x0), y: ys(4), width: Math.max(0, (x1 - x0) * S), height: 4 * S, fill: c, opacity: 0.38 }, g);
+  const zones = [[0, r.a, '--h0'], [r.a, r.b, '--h1'], [r.b, W / 2, '--h2']];
+  zones.forEach(([x0, x1, c]) => { band(x0, x1, css(c)); band(W - x1, W - x0, css(c)); });
+  el('polygon', { points: poly, fill: 'none', stroke: css('--ink'), 'stroke-width': 2.4, 'stroke-linejoin': 'round' }, svg);
+  // floor bar: the same classes, solid
+  zones.forEach(([x0, x1, c]) => {
+    el('rect', { x: xs(x0), y: OY, width: Math.max(0, (x1 - x0) * S), height: 12, fill: css(c) }, svg);
+    el('rect', { x: xs(W - x1), y: OY, width: Math.max(0, (x1 - x0) * S), height: 12, fill: css(c) }, svg);
+  });
+  el('line', { x1: OX - 14, x2: OX + W * S + 14, y1: OY, y2: OY, stroke: css('--ink'), 'stroke-width': 2 }, svg);
+  [1, 2].forEach((m) => {
+    el('line', { x1: OX - 6, x2: OX + W * S + 6, y1: ys(m), y2: ys(m), stroke: css('--muted'), 'stroke-width': 1, 'stroke-dasharray': '4 5' }, svg);
+    const t = el('text', { x: OX + W * S + 12, y: ys(m) + 4, class: 't-muted', 'font-size': 12 }, svg); t.textContent = `${m}.0 m`;
+  });
+  const dim = el('text', { x: OX + (W * S) / 2, y: OY + 36, 'text-anchor': 'middle', class: 't-muted', 'font-size': 12 }, svg); dim.textContent = '5.0 m';
+  const k = el('text', { x: OX - 12, y: ys(knee / 2) + 4, 'text-anchor': 'end', class: 't-muted', 'font-size': 12 }, svg); k.textContent = `${knee.toFixed(2)} m`;
+  const walker = el('g', { id: 'walker' }, svg);
+  el('circle', { id: 'wHead', r: 10, cy: -1.7 * S }, walker);
+  el('rect', { id: 'wBody', x: -9, y: -1.58 * S, width: 18, height: 1.58 * S - 4, rx: 7 }, walker);
+  walkerState.r = r;
+  placeWalker(walkerState.x ?? W / 2);
+  $('#pitchO').textContent = `${pitch}°`;
+  $('#kneeO').textContent = `${knee.toFixed(2)} m`;
+  $('#sCounted').textContent = `${(r.counted * W * D).toFixed(1)} m²`;
+  $('#sStand').textContent = `${Math.round(r.stand * 100)} %`;
+}
+const walkerState = { x: W / 2, r: null };
+function placeWalker(x) {
+  const r = walkerState.r;
+  walkerState.x = x;
+  const w = $('#walker');
+  if (!w || !r) return;
+  const hh = r.h(clamp(x, 0, W));
+  const can = hh >= 1.9;
+  w.setAttribute('transform', `translate(${OX + x * S},${OY})`);
+  const c = can ? css('--good') : css('--bad');
+  $('#wHead').setAttribute('fill', c);
+  $('#wBody').setAttribute('fill', c);
+  $('#sHere').textContent = `${hh.toFixed(2)} m`;
+  $('#sHere').style.color = can ? '' : css('--bad');
+  $('#sHereL').textContent = can ? 'headroom here: upright' : 'headroom here: stoop or sit';
+}
+function startWalker() {
+  stopWalker();
+  if (reduced) { placeWalker(W / 2); return; }
+  T0 = performance.now();
+  const tick = (t) => {
+    placeWalker(W / 2 + (W / 2 - 0.3) * Math.sin(((t - T0) / 1000) * 0.55));
+    walkerRaf = requestAnimationFrame(tick);
+  };
+  walkerRaf = requestAnimationFrame(tick);
+}
+function stopWalker() { cancelAnimationFrame(walkerRaf); }
+$('#pitch').addEventListener('input', (e) => { state1.pitch = +e.target.value; drawSection(); });
+$('#knee').addEventListener('input', (e) => { state1.knee = +e.target.value; drawSection(); });
+
+/* ================================================================= slide 2: two lenses on one plan */
+const P2 = 50, PM = 25; // plan scale px/m, margin
+const ROOM = { pitch: 38, knee: 0.9 };
+const PIECES = [
+  { id: 'bed', label: 'Bed 1.6 × 2.0', x: 0, y: 1.6, w: 2.0, d: 1.6, need: 0.9, bodyAt: [0, 2.0] },
+  { id: 'chest', label: 'Chest', x: W - 0.5, y: 4.6, w: 0.5, d: 1.0, need: 0.9, bodyAt: [W - 0.5, W] },
+  { id: 'ward', label: 'Wardrobe', x: 0, y: 5.2, w: 0.6, d: 1.2, need: 2.0, bodyAt: [0, 0.6] },
+];
+let lens = 'rule';
+function minHeadroom(p) {
+  const r = roof(ROOM.pitch, ROOM.knee);
+  return Math.min(r.h(p.bodyAt[0]), r.h(p.bodyAt[1]));
+}
+function drawPlan() {
+  const svg = $('#plan');
+  svg.innerHTML = '';
+  const r = roof(ROOM.pitch, ROOM.knee);
+  const px = (m) => PM + m * P2;
+  const heat = el('g', { opacity: lens === 'use' ? 1 : 0, style: 'transition: opacity .5s' }, svg);
+  el('rect', { x: px(0), y: px(0), width: W * P2, height: D * P2, fill: css('--panel') }, svg);
+  svg.append(heat);
+  [[0, r.a, '--h0'], [r.a, r.b, '--h1'], [r.b, W - r.b, '--h2'], [W - r.b, W - r.a, '--h1'], [W - r.a, W, '--h0']].forEach(([x0, x1, c]) => {
+    if (x1 > x0) el('rect', { x: px(x0), y: px(0), width: (x1 - x0) * P2, height: D * P2, fill: css(c), opacity: 0.5 }, heat);
+  });
+  el('rect', { x: px(0), y: px(0), width: W * P2, height: D * P2, fill: 'none', stroke: css('--ink'), 'stroke-width': 3 }, svg);
+  el('rect', { x: px(3.4), y: px(0) - 2, width: 1.1 * P2, height: 5, fill: css('--accent') }, svg);
+  PIECES.forEach((p) => {
+    const bad = lens === 'use' && minHeadroom(p) < p.need;
+    const c = lens === 'rule' ? css('--accent') : bad ? css('--bad') : css('--good');
+    const g = el('g', {}, svg);
+    el('rect', { x: px(p.x), y: px(p.y), width: p.w * P2, height: p.d * P2, rx: 3, fill: c, 'fill-opacity': 0.85, stroke: css('--ink'), 'stroke-width': 1.5, style: 'transition: fill .4s' }, g);
+    const t = el('text', { x: px(p.x) + (p.w * P2) / 2, y: px(p.y) - 5, 'text-anchor': p.x > 2 ? 'end' : 'start', 'font-size': 11, class: 't-ink' }, g);
+    t.textContent = p.label;
+    if (p.x > 2) t.setAttribute('x', px(p.x) + p.w * P2);
+    else t.setAttribute('x', px(p.x));
+  });
+  const verdicts = $('#verdicts');
+  const li = (ok, txt) => `<li><span class="${ok ? 'ok' : 'no'}">${ok ? '✓' : '✕'}</span><span>${txt}</span></li>`;
+  if (lens === 'rule') {
+    verdicts.innerHTML = [
+      li(true, `Room area 35 m², above the minimum for a bedroom`),
+      li(true, 'Bed 1.6 × 2.0 m fits the room dimensions'),
+      li(true, 'Wardrobe 1.2 × 0.6 m fits the room dimensions'),
+      li(true, 'Nothing overlaps; the door is clear'),
+    ].join('');
+    $('#lensNote').textContent = 'Every plan-level rule is satisfied. The generator would call this plan finished.';
+  } else {
+    const rows = PIECES.map((p) => {
+      const hh = minHeadroom(p);
+      return li(hh >= p.need, `${p.label}: needs ${p.need.toFixed(1)} m of roof over it, the roof gives ${hh.toFixed(2)} m`);
+    });
+    verdicts.innerHTML = rows.join('') + li(false, `Only ${Math.round(roof(ROOM.pitch, ROOM.knee).stand * 100)} % of the floor lets you stand upright`);
+    $('#lensNote').textContent = 'The wardrobe stands where the roof is 0.9 to 1.4 m high. The plan looks fine and the room does not work.';
+  }
+  $('#lensRule').setAttribute('aria-pressed', String(lens === 'rule'));
+  $('#lensUse').setAttribute('aria-pressed', String(lens === 'use'));
+}
+$('#lensRule').addEventListener('click', () => { lens = 'rule'; drawPlan(); });
+$('#lensUse').addEventListener('click', () => { lens = 'use'; drawPlan(); });
+
+/* ================================================================= pipeline drawing (slides 3 and 5) */
+const NW = 140, NH = 78, NX = (i) => 18 + i * 163, NY = 76;
+function drawPipeline(svg, opts = {}) {
+  const { counts = null, selected = null, onSelect = null, packets = true } = opts;
+  svg.innerHTML = '';
+  const defs = el('defs', {}, svg);
+  const mk = (id, color) => {
+    const m = el('marker', { id, viewBox: '0 0 10 10', refX: 8, refY: 5, markerWidth: 7, markerHeight: 7, orient: 'auto-start-reverse' }, defs);
+    el('path', { d: 'M0,0 L10,5 L0,10 z', fill: color }, m);
+  };
+  mk(`${svg.id}-a`, css('--ink')); mk(`${svg.id}-b`, css('--accent')); mk(`${svg.id}-c`, css('--bad')); mk(`${svg.id}-d`, css('--muted'));
+  const broken = (i) => counts && counts[STAGES[i].id] === 0;
+  // connectors
+  for (let i = 0; i < STAGES.length - 1; i++) {
+    const cut = broken(i) || broken(i + 1);
+    el('line', { x1: NX(i) + NW, y1: NY + NH / 2, x2: NX(i + 1) - 3, y2: NY + NH / 2, class: `flow${cut ? ' cut' : ''}`, 'marker-end': `url(#${svg.id}-${cut ? 'c' : 'a'})` }, svg);
+  }
+  // feedback loops: evaluate -> generate (live) and experience -> model (planned)
+  const loop1Broken = broken(3) || broken(2);
+  const x3 = NX(3) + NW / 2, x2 = NX(2) + NW / 2;
+  el('path', { d: `M${x3},${NY} C${x3},${NY - 52} ${x2},${NY - 52} ${x2},${NY - 3}`, class: 'loopline', style: loop1Broken ? `stroke:${css('--bad')}` : '', 'marker-end': `url(#${svg.id}-${loop1Broken ? 'c' : 'b'})` }, svg);
+  const l1 = el('text', { x: (x3 + x2) / 2, y: NY - 44, 'text-anchor': 'middle', 'font-size': 10.5, class: 't-ink' }, svg); l1.textContent = 'score and reasons as feedback';
+  const x5 = NX(5) + NW / 2, x1 = NX(1) + NW / 2;
+  const loop2Broken = broken(5) || broken(1);
+  el('path', { d: `M${x5},${NY} C${x5},${NY - 70} ${x1},${NY - 70} ${x1},${NY - 3}`, class: 'loopline soon', style: loop2Broken ? `stroke:${css('--bad')}` : '', 'marker-end': `url(#${svg.id}-${loop2Broken ? 'c' : 'd'})` }, svg);
+  const l2 = el('text', { x: (x5 + x1) / 2, y: NY - 62, 'text-anchor': 'middle', 'font-size': 10.5, class: 't-muted' }, svg); l2.textContent = 'what is learned on the prototype or in VR updates the model (planned)';
+  // nodes
+  STAGES.forEach((s, i) => {
+    const g = el('g', { class: `node${broken(i) ? ' broken' : ''}`, tabindex: onSelect ? 0 : -1, role: onSelect ? 'button' : 'img', 'aria-label': `${s.name}: ${s.sub}`, 'aria-pressed': String(selected === s.id) }, svg);
+    el('rect', { x: NX(i), y: NY, width: NW, height: NH, rx: 10 }, g);
+    const nm = el('text', { x: NX(i) + 12, y: NY + 28, class: 'nm' }, g); nm.textContent = s.name;
+    const sb = el('text', { x: NX(i) + 12, y: NY + 46, class: 'sb' }, g); sb.textContent = s.sub;
+    const ct = el('text', { x: NX(i) + 12, y: NY + 65, class: 'ct' }, g);
+    ct.textContent = counts ? (counts[s.id] === 0 ? 'no input left' : `${counts[s.id]} choice${counts[s.id] === 1 ? '' : 's'}`) : `stage ${i + 1}`;
+    if (broken(i)) ct.setAttribute('fill', css('--bad'));
+    if (onSelect) {
+      g.addEventListener('click', () => onSelect(s.id));
+      g.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(s.id); } });
+    }
+  });
+  // data packets travelling the line
+  if (packets && !reduced) {
+    const y = NY + NH / 2;
+    for (let k = 0; k < 3; k++) {
+      const c = el('circle', { r: 4.5, fill: css('--accent') }, svg);
+      const am = el('animateMotion', { dur: '7s', repeatCount: 'indefinite', begin: `${k * 2.33}s`, path: `M${NX(0) + 10},${y} L${NX(5) + NW - 10},${y}` }, c);
+      void am;
+    }
+  }
+  return svg;
+}
+function rowsFor(stage) {
+  return ROWS.filter((r) => r.cells[stage]).map((r) => ({ row: r, status: r.cells[stage][0], text: r.cells[stage][1] }));
+}
+
+/* ================================================================= slide 3: stage detail */
+let selStage = 'evaluate';
+function drawPipe1() {
+  drawPipeline($('#pipe1'), { selected: selStage, onSelect: (id) => { selStage = id; drawPipe1(); } });
+  const s = STAGES[STAGE_IDX[selStage]];
+  const items = rowsFor(selStage);
+  $('#stageDetail').innerHTML = `<h3>${esc(s.name)} <span class="pill">${esc(s.sub)}</span></h3><p style="color:var(--muted)">${esc(s.what)}</p><ul>${items.map((it) => `<li><b>${esc(it.row.name)}</b> <span class="pill">${esc(STATUS[it.status])}</span><br>${esc(it.text)}</li>`).join('')}</ul>`;
+}
+
+/* ================================================================= slide 4: matrix */
+let selCell = { row: 'app', stage: 'evaluate' };
+function drawMatrix() {
+  const t = $('#matrix');
+  let h = `<thead><tr><th></th>${STAGES.map((s) => `<th class="${selCell && selCell.stage === s.id ? 'hotcol' : ''}">${esc(s.name)}</th>`).join('')}</tr></thead><tbody>`;
+  ROWS.forEach((r) => {
+    h += `<tr class="${selCell && selCell.row === r.id ? 'hot' : ''}"><th class="row" scope="row">${esc(r.name)}<small>${esc(r.sub)}</small></th>`;
+    STAGES.forEach((s) => {
+      const c = r.cells[s.id];
+      h += `<td>${c
+        ? `<button class="cell" data-row="${r.id}" data-stage="${s.id}" data-s="${c[0]}" aria-pressed="${!!selCell && selCell.row === r.id && selCell.stage === s.id}" aria-label="${esc(r.name)}, ${esc(s.name)}: ${esc(STATUS[c[0]])}"></button>`
+        : '<button class="cell" disabled aria-hidden="true" tabindex="-1"></button>'}</td>`;
+    });
+    h += '</tr>';
+  });
+  t.innerHTML = h + '</tbody>';
+  $$('.cell[data-s]', t).forEach((b) => b.addEventListener('click', () => { selCell = { row: b.dataset.row, stage: b.dataset.stage }; drawMatrix(); }));
+  $('#key').innerHTML = Object.entries(STATUS).map(([k, v]) => {
+    const style = { prototype: 'background:var(--accent)', planned: 'border-color:var(--accent);border-style:dashed', literature: 'background:repeating-linear-gradient(135deg,var(--soft) 0 4px,var(--line) 4px 6px);border-color:var(--muted)', external: 'background:var(--ink)', gap: 'background:var(--h1);border-color:var(--ink)' }[k];
+    return `<span><i style="${style}"></i>${esc(v)}</span>`;
+  }).join('');
+  const r = ROWS.find((x) => x.id === selCell.row);
+  const c = r.cells[selCell.stage];
+  const s = STAGES[STAGE_IDX[selCell.stage]];
+  const others = rowsFor(selCell.stage).filter((x) => x.row.id !== r.id);
+  $('#cellDetail').innerHTML = `<h3>${esc(r.name)} <span class="pill">${esc(s.name)}</span> <span class="pill">${esc(STATUS[c[0]])}</span></h3><p>${esc(c[1])}</p>${others.length ? `<p class="mono" style="margin-top:10px">Also at this stage</p><ul style="margin:4px 0 0;padding-left:1.1rem">${others.map((o) => `<li><b>${esc(o.row.name)}</b>: ${esc(o.text)}</li>`).join('')}</ul>` : ''}`;
+}
+
+/* ================================================================= slide 5: proof by removal */
+const enabled = new Set(CHOICES.map((c) => c.id));
+const PRESET = [
+  { name: 'All on', off: [] },
+  { name: 'Without fabrication', off: ['fab'] },
+  { name: 'Without Revit and VR', off: ['revit', 'vr'] },
+  { name: 'Without the loop and tree', off: ['loop', 'tree'] },
+  { name: 'App only, no paper', off: ['review', 'fab', 'revit', 'vr', 'twin'] },
+];
+function drawProof() {
+  const counts = Object.fromEntries(STAGES.map((s) => [s.id, 0]));
+  CHOICES.forEach((c) => { if (enabled.has(c.id)) c.stages.forEach((s) => { counts[s] += 1; }); });
+  drawPipeline($('#pipe2'), { counts, packets: false });
+  const ul = $('#choices');
+  ul.innerHTML = CHOICES.map((c) => `<li class="${enabled.has(c.id) ? '' : 'off'}"><label><input type="checkbox" data-id="${c.id}" ${enabled.has(c.id) ? 'checked' : ''}><span><b>${esc(c.name)}</b> <span class="tag">→ ${c.stages.length === STAGES.length ? 'all stages' : c.stages.map((s) => STAGES[STAGE_IDX[s]].name).join(' · ')}</span><small>${esc(c.why)}</small></span></label></li>`).join('');
+  $$('input', ul).forEach((i) => i.addEventListener('change', () => { if (i.checked) enabled.add(i.dataset.id); else enabled.delete(i.dataset.id); drawProof(); }));
+  const broken = STAGES.filter((s) => counts[s.id] === 0);
+  const orphans = CHOICES.filter((c) => !c.stages.length).length;
+  const v = $('#verdict');
+  if (!broken.length) {
+    v.className = 'verdict';
+    v.textContent = `${enabled.size} of ${CHOICES.length} choices on: all 6 stages connected`;
+    $('#verdictSub').textContent = `Choices serving no stage: ${orphans}. Stages with no choice behind them: 0. Each choice earns its place by feeding the line.`;
+  } else {
+    v.className = 'verdict warn';
+    v.textContent = `${broken.map((s) => s.name).join(' and ')} ${broken.length > 1 ? 'have' : 'has'} nothing left`;
+    $('#verdictSub').textContent = 'The pipeline is cut there. This is what the choice you removed was holding up.';
+  }
+}
+$('#presets').innerHTML = PRESET.map((p, i) => `<button data-i="${i}">${esc(p.name)}</button>`).join('');
+$$('#presets button').forEach((b) => b.addEventListener('click', () => {
+  enabled.clear();
+  CHOICES.forEach((c) => enabled.add(c.id));
+  PRESET[+b.dataset.i].off.forEach((id) => enabled.delete(id));
+  drawProof();
+}));
+
+/* ================================================================= slide 6: pattern tree + fold animation */
+const TREE = {
+  use: { q: 'What is the room for?', o: [
+    { id: 'sleep', l: 'Sleeping', h: 'Bed first: its head wall decides the rest.', n: 'sleepers' },
+    { id: 'study', l: 'Working', h: 'Same idea, in the app.', n: null, off: true },
+    { id: 'live', l: 'Living', h: 'Same idea, in the app.', n: null, off: true },
+    { id: 'bath', l: 'Bathroom', h: 'Same idea, in the app.', n: null, off: true },
+  ] },
+  sleepers: { q: 'How many people sleep here?', o: [
+    { id: 'one', l: 'One', h: 'Single bed.', n: 'bedAt' },
+    { id: 'two', l: 'Two', h: 'Double bed; both sides free where possible.', n: 'bedAt' },
+  ] },
+  bedAt: { q: 'Where does the head of the bed stand?', o: [
+    { id: 'slope', l: 'Under the slope', h: 'The low side is wasted standing height anyway.', n: 'storage' },
+    { id: 'gable', l: 'On a gable wall', h: 'Full height at the head.', n: 'storage' },
+    { id: 'free', l: 'Free-standing', h: 'Costs the most floor.', n: 'storage' },
+  ] },
+  storage: { q: 'How is storage arranged?', o: [
+    { id: 'slope', l: 'Low chests under the slope', h: 'One tall wardrobe on the gable.', n: 'work' },
+    { id: 'gable', l: 'Wardrobes on the gable walls', h: 'Tall pieces only where the roof allows.', n: 'work' },
+    { id: 'both', l: 'Both', h: 'A wardrobe plus chests along the slope.', n: 'work' },
+  ] },
+  work: { q: 'A work corner?', o: [
+    { id: 'light', l: 'Desk near the window', h: 'Within reach of daylight.', n: null },
+    { id: 'none', l: 'No desk', h: 'Sleeping and storage only.', n: null },
+  ] },
+};
+let path = [];
+let foldTimer = 0, shown = 99;
+function walkTree(p) {
+  let node = 'use'; const chosen = []; const sel = {};
+  for (const id of p) { const o = TREE[node].o.find((x) => x.id === id); chosen.push({ node, ...o }); sel[node] = id; node = o.n; }
+  return { node, chosen, sel };
+}
+function layout(sel) {
+  const bw = sel.sleepers === 'two' ? 1.6 : 0.9;
+  const out = [];
+  const bed = { label: sel.sleepers === 'two' ? 'Bed' : 'Bed', t: 'bed' };
+  if (sel.bedAt === 'slope') Object.assign(bed, { x: 0, y: 3.0, w: 2.0, d: bw, head: 'l' });
+  else if (sel.bedAt === 'gable') Object.assign(bed, { x: 1.8, y: 0, w: bw, d: 2.0, head: 't' });
+  else Object.assign(bed, { x: 1.6, y: 2.4, w: bw, d: 2.0, head: 't' });
+  out.push(bed);
+  const ward = (x) => ({ label: 'Wardrobe', t: 'ward', x, y: D - 0.6, w: 1.2, d: 0.6 });
+  const chest = (y) => ({ label: 'Chest', t: 'chest', x: W - 0.5, y, w: 0.5, d: 1.0 });
+  if (sel.storage === 'slope') out.push(chest(3.0), ward(0.4));
+  else if (sel.storage === 'gable') out.push(ward(0.4), ward(1.8));
+  else out.push(ward(0.4), chest(2.0), chest(3.4));
+  if (sel.work === 'light') out.push({ label: 'Desk', t: 'desk', x: 3.5, y: 0.4, w: 1.4, d: 0.7 });
+  return out;
+}
+function drawPlan2() {
+  const svg = $('#plan2');
+  svg.innerHTML = '';
+  const px = (m) => PM + m * P2;
+  const r = roof(ROOM.pitch, ROOM.knee);
+  el('rect', { x: px(0), y: px(0), width: W * P2, height: D * P2, fill: css('--panel') }, svg);
+  [[0, r.a, '--h0'], [r.a, r.b, '--h1'], [W - r.b, W - r.a, '--h1'], [W - r.a, W, '--h0']].forEach(([x0, x1, c]) => el('rect', { x: px(x0), y: px(0), width: (x1 - x0) * P2, height: D * P2, fill: css(c), opacity: 0.4 }, svg));
+  el('rect', { x: px(0), y: px(0), width: W * P2, height: D * P2, fill: 'none', stroke: css('--ink'), 'stroke-width': 3 }, svg);
+  el('rect', { x: px(3.4), y: px(0) - 2, width: 1.1 * P2, height: 5, fill: css('--accent') }, svg);
+  const wk = walkTree(path);
+  const done = wk.node === null && path.length > 0;
+  if (!done) {
+    const t = el('text', { x: PM + (W * P2) / 2, y: PM + (D * P2) / 2, 'text-anchor': 'middle', 'font-size': 12, class: 't-muted' }, svg);
+    t.textContent = path.length ? 'keep answering' : 'answer the questions';
+    return;
+  }
+  const pieces = layout(wk.sel);
+  const colors = { bed: '--accent', ward: '--ink', chest: '--muted', desk: '--good' };
+  pieces.forEach((p, i) => {
+    if (i >= shown) return;
+    const g = el('g', { opacity: i === shown - 1 && !reduced ? 0 : 1 }, svg);
+    el('rect', { x: px(p.x), y: px(p.y), width: p.w * P2, height: p.d * P2, rx: 3, fill: css(colors[p.t]), 'fill-opacity': 0.82, stroke: css('--ink'), 'stroke-width': 1.5 }, g);
+    if (p.head) {
+      const hx = p.head === 'l' ? px(p.x) + 4 : px(p.x) + 4, hy = p.head === 'l' ? px(p.y) + 4 : px(p.y) + 4;
+      const hw = p.head === 'l' ? 7 : p.w * P2 - 8, hh = p.head === 'l' ? p.d * P2 - 8 : 7;
+      el('rect', { x: hx, y: hy, width: hw, height: hh, rx: 2, fill: css('--bg'), opacity: 0.8 }, g);
+    }
+    const t = el('text', { x: px(p.x) + (p.x > 2.5 ? p.w * P2 : 0), y: px(p.y) - 4, 'text-anchor': p.x > 2.5 ? 'end' : 'start', 'font-size': 10.5, class: 't-ink' }, g);
+    t.textContent = p.label;
+    if (i === shown - 1 && !reduced) requestAnimationFrame(() => { g.style.transition = 'opacity .4s'; g.setAttribute('opacity', 1); });
+  });
+}
+function drawTree() {
+  const wk = walkTree(path);
+  $('#crumbs').innerHTML = wk.chosen.length
+    ? wk.chosen.map((c, i) => `<button data-i="${i}" title="Go back to this question">${esc(c.l)}</button>${i < wk.chosen.length - 1 ? '<span>›</span>' : ''}`).join('')
+    : '<span>No choices yet</span>';
+  $$('#crumbs button').forEach((b) => b.addEventListener('click', () => { clearInterval(foldTimer); path = path.slice(0, +b.dataset.i); shown = 99; drawTree(); }));
+  const q = $('#q'), opts = $('#opts'), build = $('#buildBtn');
+  if (wk.node) {
+    q.textContent = TREE[wk.node].q;
+    opts.innerHTML = TREE[wk.node].o.map((o) => `<button class="opt" data-id="${o.id}" ${o.off ? 'disabled' : ''}><b>${esc(o.l)}</b><small>${esc(o.h)}</small></button>`).join('');
+    $$('.opt', opts).forEach((b) => b.addEventListener('click', () => { clearInterval(foldTimer); path.push(b.dataset.id); shown = 99; drawTree(); }));
+    build.disabled = true;
+    $('#passRead').textContent = '';
+  } else {
+    q.textContent = 'Pattern complete';
+    opts.innerHTML = `<p style="color:var(--muted);font-size:0.92rem">${layout(wk.sel).length} pieces, each with an anchor. The loop now places them one by one, hardest first.</p>`;
+    build.disabled = false;
+  }
+  drawPlan2();
+}
+$('#buildBtn').addEventListener('click', () => {
+  const wk = walkTree(path);
+  if (wk.node !== null) return;
+  const n = layout(wk.sel).length;
+  clearInterval(foldTimer);
+  if (reduced) { shown = n; drawPlan2(); $('#passRead').textContent = `pass ${n} / ${n}`; return; }
+  shown = 0;
+  $('#buildBtn').disabled = true;
+  foldTimer = setInterval(() => {
+    shown += 1;
+    drawPlan2();
+    $('#passRead').textContent = `pass ${shown} / ${n} · Fold`;
+    if (shown >= n) { clearInterval(foldTimer); $('#buildBtn').disabled = false; }
+  }, 650);
+});
+
+/* ================================================================= slide 7: timeline */
+function drawTimeline() {
+  const svg = $('#tl');
+  svg.innerHTML = '';
+  const d0 = Date.UTC(2026, 9, 22), d1 = Date.UTC(2027, 1, 4);
+  const X = (y, m, d) => 40 + ((Date.UTC(y, m - 1, d) - d0) / (d1 - d0)) * 920;
+  const lanes = [
+    { y: 70, name: 'MID 3000', ev: [[2026, 11, 4, 'Plan presentation', 'above', '25 %'], [2026, 12, 16, 'Interim', 'above'], [2027, 2, 3, 'Final', 'above']] },
+    { y: 170, name: 'MID 3020', ev: [[2026, 10, 22, 'Proposal', 'below'], [2026, 11, 5, 'First talk', 'above'], [2026, 11, 19, 'First draft', 'below'], [2026, 12, 3, 'Peer reviews', 'above'], [2027, 1, 14, 'Final paper', 'below'], [2027, 2, 4, 'Final talk', 'above']] },
+  ];
+  lanes.forEach((l) => {
+    el('line', { x1: 40, x2: 960, y1: l.y, y2: l.y, stroke: css('--ink'), 'stroke-width': 1.6 }, svg);
+    const t = el('text', { x: 40, y: l.y - 38 + (l.name === 'MID 3000' ? 0 : 0), 'font-size': 12, class: 't-muted' }, svg); t.textContent = l.name;
+    l.ev.forEach(([y, m, d, label, side, extra]) => {
+      const x = X(y, m, d);
+      const up = side === 'above';
+      el('circle', { cx: x, cy: l.y, r: 6, fill: css('--accent'), stroke: css('--bg'), 'stroke-width': 2 }, svg);
+      el('line', { x1: x, x2: x, y1: l.y, y2: l.y + (up ? -16 : 16), stroke: css('--muted'), 'stroke-width': 1 }, svg);
+      const a = x > 880 ? 'end' : x < 100 ? 'start' : 'middle';
+      const tt = el('text', { x, y: l.y + (up ? -22 : 30), 'text-anchor': a, 'font-size': 11.5, class: 't-ink' }, svg); tt.textContent = label;
+      const dd = el('text', { x, y: l.y + (up ? -34 : 43), 'text-anchor': a, 'font-size': 10, class: 't-muted' }, svg); dd.textContent = `${d} ${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][m - 1]}${extra ? ` · ${extra}` : ''}`;
+    });
+  });
+  const now = Date.now();
+  if (now >= d0 && now <= d1) {
+    const nx = 40 + ((now - d0) / (d1 - d0)) * 920;
+    el('line', { x1: nx, x2: nx, y1: 20, y2: 235, stroke: css('--h0'), 'stroke-width': 1.5, 'stroke-dasharray': '4 4' }, svg);
+    const t = el('text', { x: nx + 5, y: 232, 'font-size': 10.5, fill: css('--h0') }, svg); t.textContent = 'today';
+  }
+}
+
+/* ================================================================= start */
+function renderAll() {
+  drawSection(); drawPlan(); drawPipe1(); drawMatrix(); drawProof(); drawTree(); drawTimeline();
+}
+renderAll();
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', renderAll);
+new MutationObserver(renderAll).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+const startId = location.hash.slice(1);
+go(Math.max(0, slides.findIndex((s) => s.id === startId)), true);
+addEventListener('hashchange', () => { const i = slides.findIndex((s) => s.id === location.hash.slice(1)); if (i >= 0) go(i, true); });
+</script>
+
+</body>
+</html>

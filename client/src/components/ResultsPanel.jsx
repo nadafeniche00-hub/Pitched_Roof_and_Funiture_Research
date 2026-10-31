@@ -5,6 +5,7 @@ import { itemsActions } from '../store/itemsSlice.js';
 import { STATUS_COLOR } from './PlanView.jsx';
 import SiteResults from './SiteResults.jsx';
 import ItemInspector from './ItemInspector.jsx';
+import RulesPanel from './RulesPanel.jsx';
 
 const pc = (v) => `${Math.round(v * 100)}%`;
 const ICON = { ok: '✓', warn: '!', fail: '✕', unplaced: '–' };
@@ -52,6 +53,8 @@ export default function ResultsPanel() {
           Full-storey test: {pc(m.fullStorey.share)} of the floor ≥ {m.fullStorey.height.toFixed(2)} m → {m.fullStorey.pass ? 'passes' : 'fails'} <small>(needs {pc(m.fullStorey.need)}; placeholder rule - set per local code)</small>
         </div>
       </section>
+
+      <RulesPanel />
 
       <ItemInspector />
 

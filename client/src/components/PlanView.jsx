@@ -124,10 +124,10 @@ export default function PlanView() {
                 const z = res?.zones?.[k === 'sideA' || k === 'sideB' ? k : k] ?? 1;
                 return <rect key={k} x={r[0]} y={r[1]} width={r[2] - r[0]} height={r[3] - r[1]} fill={z >= 0.9 ? '#2f9e5b' : '#d64545'} opacity={sel ? 0.28 : 0.15} stroke={z >= 0.9 ? '#2f9e5b' : '#d64545'} strokeWidth="0.015" strokeDasharray="0.06" pointerEvents="none" />;
               })}
-              <rect x={b[0]} y={b[1]} width={b[2] - b[0]} height={b[3] - b[1]} rx="0.03" fill={def.color} fillOpacity="0.92" stroke={color} strokeWidth={sel ? 0.1 : 0.06} />
-              <line x1={cx} y1={cy} x2={ax} y2={ay} stroke="var(--ink)" strokeWidth="0.03" markerEnd="url(#none)" />
-              <circle cx={ax} cy={ay} r="0.05" fill="var(--ink)" />
-              <text x={cx} y={cy - 0.06} textAnchor="middle" className="lbl small" pointerEvents="none">{def.label}</text>
+              <rect x={b[0]} y={b[1]} width={b[2] - b[0]} height={b[3] - b[1]} rx="0" fill={def.color} fillOpacity="1" stroke={color} strokeWidth={sel ? 0.1 : 0.06} />
+              <line x1={cx} y1={cy} x2={ax} y2={ay} stroke="#fff" strokeWidth="0.03" markerEnd="url(#none)" />
+              <circle cx={ax} cy={ay} r="0.05" fill="#fff" />
+              <text x={cx} y={cy - 0.06} textAnchor="middle" className="lbl small piece" pointerEvents="none">{def.label}</text>
             </g>
           );
         })}
