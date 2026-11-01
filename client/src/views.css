@@ -244,3 +244,10 @@ table.params tr.own .layer { color: var(--accent); }
 .snapmenu summary::-webkit-details-marker { display: none; }
 .snappop { position: absolute; top: calc(100% + 6px); left: 0; z-index: 20; display: grid; gap: 6px; min-width: 190px; padding: 10px 12px; background: #fff; border: 3px solid var(--ink); box-shadow: 6px 6px 0 var(--ink); }
 .snappop b { font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+
+.dragtip { position: absolute; left: 0; top: 0; z-index: 30; pointer-events: none; display: grid; gap: 2px; padding: 6px 10px; background: rgba(20, 22, 28, 0.94); color: #fff; font-size: 16px; white-space: nowrap; border-left: 4px solid var(--hot); }
+.dragtip i { position: absolute; left: -4px; top: 0; bottom: 0; width: 4px; }
+.dragtip b { font-size: 20px; font-variant-numeric: tabular-nums; }
+.dragtip small { font-size: 10px; color: #aeb4bd; letter-spacing: 0.02em; }
+.dragtip .caret { display: inline-block; width: 2px; height: 18px; margin-left: 2px; vertical-align: -3px; background: #fff; animation: blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }

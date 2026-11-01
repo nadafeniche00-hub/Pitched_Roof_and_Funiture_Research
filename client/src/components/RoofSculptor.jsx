@@ -112,6 +112,8 @@ export default function RoofSculptor({ onClose }) {
   const room = useSelector((s) => s.room);
   const dispatch = useDispatch();
   const mount = useRef(null);
+  const wrapRef = useRef(null);
+  const tipRef = useRef(null);
   const T = useRef(null);
   const undo = useRef([]);
   const [mesh, setMesh] = useState(() => clone(room.roof || autoMesh(room)));
@@ -203,6 +205,10 @@ export default function RoofSculptor({ onClose }) {
       const sc = S.current.snapCfg;
       if (sc.on && sc.vertex) for (const q of S.current.mesh.v) { const d = P3(q).distanceTo(p); if (d < bd) { bd = d; out = [...q]; how = 'vertex'; } }
       if (!how && sc.on && sc.mid) for (const [a, b] of t.edges) { const A = S.current.mesh.v[a], B = S.current.mesh.v[b], m = [(A[0] + B[0]) / 2, (A[1] + B[1]) / 2, (A[2] + B[2]) / 2]; const d = P3(m).distanceTo(p); if (d < bd) { bd = d; out = m; how = 'edge middle'; } }
+      if (!how && sc.on && sc.edge) {
+        const ln = new THREE.Line3(), q = new THREE.Vector3();
+        for (const [a, b] of t.edges) { ln.set(P3(S.current.mesh.v[a]), P3(S.current.mesh.v[b])); ln.closestPointToPoint(p, true, q); const d = q.distanceTo(p); if (d < bd) { bd = d; out = [q.x, q.z, q.y]; how = 'edge'; } }
+      }
       if (!how && sc.on && sc.incr) { out = [Math.round(out[0] / sc.step) * sc.step, Math.round(out[1] / sc.step) * sc.step, out[2]]; how = 'increment'; }
       setNote(how ? `snapped to ${how}` : '');
       return out;
@@ -259,8 +265,61 @@ export default function RoofSculptor({ onClose }) {
       if (den < 1e-4) return null;
       return (a.dot(w) - b * d.dot(w)) / den;
     };
+    const fmt = (v) => (Math.abs(v) < 1 ? `${Math.round(v * 100)} cm` : `${v.toFixed(2)} m`);
+    const AXCOL = { x: '#d64545', y: '#2f9e5b', z: '#3f6fd6', free: '#14161c', plane: '#14161c' };
+    const showTip = (e, d, adj) => { // the small window at the cursor: how far, in cm or m, or the typed value
+      const el = tipRef.current, wrap = wrapRef.current;
+      if (!el || !wrap || !e) return;
+      const b = wrap.getBoundingClientRect(), single = ['x', 'y', 'z'].includes(d.ax);
+      const comp = { x: 0, z: 1, y: 2 }[d.ax];
+      const typed = d.typed !== undefined && d.typed !== '';
+      const body = typed ? `<b>${d.typed}</b> ${d.cm ? 'cm' : 'm'}<span class="caret"></span>`
+        : single ? `<b>${fmt(adj[comp])}</b>` : `x ${fmt(adj[0])} · z ${fmt(adj[1])} · h ${fmt(adj[2])}`;
+      el.style.display = 'block';
+      el.style.transform = `translate(${Math.round(e.clientX - b.left + 18)}px, ${Math.round(e.clientY - b.top + 18)}px)`;
+      el.innerHTML = `<i style="background:${AXCOL[d.ax]}"></i>${body}<small>${single ? 'type a value · C cm/m · Enter sets · Esc cancels' : 'pick an arrow to type a value'}</small>`;
+    };
+    t.lim = lim;
+    t.applyAdj = (d, adj) => {
+      const m = clone(S.current.mesh);
+      d.idx.forEach((i, k) => { for (let c = 0; c < 3; c++) m.v[i][c] = d.orig[k][c] + adj[c]; });
+      d.moved = true; d.adj = adj; setMesh(m);
+    };
+    t.typedAdj = (d) => { // an exact distance typed along the arrow's axis replaces the mouse
+      const comp = { x: 0, z: 1, y: 2 }[d.ax];
+      if (comp === undefined) { showTip(t.lastEvent, d, d.adj || [0, 0, 0]); return; }
+      const v = (parseFloat(d.typed) || 0) * (d.cm ? 0.01 : 1), adj = [0, 0, 0];
+      adj[comp] = lim(comp, d.orig[0][comp] + v) - d.orig[0][comp];
+      t.snapMark = null; t.applyAdj(d, adj); showTip(t.lastEvent, d, adj);
+    };
+    t.endDrag = (ok) => {
+      const d = t.drag;
+      if (!d) return;
+      t.drag = null; controls.enabled = true; t.snapMark = null;
+      if (tipRef.current) tipRef.current.style.display = 'none';
+      if (ok && d.moved) commit(S.current.mesh);
+      else if (!ok) { const m = undo.current.pop(); if (m) setMesh(m); } // Esc: back to where it was
+      else undo.current.pop();
+      t.updatePreview();
+    };
+    t.startGrab = () => { // G: grab the selection without holding a button; move the mouse or type a value, click or Enter to set
+      const m = S.current.mesh, e = t.lastEvent;
+      if (!e || t.drag || S.current.tool !== 'move') return;
+      const idx = vertsOf(m, S.current.sel);
+      if (!idx.length) return;
+      setRay(e);
+      const orig = idx.map((i) => [...m.v[i]]);
+      const c3 = orig.reduce((acc, p) => acc.add(P3(p)), new THREE.Vector3()).multiplyScalar(1 / orig.length);
+      const camDir = new THREE.Vector3(); camera.getWorldDirection(camDir);
+      const ax = S.current.axis;
+      const anchor = ax === 'free' ? ray.ray.intersectPlane(new THREE.Plane().setFromNormalAndCoplanarPoint(camDir, c3), new THREE.Vector3()) : axisParam(ray.ray, c3, AXES[ax]);
+      if (anchor === null || anchor === undefined) return;
+      t.drag = { idx, orig, c3, camDir, anchor, ax, moved: false, grab: true };
+      controls.enabled = false; push(); showTip(e, t.drag, [0, 0, 0]);
+    };
     const onDown = (e) => {
       downAt = [e.clientX, e.clientY];
+      if (t.drag?.grab) { t.endDrag(true); downAt = null; return; } // a click confirms a grab
       if (S.current.tool !== 'move' || e.button !== 0) return;
       setRay(e);
       const { sel: cs, mesh: m } = S.current;
@@ -285,11 +344,13 @@ export default function RoofSculptor({ onClose }) {
     };
     const onMove = (e) => {
       setRay(e);
+      t.lastEvent = e;
       const d = t.drag;
       if (!d) {
         if (S.current.tool === 'cut') { t.hover = cutPoint(); updatePreview(); }
         return;
       }
+      if (d.typed) { showTip(e, d, d.adj || [0, 0, 0]); return; } // a typed value wins over the mouse
       let delta = new THREE.Vector3();
       if (d.ax === 'free' || d.ax === 'plane') {
         const p = ray.ray.intersectPlane(new THREE.Plane().setFromNormalAndCoplanarPoint(d.camDir, d.c3), new THREE.Vector3());
@@ -319,16 +380,14 @@ export default function RoofSculptor({ onClose }) {
         for (const c of comps) { const [sv, h] = snapComp(c, first[c] + dp[c], d.idx); const v = lim(c, active ? sv : first[c] + dp[c]); adj[c] = v - first[c]; if (h && active) how = h; }
       }
       setNote(how ? `snapped to ${how}` : '');
-      const m = clone(S.current.mesh);
-      d.idx.forEach((i, k) => { for (let c = 0; c < 3; c++) m.v[i][c] = d.orig[k][c] + adj[c]; });
-      d.moved = true;
-      setMesh(m);
+      t.applyAdj(d, adj);
+      showTip(e, d, adj);
     };
     const onUp = (e) => {
       const d = t.drag;
       if (d) {
-        t.drag = null; controls.enabled = true; t.snapMark = null; t.updatePreview();
-        if (d.moved) commit(S.current.mesh); else undo.current.pop();
+        if (d.grab) return; // a grab ends with a click or Enter
+        t.endDrag(true);
         downAt = null;
         return;
       }
@@ -472,7 +531,15 @@ export default function RoofSculptor({ onClose }) {
   useEffect(() => {
     const onKey = (e) => {
       if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return;
-      const k = e.key.toLowerCase();
+      const k = e.key.toLowerCase(), tt = T.current, dd = tt?.drag;
+      if (dd) { // numeric input, as in Blender: type the distance, Enter sets it, Esc cancels
+        if (/^[0-9.,-]$/.test(e.key)) { dd.typed = (dd.typed || '') + (e.key === ',' ? '.' : e.key); tt.typedAdj(dd); e.preventDefault(); return; }
+        if (e.key === 'Backspace') { dd.typed = (dd.typed || '').slice(0, -1); tt.typedAdj(dd); e.preventDefault(); return; }
+        if (k === 'c') { dd.cm = !dd.cm; if (dd.typed) tt.typedAdj(dd); e.preventDefault(); return; }
+        if (e.key === 'Enter') { e.preventDefault(); tt.endDrag(true); return; }
+        if (e.key === 'Escape') { e.preventDefault(); tt.endDrag(false); return; }
+      }
+      if (k === 'g') { tt?.startGrab(); return; }
       if (k === 'tab' && e.shiftKey) { e.preventDefault(); setSnapCfg((c) => ({ ...c, on: !c.on })); return; } // Shift+Tab toggles snapping
       if ((e.ctrlKey || e.metaKey) && k === 'z') { e.preventDefault(); doUndo(); return; }
       if ((e.ctrlKey || e.metaKey) && k === 'a') { e.preventDefault(); doSelectAll(); return; }
@@ -488,7 +555,7 @@ export default function RoofSculptor({ onClose }) {
 
   const hint = tool === 'cut'
     ? (cutA ? 'click the second point: the vertical plane through both splits every roof face it crosses' : 'click two points on the roof to draw a splitting plane')
-    : `${MODES.find((m) => m[0] === mode)[1]} mode: click to select, Ctrl-click to add or remove, then drag the gumball (arrows: one axis, squares: a plane, white ball: free)`;
+    : `${MODES.find((m) => m[0] === mode)[1]} mode: click to select, Ctrl-click to add or remove, then drag the gumball (arrows: one axis, squares: a plane, white ball: free), or press G and type a distance`;
 
   return (
     <div className="card sculpt">
@@ -561,7 +628,10 @@ export default function RoofSculptor({ onClose }) {
           </label>
         ))}
       </div>
-      <div ref={mount} className="scene3d" style={{ background: '#fff' }} />
+      <div ref={wrapRef} style={{ position: 'relative' }}>
+        <div ref={mount} className="scene3d" style={{ background: '#fff' }} />
+        <div ref={tipRef} className="dragtip" style={{ display: 'none' }} />
+      </div>
       <p className="hint">Heights count for the usable area only where the roof is 1 m or higher (half) and 2 m or higher (full). The numbers on the right follow the sculpted roof. The walk-through still builds the automatic roof.</p>
     </div>
   );
