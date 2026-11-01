@@ -221,3 +221,9 @@ table.params tr.own .layer { color: var(--accent); }
 .walktip .ly em { margin-left: auto; font-style: normal; color: #aeb8a8; }
 .walkenter { position: absolute; right: 16px; bottom: 16px; z-index: 5; font-family: var(--display); text-transform: uppercase; letter-spacing: 0.05em; font-size: 14px; padding: 12px 20px; background: #ff4d2e; color: #fff; border: 3px solid #fff; cursor: pointer; }
 .walkenter:hover { background: #fff; color: #0f1217; }
+
+.facebar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 8px 12px; margin-bottom: 8px; background: #fff; border: 3px solid var(--ink); border-left: 8px solid var(--hot); animation: rise 0.3s both; }
+.facebar span { color: var(--muted); font-size: 13px; }
+.facebar label { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+.facebar output { min-width: 4.5em; text-align: right; font-variant-numeric: tabular-nums; color: var(--ink); }
+.facehint { margin: 0 0 8px; }
