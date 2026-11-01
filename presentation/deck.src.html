@@ -41,6 +41,7 @@ img.shot { display: block; border: 4px solid #fff; box-shadow: 14px 14px 0 var(-
 .row .track { height: 38px; background: rgba(255,255,255,.1); }
 .slide:not(.dark) .row .track { background: var(--line); }
 .node { position: absolute; padding: 18px 30px; font-weight: 900; font-size: 38px; text-transform: uppercase; border: 4px solid var(--ink); background: #fff; }
+{{AI_SLIDES_CSS}}
 </style>
 
 <div id="stage">
@@ -143,6 +144,20 @@ img.shot { display: block; border: 4px solid #fff; box-shadow: 14px 14px 0 var(-
   <svg class="abs" id="layers" style="left: 1060px; top: 300px" width="770" height="740" viewBox="0 0 770 740"></svg>
   <p class="abs mute" style="left: 1060px; top: 1010px; font-size: 24px; font-weight: 700">Typical build-up, a rule of thumb, not measured.</p>
 </section>
+
+<!-- 9b roof sculpture -->
+<section class="slide dark" data-step="4" id="s9b">
+  <div class="tag">Roof sculptor</div>
+  <h2 class="pop" style="font-size: 88px">Shape the roof, watch the floor change</h2>
+  <svg class="abs" id="sculpt" style="left: 60px; top: 300px" width="1100" height="780" viewBox="0 0 1100 780"></svg>
+  <div class="abs" id="sculptsteps" style="left: 1200px; top: 320px; width: 640px; display: grid; gap: 22px"></div>
+  <div class="abs" style="left: 1200px; top: 930px; width: 640px">
+    <div style="display:flex;justify-content:space-between;font-weight:800;font-size:30px"><span>Usable floor</span><b id="sculptpct" style="font-size:64px;line-height:1">0 %</b></div>
+    <div style="height:34px;background:rgba(255,255,255,.12);margin-top:10px"><div id="sculptbar" style="height:100%;width:0;background:#2f7d4f"></div></div>
+  </div>
+</section>
+
+{{AI_SLIDES_HTML}}
 
 <!-- 10 AI -->
 <section class="slide" data-step="4" id="s10">
@@ -339,6 +354,64 @@ $('#zreplay').addEventListener('click', (e) => { e.stopPropagation(); zoomPlay()
   box.style.gridTemplateColumns = 'repeat(8, 120px)';
 }
 
+/* ---------- slide 9b: roof sculpture, drawn and animated from the same rule the app uses (full above 2 m, half from 1 to 2 m) */
+const SC = (() => {
+  const svg = $('#sculpt'), W = 8, D = 10, KN = 1, K = 62, OX = 640, OY = 330, C30 = Math.cos(Math.PI / 6), S30 = Math.sin(Math.PI / 6);
+  const iso = (x, y, h) => [OX + (x - y) * C30 * K, OY + (x + y) * S30 * K - h * K];
+  const pts = (arr) => arr.map((p) => iso(...p).map((v) => v.toFixed(1)).join(',')).join(' ');
+  const g = {}; ['ground', 'left', 'right', 'gable', 'wallx', 'wally', 'dsideX', 'dsideY', 'dtop', 'plane', 'cut1', 'cut2'].forEach((k) => { g[k] = el(k.startsWith('cut') ? 'polyline' : 'polygon', {}, svg); });
+  const arrow = el('g', {}, svg), shaft = el('line', { stroke: '#2f9e5b', 'stroke-width': 10, 'stroke-linecap': 'round' }, arrow), head = el('polygon', { fill: '#2f9e5b' }, arrow), ball = el('circle', { r: 14, fill: '#fff', stroke: '#0f1217', 'stroke-width': 4 }, arrow);
+  const set = (e, attrs) => { for (const k in attrs) e.setAttribute(k, attrs[k]); };
+  set(g.ground, { fill: '#1d232c', stroke: '#3a4350', 'stroke-width': 3 });
+  const E = (t) => (t < 0 ? 0 : t > 1 ? 1 : t * t * (3 - 2 * t));
+  const heightAt = (x, y, R, Td) => { let h = x <= W / 2 ? KN + ((R - KN) * x) / (W / 2) : KN + ((R - KN) * (W - x)) / (W / 2); if (Td > 0 && x >= 5 && x <= 7 && y >= 3 && y <= 6.5) h = Math.max(h, Td); return h; };
+  const pct = (R, Td) => { let a = 0, n = 0; for (let x = 0.125; x < W; x += 0.25) for (let y = 0.125; y < D; y += 0.25) { const h = heightAt(x, y, R, Td); a += h >= 2 ? 1 : h >= 1 ? 0.5 : 0; n++; } return Math.round((100 * a) / n); };
+  const steps = [['M5 19V5M5 5l-4 4M5 5l4 4', 'Pull the ridge up'], ['M3 20L21 4M3 4l6 6', 'Cut with a plane'], ['M4 20h16M8 14V6h8v8', 'Extrude a dormer'], ['M4 20h4v-6H4zM10 20h4V8h-4zM16 20h4V4h-4z', 'Floor gained']];
+  const box = $('#sculptsteps');
+  steps.forEach(([d, label], i) => { const row = document.createElement('div'); row.className = 'pop'; row.style.cssText = `--i:${2 + i * .4};display:flex;align-items:center;gap:22px;padding:16px 22px;border:4px solid #fff;font-weight:800;font-size:38px;transition:.3s`; row.innerHTML = `<svg width="54" height="54" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="${d}"/></svg>${label}`; box.appendChild(row); });
+  let raf = 0, t0 = 0;
+  const LOOP = 13;
+  function frame(now) {
+    const t = ((now - t0) / 1000) % LOOP;
+    const rise = E((t - 0.6) / 2.2) * 1.2 - E((t - 11.6) / 1.2) * 1.2;            // ridge: 3.2 -> 4.4 m
+    const R = 3.2 + rise;
+    const cutY = E((t - 3.6) / 2.4) * 5 * (t < 11.6 ? 1 : 1 - E((t - 11.6) / 1.2)); // splitting plane sweeps along the house
+    const dorm = (E((t - 6.6) / 2.2) - E((t - 11.6) / 1.2)) * 1.5;                   // dormer lifts out of the slope
+    const Td = dorm > 0.01 ? heightAt(5, 5, R, 0) + dorm : 0;
+    const phase = t < 3.2 ? 0 : t < 6.4 ? 1 : t < 9.6 ? 2 : 3;
+    // faces, back to front
+    set(g.ground, { points: pts([[-1.5, -1.5, 0], [W + 1.5, -1.5, 0], [W + 1.5, D + 1.5, 0], [-1.5, D + 1.5, 0]]) });
+    set(g.left, { points: pts([[0, 0, KN], [W / 2, 0, R], [W / 2, D, R], [0, D, KN]]), fill: '#c4452c', stroke: '#0f1217', 'stroke-width': 4, 'stroke-linejoin': 'round' });
+    set(g.right, { points: pts([[W / 2, 0, R], [W, 0, KN], [W, D, KN], [W / 2, D, R]]), fill: '#ff6a47', stroke: '#0f1217', 'stroke-width': 4, 'stroke-linejoin': 'round' });
+    set(g.gable, { points: pts([[0, D, KN], [W, D, KN], [W / 2, D, R]]), fill: '#e9e6df', stroke: '#0f1217', 'stroke-width': 4, 'stroke-linejoin': 'round' });
+    set(g.wallx, { points: pts([[W, 0, 0], [W, D, 0], [W, D, KN], [W, 0, KN]]), fill: '#cfcac0', stroke: '#0f1217', 'stroke-width': 4 });
+    set(g.wally, { points: pts([[0, D, 0], [W, D, 0], [W, D, KN], [0, D, KN]]), fill: '#dcd8cf', stroke: '#0f1217', 'stroke-width': 4 });
+    if (Td > 0) {
+      const h5 = heightAt(5, 5, R, 0), h7 = heightAt(7, 5, R, 0);
+      set(g.dsideX, { points: pts([[7, 3, h7], [7, 6.5, h7], [7, 6.5, Td], [7, 3, Td]]), fill: '#e9e6df', stroke: '#0f1217', 'stroke-width': 4 });
+      set(g.dsideY, { points: pts([[5, 6.5, h5], [7, 6.5, h7], [7, 6.5, Td], [5, 6.5, Td]]), fill: '#f4f1ea', stroke: '#0f1217', 'stroke-width': 4 });
+      set(g.dtop, { points: pts([[5, 3, Td], [7, 3, Td], [7, 6.5, Td], [5, 6.5, Td]]), fill: '#ff8a6c', stroke: '#0f1217', 'stroke-width': 4, 'stroke-linejoin': 'round' });
+    } else ['dsideX', 'dsideY', 'dtop'].forEach((k) => set(g[k], { points: '' }));
+    if (cutY > 0.02) {
+      set(g.plane, { points: pts([[-0.6, cutY, 0], [W + 0.6, cutY, 0], [W + 0.6, cutY, R + 1.2], [-0.6, cutY, R + 1.2]]), fill: 'rgba(255,197,51,.22)', stroke: '#ffc533', 'stroke-width': 3, 'stroke-dasharray': '14 10' });
+      set(g.cut1, { points: pts([[0, cutY, KN], [W / 2, cutY, R], [W, cutY, KN]]), fill: 'none', stroke: '#ffc533', 'stroke-width': 9, 'stroke-linejoin': 'round' });
+    } else { set(g.plane, { points: '' }); set(g.cut1, { points: '' }); }
+    set(g.cut2, { points: '' });
+    // the gumball arrow follows what is being edited
+    const at = phase === 0 ? [W / 2, D, R] : phase === 2 ? [6, 4.75, Td || heightAt(6, 4.75, R, 0)] : null;
+    if (at && (phase === 0 || Td > 0)) {
+      const [ax, ay] = iso(...at); set(shaft, { x1: ax, y1: ay, x2: ax, y2: ay - 120 }); set(head, { points: `${ax - 20},${ay - 118} ${ax + 20},${ay - 118} ${ax},${ay - 156}` }); set(ball, { cx: ax, cy: ay }); arrow.setAttribute('opacity', 1);
+    } else arrow.setAttribute('opacity', 0);
+    const p = pct(R, Td);
+    $('#sculptpct').textContent = p + ' %'; $('#sculptbar').style.width = p + '%';
+    [...box.children].forEach((row, i) => { row.style.background = i === phase ? '#ff4d2e' : 'transparent'; row.style.color = '#fff'; });
+    raf = requestAnimationFrame(frame);
+  }
+  return { start() { cancelAnimationFrame(raf); t0 = performance.now(); raf = requestAnimationFrame(frame); }, stop() { cancelAnimationFrame(raf); } };
+})();
+
+{{AI_SLIDES_JS}}
+
 /* ---------- navigation */
 const slides = [...stage.querySelectorAll('.slide')], STEPS = ['Question', 'Hypothesis', 'Data', 'Evidence', 'Method', 'Limits', 'Next'];
 const mbox = $('#method'); STEPS.forEach((s, i) => { const b = document.createElement('button'); b.textContent = s; b.onclick = (e) => { e.stopPropagation(); const j = slides.findIndex((x) => +x.dataset.step === i); if (j >= 0) go(j); }; mbox.appendChild(b); });
@@ -352,6 +425,8 @@ function go(n) {
   history.replaceState(null, '', '#' + (n + 1));
   slides[n].querySelectorAll('.bar').forEach((b) => { b.style.width = '0'; b.style.transition = 'none'; void b.offsetWidth; b.style.transition = 'width 1.6s cubic-bezier(.2,.8,.2,1)'; setTimeout(() => (b.style.width = b.dataset.w + '%'), 300 + Math.random() * 400); });
   if (slides[n].id === 's4') zoomPlay(); else run++;
+  if (slides[n].id === 's9b') SC.start(); else SC.stop();
+  if (AIV.has(slides[n].id)) AIV.play(slides[n].id); else AIV.stop();
   if (slides[n].id === 's9') { window.explode(false); setTimeout(() => window.explode(true), 900); }
 }
 document.addEventListener('keydown', (e) => { if (['ArrowRight', 'PageDown', ' ', 'Enter'].includes(e.key)) { e.preventDefault(); go(cur + 1); } if (['ArrowLeft', 'PageUp', 'Backspace'].includes(e.key)) { e.preventDefault(); go(cur - 1); } if (e.key === 'Home') go(0); if (e.key === 'End') go(slides.length - 1); });

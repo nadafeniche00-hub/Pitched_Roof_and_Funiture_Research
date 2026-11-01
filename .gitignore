@@ -6,3 +6,9 @@ server/data/
 pipeline/data/
 
 server/.env
+
+# generated deck builds (rebuilt by presentation/build.mjs and build-ai.mjs)
+presentation/deck.html
+presentation/deck.fragment.html
+presentation/ai-deck.html
+presentation/ai-deck.fragment.html

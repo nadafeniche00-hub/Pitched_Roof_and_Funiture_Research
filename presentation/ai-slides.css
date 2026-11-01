@@ -1,0 +1,16 @@
+/* AI helper slides (3) of the pitch deck */
+.aicard { background: #fff; color: #14161c; border: 5px solid #14161c; box-shadow: 12px 12px 0 var(--ai-sh, #14161c); }
+.dark .aicard { --ai-sh: #ff4d2e; }
+.aisv { transform-box: fill-box; transform-origin: center; }
+.aibob { animation: aibob 3.2s ease-in-out infinite; }
+.aieye { transform-box: fill-box; transform-origin: center; animation: aiblink 4.5s infinite; }
+.aipupil { animation: ailook 6s ease-in-out infinite; }
+.aicaret { display: inline-block; width: 5px; height: 38px; background: currentColor; margin-left: 4px; vertical-align: -6px; animation: aiblinkc 1s steps(1) infinite; }
+.aidots i { display: inline-block; width: 18px; height: 18px; border-radius: 50%; background: currentColor; margin-right: 8px; animation: aibounce .9s ease-in-out infinite; }
+.aidots i:nth-child(2) { animation-delay: .15s; } .aidots i:nth-child(3) { animation-delay: .3s; }
+.aichip { display: inline-flex; align-items: center; gap: 10px; padding: 10px 20px; border: 4px solid #14161c; background: #fff; color: #14161c; border-radius: 999px; font-weight: 800; font-size: 26px; margin: 0 12px 12px 0; }
+@keyframes aibob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-14px); } }
+@keyframes aiblink { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(.1); } }
+@keyframes ailook { 0%, 100% { transform: translateX(0); } 30% { transform: translateX(7px); } 65% { transform: translateX(-6px); } }
+@keyframes aiblinkc { 50% { opacity: 0; } }
+@keyframes aibounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-14px); } }

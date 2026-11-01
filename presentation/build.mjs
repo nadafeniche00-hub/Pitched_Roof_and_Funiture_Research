@@ -14,6 +14,9 @@ const keep = ['python','pytorch','huggingface','nvidia','apachespark','apacheair
 const L = Object.fromEntries(keep.filter((k) => logos[k]).map((k) => [k, logos[k]]));
 const J = (o) => JSON.stringify(o).replace(/</g, '\u003c');
 h = h.replace('{{LOGOS}}', () => J(L)).replace('{{STATES}}', () => J(states)).replace('{{DETMOLD}}', () => J(D)).replace('{{SUM}}', () => J(SUM)).replace('{{AI}}', () => J(ai));
+h = h.replace('{{AI_SLIDES_CSS}}', () => R('./ai-slides.css').toString('utf8')).replace('{{AI_SLIDES_HTML}}', () => R('./ai-slides.html').toString('utf8')).replace('{{AI_SLIDES_JS}}', () => R('./ai-slides.js').toString('utf8'));
+const png = (n) => 'data:image/png;base64,' + R('./img/' + n).toString('base64');
+h = h.replace(/\{\{AI_PLAN_IMG\}\}/g, () => png('ai_test_plan.png')).replace(/\{\{AI_ROOF_IMG\}\}/g, () => png('ai_test_roof.png'));
 h = h.replace(/\{\{IMG_(\w+)\}\}/g, (_, n) => img(n));
 const HEAD = '</title><meta name="claude:viewport-fit-sides" content="cover"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800;900&display=swap">';
 fs.writeFileSync(new URL('./deck.fragment.html', import.meta.url), h.replace('</title>', () => HEAD));
