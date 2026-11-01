@@ -231,3 +231,10 @@ table.params tr.own .layer { color: var(--accent); }
 .sculptbar .seg { display: inline-flex; gap: 0; } .sculptbar .seg button { border-radius: 0; margin-left: -3px; }
 .sculptbar .seg button.primary { position: relative; z-index: 1; }
 .snapnote { color: var(--hot); font-weight: 600; font-size: 12px; }
+
+.sculptbar .seg button .ico, .ib .ico { display: block; margin: 0 auto; }
+.patterns .seg button { display: grid; justify-items: center; gap: 0; padding: 6px 10px; min-width: 64px; }
+.patterns .cap { font-size: 11px; font-weight: 600; opacity: 0.85; }
+.reading { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+.reading b { color: var(--ink); font-size: 15px; } .reading em { font-style: normal; color: var(--hot); }
+.ib { display: inline-flex; align-items: center; gap: 6px; padding: 6px 9px; } .ib .cap { font-size: 12px; font-weight: 600; }

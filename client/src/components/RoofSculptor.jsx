@@ -5,6 +5,9 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { autoMesh, cutMesh, splitEdge } from '@shared/roofMesh.js';
 import { roomActions } from '../store/roomSlice.js';
 import { heatColor } from './PlanView.jsx';
+import { Icon } from './Icon.jsx';
+import { PATTERNS, patternMesh, recognizeRoof } from '@shared/roofLibrary.js';
+import { nationalShare, coverage, pitchPercentile, TOTAL, SURVEYED } from '../lib/roofStats.js';
 
 // Roof sculptor, after the Editable Poly of 3ds Max: sub-object modes (vertex 1, edge 2, polygon 4, element 5), Ctrl-click to add to or
 // remove from the selection, a gumball (arrows: one axis, squares: a plane, ball: free) that moves the whole selection with snapping,
@@ -127,6 +130,9 @@ export default function RoofSculptor({ onClose }) {
   const push = () => { undo.current.push(clone(S.current.mesh)); if (undo.current.length > 60) undo.current.shift(); };
   const apply = (m, nextSel = EMPTY) => { push(); setMesh(m); commit(m); setSel(nextSel); };
   const count = sel.vs.length + sel.es.length + sel.ts.length;
+  const reading = recognizeRoof(mesh); // which pattern this roof is, from its planes
+  const known = PATTERNS.find((p) => p.id === reading.id);
+  const mainPitch = reading.pitches.length ? Math.max(...reading.pitches) : 0;
 
   // the automatic roof changed (pitch, knee wall, width or depth edited in the side panel): start again from it
   useEffect(() => { if (!room.roof) { setMesh(autoMesh(room)); setSel(EMPTY); undo.current = []; } }, [room.roof, room.width, room.depth, room.pitch, room.kneeWall]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -446,6 +452,22 @@ export default function RoofSculptor({ onClose }) {
       <div className="cardhead">
         <h2>Roof sculptor <small>{hint}</small></h2>
         <button className="mini primary" onClick={onClose}>done</button>
+      </div>
+      <div className="facebar sculptbar patterns">
+        <span className="seg">
+          {PATTERNS.map((p) => (
+            <button key={p.id} className={reading.id === p.id ? 'primary' : ''} title={`${p.name}: ${p.note}. ${nationalShare(p.osm).toFixed(1)} % of ${(TOTAL / 1e6).toFixed(2)} million tagged homes in Germany`} aria-label={p.name}
+              onClick={() => { apply(patternMesh(room, p.id)); }}>
+              <Icon name={p.id} size={26} /><span className="cap">{nationalShare(p.osm) >= 0.1 ? nationalShare(p.osm).toFixed(nationalShare(p.osm) < 10 ? 1 : 0) + ' %' : '<0.1 %'}</span>
+            </button>
+          ))}
+        </span>
+        <span className="reading" title={`The seven patterns describe ${coverage().toFixed(0)} % of the tagged homes in Germany`}>
+          <Icon name={reading.known ? reading.id : 'custom'} size={22} />
+          <b>{reading.name}</b>{reading.details > 0 && <em> + {reading.details} detail{reading.details > 1 ? 's' : ''}</em>}
+          {known && <span> · {nationalShare(known.osm).toFixed(1)} % of homes</span>}
+          {reading.id === 'gabled' && mainPitch > 0 && <span> · {mainPitch.toFixed(0)}° sits at percentile {pitchPercentile(mainPitch)} of {SURVEYED.n.toLocaleString("en")} surveyed gabled roofs in {SURVEYED.city}</span>}
+        </span>
       </div>
       <div className="facebar sculptbar">
         <b>Sub-object</b>
