@@ -3,7 +3,7 @@ import { IconBtn } from './Icon.jsx';
 
 // Describe the flat in words, or read a sketch: both go to the app server, which uses the team's language and vision model when a key is set
 // (server/.env) and the built-in rules otherwise. The engine that answered is always shown.
-const shrink = (file, max = 1600) => new Promise((resolve, reject) => {
+export const shrink = (file, max = 1600) => new Promise((resolve, reject) => {
   const img = new Image(), url = URL.createObjectURL(file);
   img.onload = () => {
     const k = Math.min(1, max / Math.max(img.width, img.height)), c = document.createElement('canvas');
@@ -53,7 +53,7 @@ export default function AiAssist({ onBrief, onPlan }) {
       <IconBtn icon="camera" label="Read a floor-plan sketch or photo (needs the model server)" cap={busy === 'sketch' ? 'Reading…' : 'Sketch'} disabled={!!busy} onClick={() => file.current?.click()} />
       <input ref={file} type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={(e) => sketch(e.target.files[0])} />
       <span className={`aipill ${status?.llm ? 'on' : ''}`} title={status?.llm ? `Models on the server: ${(status.served || []).join(', ') || 'unknown'}` : status?.hint || status?.error || ''}>
-        {status === null ? '…' : status.llm ? `${status.model} · server` : 'built-in rules'}
+        {status === null ? '…' : (status.llm ? `${status.model} · server` : 'built-in rules') + (status.clip ? ' · CLIP' : '')}
       </span>
       {msg && <p className={msg.ok ? 'hint aimsg' : 'hint bad aimsg'}>{msg.text}</p>}
     </div>

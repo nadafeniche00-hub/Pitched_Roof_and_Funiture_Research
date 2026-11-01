@@ -6,6 +6,7 @@ import { autoMesh, cutMesh, splitEdge } from '@shared/roofMesh.js';
 import { roomActions } from '../store/roomSlice.js';
 import { heatColor } from './PlanView.jsx';
 import { Icon, IconBtn } from './Icon.jsx';
+import { shrink } from './AiAssist.jsx';
 import { PATTERNS, patternMesh, recognizeRoof } from '@shared/roofLibrary.js';
 import { nationalShare, coverage, pitchPercentile, TOTAL, SURVEYED } from '../lib/roofStats.js';
 
@@ -127,6 +128,8 @@ export default function RoofSculptor({ onClose }) {
   const [cutA, setCutA] = useState(null);
   const [note, setNote] = useState('');
   const [amt, setAmt] = useState(0.4);
+  const [photo, setPhoto] = useState(null); // what the vision model said about a roof photo
+  const photoInput = useRef(null);
   const S = useRef({});
   S.current = { mesh, sel, mode, tool, axis, snapCfg, cutA, room };
 
@@ -520,6 +523,20 @@ export default function RoofSculptor({ onClose }) {
   };
   const doSplitEdge = () => { if (!sel.es.length) return; let m = mesh, last = null; for (const [a, b] of sel.es) { const r = splitEdge(m, a, b); m = r.mesh; last = r.index; } apply(m, { ...EMPTY, vs: [last] }); setMode('v'); };
   const doSelectAll = () => setSel(mode === 'v' ? { ...EMPTY, vs: mesh.v.map((_, i) => i) } : mode === 'e' ? { ...EMPTY, es: T.current.edges.map((e) => [...e]) } : { ...EMPTY, ts: mesh.t.map((_, i) => i) });
+  const readPhoto = async (f) => { // a roof photo goes to the vision model; its pattern and pitch build the roof
+    if (!f) return;
+    setPhoto({ busy: true });
+    try {
+      const r = await fetch('/api/ai/roof', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image: await shrink(f, 1280) }) });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error);
+      const p = j.pitch >= 10 ? j.pitch : room.pitch;
+      dispatch(roomActions.setParam({ key: 'pitch', value: p })); // regenerates the automatic roof with the photo's pitch ...
+      apply(patternMesh({ ...room, pitch: p }, j.pattern)); // ... and the pattern is built on it
+      setPhoto({ ok: true, ...j });
+    } catch (e) { setPhoto({ error: e.message }); }
+    if (photoInput.current) photoInput.current.value = '';
+  };
   const doUndo = () => { const m = undo.current.pop(); if (!m) return; redo.current.push(clone(S.current.mesh)); setMesh(m); commit(m); setSel(EMPTY); };
   const doRedo = () => { const m = redo.current.pop(); if (!m) return; undo.current.push(clone(S.current.mesh)); setMesh(m); commit(m); setSel(EMPTY); };
   const doReset = () => { undo.current = []; setSel(EMPTY); setCutA(null); dispatch(roomActions.setParam({ key: 'roof', value: null })); setMesh(autoMesh(room)); };
@@ -575,6 +592,9 @@ export default function RoofSculptor({ onClose }) {
             </button>
           ))}
         </span>
+        <IconBtn icon="camera" label="Read a roof photo with the vision model on the server: it names the pattern and the pitch and builds the roof" cap={photo?.busy ? 'Reading…' : 'Photo'} disabled={!!photo?.busy} onClick={() => photoInput.current?.click()} />
+        <input ref={photoInput} type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={(e) => readPhoto(e.target.files[0])} />
+        {photo && !photo.busy && <span className={photo.error ? 'reading bad' : 'reading'}>{photo.error || `Photo: ${photo.pattern}${photo.pitch ? `, about ${photo.pitch}°` : ""} (${Math.round(photo.confidence * 100)} % sure) · ${photo.model} in ${(photo.ms / 1000).toFixed(1)} s. ${photo.reason}`}</span>}
         <span className="reading" title={`The seven patterns describe ${coverage().toFixed(0)} % of the tagged homes in Germany`}>
           <Icon name={reading.known ? reading.id : 'custom'} size={22} />
           <b>{reading.name}</b>{reading.details > 0 && <em> + {reading.details} detail{reading.details > 1 ? 's' : ''}</em>}

@@ -15,13 +15,16 @@ import { windFor, cachedCells } from './wind.js';
 import { searchProducts, getProduct, facets, searchGlossary, upsertProduct, seed } from './library.js';
 import { scrapeUrl } from './scrape.js';
 import { guessType } from '../shared/furnitureTypes.js';
-import { aiStatus, briefFromText, planFromSketch } from './ai.js';
+import { aiStatus, briefFromText, planFromSketch, roofFromPhoto } from './ai.js';
 
 const app = express();
 app.use(cors());
 // a sketch photo is big: this route takes its own, larger body before the general small limit applies
 app.post('/api/ai/sketch', express.json({ limit: '12mb' }), async (req, res) => {
   try { res.json(await planFromSketch(req.body?.image)); } catch (e) { res.status(e.status || 502).json({ error: e.message || 'sketch reading failed' }); }
+});
+app.post('/api/ai/roof', express.json({ limit: '12mb' }), async (req, res) => {
+  try { res.json(await roofFromPhoto(req.body?.image)); } catch (e) { res.status(e.status || 502).json({ error: e.message || 'roof reading failed' }); }
 });
 app.use(express.json({ limit: '200kb' }));
 app.get('/api/ai/status', async (_q, res) => res.json(await aiStatus()));

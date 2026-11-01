@@ -23,13 +23,35 @@ async function call(path, body, { timeout = 60000, method = 'POST' } = {}) {
 const chat = async (messages, model, timeout) => (await call('/chat/completions', { model, messages, temperature: 0.1, stream: false }, { timeout })).choices?.[0]?.message?.content || '';
 const jsonIn = (text) => { const m = String(text).match(/\{[\s\S]*\}/); if (!m) throw new Error('the model did not answer with JSON'); return JSON.parse(m[0]); };
 
+// CLIP, if a clip service runs (pipeline/services/clip_service.py): fast zero-shot naming of a roof photo, much quicker than asking the chat model
+const clipUrl = () => (process.env.CLIP_URL || 'http://127.0.0.1:5001').replace(//+$/, '');
+async function clipUp() { try { const r = await fetch(clipUrl() + '/health', { signal: AbortSignal.timeout(1200) }); return r.ok ? await r.json() : null; } catch { return null; } }
+const CLIP_LABELS = {
+  gabled: 'a photo of a house with a gabled roof, two slopes meeting at a ridge',
+  hipped: 'a photo of a house with a hipped roof, four sloping sides',
+  'half-hipped': 'a photo of a house with a half-hipped roof, a gable wall with a small hip on top',
+  mansard: 'a photo of a building with a mansard roof, a steep lower slope and a shallow upper slope',
+  pyramidal: 'a photo of a building with a pyramid roof, four slopes meeting at one point',
+  skillion: 'a photo of a house with a single sloped shed roof',
+  flat: 'a photo of a building with a flat roof',
+};
+async function clipRoof(dataUrl) {
+  if (!(await clipUp())) return null;
+  const t0 = Date.now(), ids = Object.keys(CLIP_LABELS);
+  const r = await fetch(clipUrl() + '/classify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image: dataUrl, labels: ids.map((k) => CLIP_LABELS[k]) }), signal: AbortSignal.timeout(30000) });
+  if (!r.ok) return null;
+  const j = await r.json(), ranked = ids.map((id, i) => ({ id, p: j.scores[i] })).sort((a, b) => b.p - a.p);
+  return { pattern: ranked[0].id, pitch: null, confidence: ranked[0].p, scores: ranked.slice(0, 3), reason: ranked.slice(0, 3).map((q) => q.id + ' ' + Math.round(q.p * 100) + ' %').join(', '), model: 'CLIP ' + j.model.split('/').pop() + ' (' + j.device + ')', ms: Date.now() - t0 };
+}
+
 export async function aiStatus() {
-  if (!configured()) return { llm: false, hint: 'Set LLM_URL, LLM_API_KEY and LLM_MODEL in server/.env to use the language model. The built-in rules read the brief meanwhile.' };
+  const clip = await clipUp();
+  if (!configured()) return { llm: false, clip: !!clip, hint: 'Set LLM_URL, LLM_API_KEY and LLM_MODEL in server/.env to use the language model. The built-in rules read the brief meanwhile.' };
   try {
     const list = await call('/models', null, { method: 'GET', timeout: 6000 });
     const ids = (list.data || []).map((m) => m.id);
-    return { llm: true, model: cfg().model, vision: cfg().vision, served: ids.slice(0, 20), modelFound: ids.length ? ids.includes(cfg().model) : null };
-  } catch (e) { return { llm: false, error: e.message, hint: 'The model server did not answer; the built-in rules read the brief meanwhile.' }; }
+    return { llm: true, clip: !!clip, model: cfg().model, vision: cfg().vision, served: ids.slice(0, 20), modelFound: ids.length ? ids.includes(cfg().model) : null };
+  } catch (e) { return { llm: false, clip: !!clip, error: e.message, hint: 'The model server did not answer; the built-in rules read the brief meanwhile.' }; }
 }
 
 const BRIEF_PROMPT = `You turn a short description of a flat into a JSON room brief for an attic. Answer with JSON only, no text around it:
@@ -64,4 +86,22 @@ export async function planFromSketch(dataUrl) {
   const ok = plan?.footprint?.w > 1 && plan?.footprint?.d > 1 && Array.isArray(plan.rooms) && plan.rooms.length;
   if (!ok) throw Object.assign(new Error('The model could not read rooms from that image. A clearer drawing, or a model that accepts images, may help.'), { status: 422 });
   return { plan, engine: 'vision', model: cfg().vision, ms: Date.now() - t0 };
+}
+
+const ROOF_PROMPT = `This is a photo or drawing of a building with a pitched roof. Decide which roof shape it has and answer with JSON only:
+{"pattern":"gabled|hipped|half-hipped|mansard|pyramidal|skillion|flat","pitch_deg":number,"confidence":number between 0 and 1,"reason":"one short sentence"}
+gabled = two slopes and two vertical gable walls; hipped = four slopes; half-hipped = gable wall with a small hip on top (Krueppelwalm); mansard = two slopes per side, the lower one steep;
+pyramidal = four slopes meeting at one point; skillion = a single slope; flat = no visible slope. pitch_deg is your estimate of the main slope in degrees (0 for flat).`;
+const PATTERNS = ['gabled', 'hipped', 'half-hipped', 'mansard', 'pyramidal', 'skillion', 'flat'];
+
+/** Name the roof shape on a photo (the job CLIP did in the notebook) with the server's vision model. */
+export async function roofFromPhoto(dataUrl) {
+  if (/^data:image/(png|jpe?g|webp);base64,/.test(dataUrl || '')) { const c = await clipRoof(dataUrl).catch(() => null); if (c) return c; } // CLIP first, when it runs
+  if (!configured()) throw Object.assign(new Error('Roof reading needs the model server: set LLM_URL, LLM_API_KEY and LLM_MODEL in server/.env.'), { status: 501 });
+  if (!/^data:image\/(png|jpe?g|webp);base64,/.test(dataUrl || '')) throw Object.assign(new Error('Send a PNG, JPEG or WebP image.'), { status: 400 });
+  const t0 = Date.now();
+  const out = await chat([{ role: 'user', content: [{ type: 'text', text: ROOF_PROMPT }, { type: 'image_url', image_url: { url: dataUrl } }] }], cfg().vision, 90000);
+  const j = jsonIn(out);
+  if (!PATTERNS.includes(j.pattern)) throw Object.assign(new Error('The model did not name one of the known roof shapes.'), { status: 422 });
+  return { pattern: j.pattern, pitch: Math.min(75, Math.max(0, Math.round(Number(j.pitch_deg) || 0))), confidence: Math.min(1, Math.max(0, Number(j.confidence) || 0)), reason: String(j.reason || '').slice(0, 200), model: cfg().vision, ms: Date.now() - t0 };
 }
