@@ -4,6 +4,7 @@ import { defOf } from '@shared/params.js';
 import { FRONT, bodySize, doorRect, dormerRect, getGrid, itemRects, stairRect, windowRect } from '@shared/engine.js';
 import { itemsActions } from '../store/itemsSlice.js';
 import { uiActions } from '../store/uiSlice.js';
+import { wallsOf } from '../lib/walls.js';
 
 export const STATUS_COLOR = { ok: '#2f9e5b', warn: '#d99a1c', fail: '#d64545', unplaced: '#8a8f98' };
 const PAD = 0.7;
@@ -35,6 +36,8 @@ export function useHeatImage(room) {
 export default function PlanView() {
   const dispatch = useDispatch();
   const room = useSelector((s) => s.room);
+  const layoutPlan = useSelector((s) => s.layout.plan);
+  const walls = useMemo(() => wallsOf(room, layoutPlan).walls, [room, layoutPlan]);
   const items = useSelector((s) => s.items);
   const result = useSelector((s) => s.analysis.result);
   const { selectedId, showClearances, showHeat, sectionY } = useSelector((s) => s.ui);
@@ -101,6 +104,13 @@ export default function PlanView() {
           </g>
         )}
 
+        {walls.map((w, i) => { // partition walls of the chosen room layout, gaps where the doors are
+          const len = Math.hypot(w.p1[0] - w.p0[0], w.p1[1] - w.p0[1]), ux = (w.p1[0] - w.p0[0]) / len, uy = (w.p1[1] - w.p0[1]) / len;
+          const cuts = [[0, 0], ...[...w.op].sort((p, q) => p[0] - q[0]), [len, len]];
+          const segs = [];
+          for (let k = 0; k < cuts.length - 1; k++) { const a = k ? cuts[k][1] : 0, b = cuts[k + 1][0]; if (b - a > 0.02) segs.push([a, b]); }
+          return segs.map(([a, b], j) => <line key={i + '-' + j} x1={w.p0[0] + ux * a} y1={w.p0[1] + uy * a} x2={w.p0[0] + ux * b} y2={w.p0[1] + uy * b} stroke="var(--ink)" strokeWidth="0.1" strokeLinecap="square" />);
+        })}
         <rect x="0" y="0" width={W} height={D} fill="none" stroke="var(--ink)" strokeWidth="0.08" />
         <line x1="0" x2={W} y1={sectionY} y2={sectionY} stroke="var(--accent)" strokeWidth="0.03" strokeDasharray="0.15 0.1" />
         <text x={W + 0.1} y={sectionY + 0.05} className="lbl" fill="var(--accent)">A</text>

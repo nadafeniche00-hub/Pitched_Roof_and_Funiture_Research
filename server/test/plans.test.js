@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { DEFAULT_ROOM } from '../../shared/engine.js';
+import { DEFAULT_ROOM as SAMPLE } from '../../shared/engine.js';
+// pinned to the small 5 x 7 m attic these tests were written for; the app's sample house is bigger
+const DEFAULT_ROOM = { ...SAMPLE, width: 5, depth: 7, kneeWall: 0.9, pitch: 38, maxHeight: 3, dormers: [{ side: 'left', center: 3.5 }], stair: { x: 2, y: 0.2, w: 0.9, d: 2 }, windows: [{ wall: 'N', pos: 2.5, width: 1 }, { wall: 'S', pos: 2.5, width: 1 }] };
 import { EXAMPLE_BRIEF, countedArea, generatePlans, sanitizeBrief, sharedEdge } from '../../shared/plans.js';
 
 const area = (r) => (r[2] - r[0]) * (r[3] - r[1]);

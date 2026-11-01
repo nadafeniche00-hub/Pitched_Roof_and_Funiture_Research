@@ -6,11 +6,23 @@ import { defOf } from '@shared/params.js';
 import { getGrid, itemRects, stairRect, roofHeight } from '@shared/engine.js';
 import { heatColor, useHeatImage, STATUS_COLOR } from './PlanView.jsx';
 import { sunVectorPlan, sunPath } from '../lib/solar.js';
+import RoofSculptor from './RoofSculptor.jsx';
+import { wallsOf, wallSolid } from '../lib/walls.js';
+import { prismParts } from '../lib/prism.js';
 import { buildFurniture, FRONT_ANGLE, preloadModels } from '../lib/furnitureModels.js';
 
 // plan (x, y) -> three (x, z); height -> y
 
 export function roofGeometry(room) {
+  if (room.roof) { // a sculpted roof: draw its triangles, coloured by height
+    const pos = [], col = [];
+    for (const tri of room.roof.t) for (const i of tri) { const p = room.roof.v[i], c = heatColor(p[2]); pos.push(p[0], p[2], p[1]); col.push(c[0] / 255, c[1] / 255, c[2] / 255); }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+    g.computeVertexNormals();
+    return g;
+  }
   const g = getGrid(room, 0.1);
   const { nx, ny, res, h } = g;
   const tan = Math.tan((room.pitch * Math.PI) / 180);
@@ -66,13 +78,15 @@ export default function Scene3D() {
   const wind = useSelector((s) => s.wind.data);
   const [roofOpacity, setRoofOpacity] = useState(0.35);
   const [showWind, setShowWind] = useState(false);
+  const [sculpt, setSculpt] = useState(false);
   const [ready, setReady] = useState(false);
   const layoutPlan = useSelector((s) => s.layout.plan);
   const [cells, setCells] = useState([]); // the plan, extruded: one prism per room, each with its own height
   const [sel, setSel] = useState(null); // { id, face } the face under the last click
+  const [edited, setEdited] = useState(false); // rooms changed by hand: the layout's doors no longer match
   const fromLayout = () => (layoutPlan?.rooms?.length ? layoutPlan.rooms.map((r) => ({ id: r.id, type: r.type, rect: [...r.rect], h: null })) : [{ id: 'room', type: 'room', rect: [0, 0, room.width, room.depth], h: null }]);
-  useEffect(() => { setCells(fromLayout()); setSel(null); }, [layoutPlan, room.width, room.depth]); // eslint-disable-line react-hooks/exhaustive-deps
-  const hOf = (c) => c.h ?? Math.max(0.5, Math.min(room.maxHeight, roofHeight(room, (c.rect[0] + c.rect[2]) / 2, (c.rect[1] + c.rect[3]) / 2)));
+  useEffect(() => { setCells(fromLayout()); setSel(null); setEdited(false); }, [layoutPlan, room.width, room.depth]); // eslint-disable-line react-hooks/exhaustive-deps
+  const hOf = (c) => c.h ?? room.maxHeight; // the prism stops at the roof or at this height, whichever is lower
   useEffect(() => { let on = true; preloadModels().then(() => on && setReady(true)); return () => { on = false; }; }, []);
 
   useEffect(() => {
@@ -117,7 +131,7 @@ export default function Scene3D() {
       ray.setFromCamera(ndc, camera);
       const hit = ray.intersectObjects(T.current?.rooms || [], false)[0];
       if (!hit) { setSel(null); return; }
-      const n = hit.face.normal, face = Math.abs(n.y) > 0.5 ? 'top' : Math.abs(n.x) > 0.5 ? (n.x > 0 ? 'px' : 'nx') : n.z > 0 ? 'pz' : 'nz';
+      const n = hit.face.normal, face = Math.abs(n.y) > 0.3 ? 'top' : Math.abs(n.x) > 0.5 ? (n.x > 0 ? 'px' : 'nx') : n.z > 0 ? 'pz' : 'nz';
       setSel({ id: hit.object.userData.id, face });
     });
     const ro = new ResizeObserver(resize);
@@ -179,24 +193,33 @@ export default function Scene3D() {
 
     // the plan, extruded: a prism per room (see-through, so the heat map below stays readable); the picked face is highlighted
     t.rooms = [];
-    cells.forEach((c) => {
-      const [x0, z0, x1, z1] = c.rect, h = hOf(c), on = sel?.id === c.id;
-      const hue = ([...c.id].reduce((a, ch) => a + ch.charCodeAt(0), 0) * 47) % 360;
-      const m = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, h, z1 - z0), new THREE.MeshStandardMaterial({ color: new THREE.Color().setHSL(hue / 360, 0.4, 0.8), transparent: true, opacity: on ? 0.8 : 0.5, roughness: 1, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1, emissive: on ? 0x331105 : 0x000000 }));
-      m.position.set((x0 + x1) / 2, h / 2, (z0 + z1) / 2);
+    cells.forEach((c) => { // each prism is cut by the roof: its top follows the roof surface
+      const on = sel?.id === c.id, P = prismParts(room, c.rect, hOf(c));
+      const hue = ([...c.id].reduce((acc, ch) => acc + ch.charCodeAt(0), 0) * 47) % 360;
+      const geo = (arr) => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(arr, 3)); g.computeVertexNormals(); return g; };
+      const m = new THREE.Mesh(geo([...P.top, ...P.px, ...P.nx, ...P.pz, ...P.nz]), new THREE.MeshStandardMaterial({ color: new THREE.Color().setHSL(hue / 360, 0.4, 0.8), transparent: true, opacity: on ? 0.75 : 0.28, roughness: 1, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1, emissive: on ? 0x331105 : 0x000000 }));
       m.userData.id = c.id;
-      m.add(new THREE.LineSegments(new THREE.EdgesGeometry(m.geometry), new THREE.LineBasicMaterial({ color: on ? 0xe8452c : 0x14161c })));
+      m.add(new THREE.LineSegments(new THREE.EdgesGeometry(m.geometry, 35), new THREE.LineBasicMaterial({ color: on ? 0xe8452c : 0x14161c })));
       content.add(m);
       t.rooms.push(m);
-      if (on && sel.face) { // highlight of the selected face
-        const w = x1 - x0, d = z1 - z0, F = sel.face;
-        const g = F === 'top' ? new THREE.PlaneGeometry(w, d).rotateX(-Math.PI / 2) : F === 'px' || F === 'nx' ? new THREE.PlaneGeometry(d, h).rotateY(Math.PI / 2) : new THREE.PlaneGeometry(w, h);
-        const p = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: 0xe8452c, transparent: true, opacity: 0.55, depthTest: false, side: THREE.DoubleSide }));
+      if (on && sel.face) { // the picked face, drawn on top
+        const p = new THREE.Mesh(geo(P[sel.face]), new THREE.MeshBasicMaterial({ color: 0xe8452c, transparent: true, opacity: 0.55, depthTest: false, side: THREE.DoubleSide }));
         p.renderOrder = 10;
-        p.position.set(F === 'px' ? x1 + 0.005 : F === 'nx' ? x0 - 0.005 : (x0 + x1) / 2, F === 'top' ? h + 0.005 : h / 2, F === 'pz' ? z1 + 0.005 : F === 'nz' ? z0 - 0.005 : (z0 + z1) / 2);
         content.add(p);
       }
     });
+
+    // partition walls between the rooms: solid, following the roof, with door openings
+    {
+      const lay = !edited && layoutPlan ? layoutPlan : { rooms: cells, doors: [] };
+      const { walls } = wallsOf(room, lay, { autoDoors: edited || !layoutPlan });
+      const wm = new THREE.MeshStandardMaterial({ color: 0xf4f1ea, roughness: 1, side: THREE.DoubleSide });
+      walls.forEach((w) => {
+        const m = new THREE.Mesh(wallSolid(room, w.p0, w.p1, w.op), wm);
+        m.add(new THREE.LineSegments(new THREE.EdgesGeometry(m.geometry, 40), new THREE.LineBasicMaterial({ color: 0x14161c })));
+        content.add(m);
+      });
+    }
 
     // furniture + clearances
     const byId = Object.fromEntries((result?.items || []).map((r) => [r.id, r]));
@@ -235,7 +258,7 @@ export default function Scene3D() {
     content.add(person);
 
     t.render();
-  }, [room, items, result, heat, roofOpacity, showClearances, ready, cells, sel]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [room, items, result, heat, roofOpacity, showClearances, ready, cells, sel, edited, layoutPlan]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // sun: light direction, marker and the day's path
   useEffect(() => {
@@ -316,36 +339,39 @@ export default function Scene3D() {
     const [x0, z0, x1, z1] = c.rect, W = room.width, D = room.depth;
     return F === 'top' ? [0.5, room.maxHeight] : F === 'px' ? [x0 + 0.5, W] : F === 'nx' ? [0, x1 - 0.5] : F === 'pz' ? [z0 + 0.5, D] : [0, z1 - 0.5];
   };
-  const push = (v) => setCells((cs) => cs.map((c) => {
+  const push = (v) => { setEdited(true); setCells((cs) => cs.map((c) => {
     if (c.id !== sel.id) return c;
     const [lo, hi] = range(c, sel.face), x = Math.max(lo, Math.min(hi, v)), r = [...c.rect];
     if (sel.face === 'top') return { ...c, h: x };
     if (sel.face === 'px') r[2] = x; else if (sel.face === 'nx') r[0] = x; else if (sel.face === 'pz') r[3] = x; else r[1] = x;
     return { ...c, rect: r };
-  }));
-  const split = (axis, k = 0.5) => setCells((cs) => cs.flatMap((c) => {
+  })); };
+  const split = (axis, k = 0.5) => { setEdited(true); setCells((cs) => cs.flatMap((c) => {
     if (c.id !== sel.id) return [c];
     const [x0, z0, x1, z1] = c.rect, h = c.h;
     if (axis === 'x') { const xm = x0 + (x1 - x0) * k; return [{ ...c, id: c.id + 'a', rect: [x0, z0, xm, z1], h }, { ...c, id: c.id + 'b', rect: [xm, z0, x1, z1], h }]; }
     const zm = z0 + (z1 - z0) * k; return [{ ...c, id: c.id + 'a', rect: [x0, z0, x1, zm], h }, { ...c, id: c.id + 'b', rect: [x0, zm, x1, z1], h }];
-  }));
-  const remove = () => { setCells((cs) => cs.filter((c) => c.id !== sel.id)); setSel(null); };
-  const reset = () => { setCells(fromLayout()); setSel(null); };
+  })); };
+  const remove = () => { setEdited(true); setCells((cs) => cs.filter((c) => c.id !== sel.id)); setSel(null); };
+  const reset = () => { setCells(fromLayout()); setSel(null); setEdited(false); };
   const area = cur ? (cur.rect[2] - cur.rect[0]) * (cur.rect[3] - cur.rect[1]) : 0;
 
   return (
-    <div className="card">
+    <>
+    {sculpt && <RoofSculptor onClose={() => { setSculpt(false); setTimeout(() => T.current?.resize(), 50); }} />}
+    <div className="card" style={sculpt ? { display: 'none' } : undefined}>
       <div className="cardhead">
         <h2>3D <small>drag to orbit, scroll to zoom, click a face to edit it</small></h2>
         <label><input type="checkbox" checked={showWind} disabled={!wind || wind.stormDir == null} onChange={(e) => setShowWind(e.target.checked)} /> wind</label>
 
         <label>roof <input type="range" min="0" max="0.9" step="0.05" value={roofOpacity} onChange={(e) => setRoofOpacity(+e.target.value)} aria-label="Roof opacity" /></label>
         <button className="mini" onClick={fit}>reset view</button>
+        <button className="mini primary" onClick={() => setSculpt(true)}>roof sculptor</button>
       </div>
       {cur ? (
         <div className="facebar">
-          <b>{cur.type !== 'room' ? cur.type + ' · ' : ''}{cur.id}</b><span>{FACE[sel.face]} · {area.toFixed(1)} m² · {hOf(cur).toFixed(2)} m high</span>
-          <label>{sel.face === 'top' ? 'height' : 'push / pull'}
+          <b>{cur.type !== 'room' ? cur.type + ' · ' : ''}{cur.id}</b><span>{FACE[sel.face]} · {area.toFixed(1)} m² · {prismParts(room, cur.rect, hOf(cur)).peak.toFixed(2)} m at the highest point</span>
+          <label>{sel.face === 'top' ? 'height limit' : 'push / pull'}
             <input type="range" min={range(cur, sel.face)[0]} max={range(cur, sel.face)[1]} step="0.05" value={val(cur, sel.face)} onChange={(e) => push(+e.target.value)} />
             <output>{val(cur, sel.face).toFixed(2)} m</output>
           </label>
@@ -357,5 +383,6 @@ export default function Scene3D() {
       ) : <p className="hint facehint">Click a room face to select it. Then push or pull it, split the room in two, or delete it.</p>}
       <div ref={mount} className="scene3d" style={{ background: '#fff' }} />
     </div>
+    </>
   );
 }

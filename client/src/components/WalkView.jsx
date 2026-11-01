@@ -8,6 +8,7 @@ import { makeTextures, makeFachwerk, pbr } from '../lib/textures.js';
 import { SparkRenderer } from '@sparkjsdev/spark';
 import { buildSplats } from '../lib/splat.js';
 import { buildForest } from '../lib/forest.js';
+import { wallsOf, wallStrip } from '../lib/walls.js';
 import { partInfo, LAYERS } from '../lib/partInfo.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
@@ -71,56 +72,7 @@ function shellGeometries(room) {
   return { roof: mk(top), walls: mk(wall) };
 }
 
-/** A partition wall that follows the roof: a vertical strip, opened (up to DOOR_H) where a door is. */
-function wallGeometry(room, p0, p1, openings) {
-  const dx = p1[0] - p0[0], dy = p1[1] - p0[1], len = Math.hypot(dx, dy), n = Math.max(1, Math.round(len / 0.1));
-  const pos = [];
-  for (let i = 0; i < n; i++) {
-    const s0 = (i / n) * len, s1 = ((i + 1) / n) * len, sm = (s0 + s1) / 2;
-    const door = openings.some((o) => sm > o[0] && sm < o[1]);
-    const bottom = door ? DOOR_H : 0;
-    const a = [p0[0] + (dx * s0) / len, p0[1] + (dy * s0) / len], b = [p0[0] + (dx * s1) / len, p0[1] + (dy * s1) / len];
-    const ha = Math.min(roofHeight(room, a[0], a[1]), WALL_MAX), hb = Math.min(roofHeight(room, b[0], b[1]), WALL_MAX);
-    if (ha <= bottom && hb <= bottom) continue;
-    const A = Math.max(ha, bottom), B = Math.max(hb, bottom);
-    pos.push(a[0], bottom, a[1], b[0], bottom, b[1], b[0], B, b[1], a[0], bottom, a[1], b[0], B, b[1], a[0], A, a[1]);
-  }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  return addUV(g);
-}
-
-/** Walls of a layout: unique inner edges, their door openings, and thin rectangles for collision. */
-function wallsOf(room, layout) {
-  const W = room.width, D = room.depth, seen = new Set(), walls = [], colliders = [];
-  if (!layout) return { walls, colliders };
-  const onOuter = (c, lim) => Math.abs(c) < 0.02 || Math.abs(c - lim) < 0.02;
-  const add = (vertical, c, a, b) => {
-    if (b - a < 0.05) return;
-    const key = [vertical, c.toFixed(2), a.toFixed(2), b.toFixed(2)].join('|');
-    if (seen.has(key)) return;
-    seen.add(key);
-    const op = layout.doors
-      .filter((d) => d.vertical === vertical && Math.abs((vertical ? d.mid[0] : d.mid[1]) - c) < 0.06)
-      .map((d) => { const m = (vertical ? d.mid[1] : d.mid[0]) - a, w = (d.width || 0.9) / 2; return [m - w, m + w]; })
-      .filter((o) => o[1] > 0 && o[0] < b - a);
-    const p0 = vertical ? [c, a] : [a, c], p1 = vertical ? [c, b] : [b, c];
-    walls.push({ p0, p1, op });
-    let from = 0;
-    for (const o of [...op].sort((x, y) => x[0] - y[0]).concat([[b - a, b - a]])) {
-      if (o[0] - from > 0.02) { const s = a + from, e = a + o[0]; colliders.push(vertical ? [c - 0.05, s, c + 0.05, e] : [s, c - 0.05, e, c + 0.05]); }
-      from = Math.max(from, o[1]);
-    }
-  };
-  for (const r of layout.rooms) {
-    const [x0, y0, x1, y1] = r.rect;
-    if (!onOuter(y0, D)) add(false, y0, x0, x1);
-    if (!onOuter(y1, D)) add(false, y1, x0, x1);
-    if (!onOuter(x0, W)) add(true, x0, y0, y1);
-    if (!onOuter(x1, W)) add(true, x1, y0, y1);
-  }
-  return { walls, colliders };
-}
+const wallGeometry = (room, p0, p1, openings) => addUV(wallStrip(room, p0, p1, openings));
 
 const hitRect = (x, z, r, c) => {
   const dx = Math.max(c[0] - x, 0, x - c[2]), dz = Math.max(c[1] - z, 0, z - c[3]);

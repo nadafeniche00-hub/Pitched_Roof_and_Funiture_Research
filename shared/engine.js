@@ -6,6 +6,7 @@
 import { CATALOG } from './catalog.js';
 import { defOf, resolveDormer, DORMER_DEFAULTS, DORMER_FIELDS } from './params.js';
 
+import { meshHeight, sanitizeMesh } from './roofMesh.js';
 const EPS = 1e-6;
 
 export const DEFAULT_RULES = {
@@ -21,16 +22,16 @@ export const DEFAULT_RULES = {
 };
 
 export const DEFAULT_ROOM = {
-  width: 5.0,
-  depth: 7.0,
-  kneeWall: 0.9,
-  pitch: 38,
-  maxHeight: 3.0, // flat collar-tie ceiling
+  width: 8.0, // a human-sized attic: ridge 5 m above the attic floor (1.0 m knee wall + 45 degrees over half the width)
+  depth: 10.0,
+  kneeWall: 1.0,
+  pitch: 45,
+  maxHeight: 5.5, // flat collar-tie ceiling, above the ridge so it does not clip the sample roof
   dormerDefaults: { ...DORMER_DEFAULTS }, // inherited by every dormer that does not set its own value
-  dormers: [{ side: 'left', center: 3.5 }],
-  stair: { x: 2.0, y: 0.2, w: 0.9, d: 2.0 },
+  dormers: [{ side: 'left', center: 5 }],
+  stair: { x: 3.55, y: 0.3, w: 0.9, d: 2.4 },
   doors: [],
-  windows: [{ wall: 'N', pos: 2.5, width: 1.0 }, { wall: 'S', pos: 2.5, width: 1.0 }],
+  windows: [{ wall: 'N', pos: 4, width: 1.2 }, { wall: 'S', pos: 4, width: 1.2 }],
 };
 
 // where the back of a piece may stand: against the slope side (x = 0 / W), a gable wall (y = 0 / D), any wall, or free-standing
@@ -43,7 +44,9 @@ export function sanitizeRoom(r = {}) {
   const width = clamp(r.width, 2, 12, D.width);
   const depth = clamp(r.depth, 2, 14, D.depth);
   const wall = (w) => (['N', 'S', 'E', 'W'].includes(w) ? w : 'N');
+  const roof = sanitizeMesh(r.roof, width, depth); // an edited roof mesh, if any
   return {
+    ...(roof ? { roof } : {}),
     width,
     depth,
     kneeWall: clamp(r.kneeWall, 0, 2.5, D.kneeWall),
@@ -196,7 +199,7 @@ export function stairRect(room) {
 /** Roof height at (x, y) - analytic, used for the section view and tests. */
 export function roofHeight(room, x, y) {
   const tan = Math.tan((room.pitch * Math.PI) / 180);
-  let hh = room.kneeWall + tan * Math.min(x, room.width - x);
+  let hh = room.roof ? meshHeight(room.roof, x, y) : room.kneeWall + tan * Math.min(x, room.width - x); // a sculpted roof mesh overrides the pitch
   for (const d of room.dormers) {
     const r = dormerRect(room, d);
     if (x >= r[0] && x <= r[2] && y >= r[1] && y <= r[3]) hh = Math.max(hh, resolveDormer(room, d).height);
@@ -230,11 +233,12 @@ export function buildGrid(room, res = 0.05) {
   const g = { nx, ny, res, h: new Float32Array(n), stair: new Uint8Array(n), door: new Uint8Array(n), win: new Uint8Array(n) };
   const tan = Math.tan((room.pitch * Math.PI) / 180);
   const dorms = room.dormers.map((d) => ({ r: dormerRect(room, d), h: resolveDormer(room, d).height }));
+  const custom = room.roof || null;
   for (let j = 0; j < ny; j++) {
     const y = (j + 0.5) * res;
     for (let i = 0; i < nx; i++) {
       const x = (i + 0.5) * res;
-      let hh = room.kneeWall + tan * Math.min(x, room.width - x);
+      let hh = custom ? meshHeight(custom, x, y) : room.kneeWall + tan * Math.min(x, room.width - x);
       for (const d of dorms) if (x >= d.r[0] && x <= d.r[2] && y >= d.r[1] && y <= d.r[3]) hh = Math.max(hh, d.h);
       g.h[j * nx + i] = Math.min(hh, room.maxHeight);
     }

@@ -6,7 +6,11 @@ const slice = createSlice({
   name: 'room',
   initialState: DEFAULT_ROOM,
   reducers: {
-    setParam: (s, { payload: { key, value } }) => { s[key] = value; },
+    setParam: (s, { payload: { key, value } }) => {
+      s[key] = value;
+      if (['width', 'depth', 'pitch', 'kneeWall'].includes(key)) delete s.roof; // changing the automatic roof's parameters regenerates it
+      if (key === 'roof' && !value) delete s.roof;
+    },
     patchDormer: (s, { payload: { i, patch } }) => { Object.assign(s.dormers[i], patch); },
     addDormer: (s) => { s.dormers.push({ side: 'right', center: s.depth / 2 }); }, // inherits width / depth / height
     resetDormerField: (s, { payload: { i, key } }) => { delete s.dormers[i][key]; },
