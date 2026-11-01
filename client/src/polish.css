@@ -1,0 +1,55 @@
+/* Polish layer: entrance motion, hover and press feedback, animated bars. Loaded last; every effect is off for people who ask for less motion. */
+:root { --ease: cubic-bezier(0.2, 0.9, 0.25, 1.15); }
+html { scroll-behavior: smooth; }
+body { background: linear-gradient(180deg, #ffffff 0%, #f6f4ee 100%) fixed; }
+
+@keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes slideIn { from { opacity: 0; transform: translateX(-16px); } to { opacity: 1; transform: none; } }
+@keyframes slideInR { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }
+@keyframes pulseRing { 0% { box-shadow: 0 0 0 0 rgba(232, 69, 44, 0.45); } 100% { box-shadow: 0 0 0 14px rgba(232, 69, 44, 0); } }
+@keyframes shimmer { from { background-position: -200% 0; } to { background-position: 200% 0; } }
+@keyframes grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+.toolbar { animation: rise 0.5s var(--ease) both; }
+.left { animation: slideIn 0.6s var(--ease) 0.08s both; }
+.right { animation: slideInR 0.6s var(--ease) 0.12s both; }
+.center > * { animation: rise 0.55s var(--ease) both; }
+.center > *:nth-child(2) { animation-delay: 0.08s; } .center > *:nth-child(3) { animation-delay: 0.16s; } .center > *:nth-child(4) { animation-delay: 0.24s; }
+.panel section { animation: rise 0.5s var(--ease) both; }
+.panel section:nth-child(2) { animation-delay: 0.05s; } .panel section:nth-child(3) { animation-delay: 0.1s; } .panel section:nth-child(4) { animation-delay: 0.15s; }
+.panel section:nth-child(5) { animation-delay: 0.2s; } .panel section:nth-child(n+6) { animation-delay: 0.25s; }
+
+/* cards and buttons feel physical */
+.card { transition: transform 0.25s var(--ease), box-shadow 0.25s ease; }
+.card:hover { transform: translateY(-2px); box-shadow: 0 10px 26px rgba(20, 22, 28, 0.12); }
+button { transition: transform 0.15s var(--ease), background-color 0.15s, border-color 0.15s, box-shadow 0.15s, color 0.15s; }
+button:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 0 var(--ink); }
+button:active:not(:disabled) { transform: translateY(1px); box-shadow: none; }
+button.primary { background: linear-gradient(110deg, var(--accent) 30%, #3a3f4c 50%, var(--accent) 70%) 0 0 / 220% 100%; }
+button.primary:hover:not(:disabled) { animation: shimmer 1.4s linear infinite; box-shadow: 0 4px 0 var(--hot); }
+.workspace-tabs button { position: relative; }
+.workspace-tabs button[aria-pressed='true'], .workspace-tabs button.on, .workspace-tabs button.active { animation: pulseRing 0.7s ease-out 1; }
+
+.walkcard:hover, .card:has(canvas):hover { transform: none; box-shadow: none; } /* no lift while steering a 3D view */
+
+/* bars and rings move into place */
+.track > div, .track > i, .bar { transform-origin: left center; animation: grow 0.9s var(--ease) both; transition: width 0.7s var(--ease), background-color 0.3s; }
+.ring { animation: pulseRing 1.4s ease-out 1 0.4s; }
+.ring span { transition: transform 0.4s var(--ease); }
+.ring:hover span { transform: rotate(8deg) scale(1.06); }
+
+/* plan, 3D and walk canvases fade in; chips and rows react */
+.planSvg, canvas { animation: rise 0.7s var(--ease) both; }
+.chip { transition: transform 0.15s var(--ease), box-shadow 0.15s; }
+.chip:hover { transform: translateX(3px); }
+input[type='range'] { transition: filter 0.15s; } input[type='range']:hover { filter: brightness(1.2); }
+select, input[type='number'], input.name { transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s; }
+select:hover, input[type='number']:hover, input.name:hover { border-color: var(--accent); }
+details > summary { cursor: pointer; transition: color 0.15s; } details > summary:hover { color: var(--hot); }
+.toast { animation: rise 0.35s var(--ease) both; }
+
+/* slim, quiet scrollbars */
+* { scrollbar-width: thin; scrollbar-color: #14161c33 transparent; }
+::-webkit-scrollbar { width: 8px; height: 8px; } ::-webkit-scrollbar-thumb { background: #14161c33; border-radius: 8px; } ::-webkit-scrollbar-thumb:hover { background: #14161c66; }
+
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
