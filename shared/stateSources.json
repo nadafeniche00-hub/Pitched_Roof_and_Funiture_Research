@@ -1,0 +1,179 @@
+{
+ "note": "Per federal state: where its building data can be had. OSM extracts are checked in form (Geofabrik naming); everything else is \"to verify\" until opened. The nationwide route is BKG LoD2-DE (CityGML, about 92 GB as one zip, deliverable per state).",
+ "national": {
+  "lod2": {
+   "name": "LoD2-DE (BKG)",
+   "url": "https://sg.geodatenzentrum.de/web_public/gdz/dokumentation/deu/LoD2-DE.pdf",
+   "status": "to verify",
+   "note": "Germany-wide CityGML from the cadastre, free of charge under the V GeoLänder agreement; terms linked in the BKG documentation; per-state delivery possible."
+  },
+  "osm": {
+   "name": "Geofabrik extracts",
+   "url": "https://download.geofabrik.de/europe/germany.html",
+   "status": "to verify",
+   "note": "One PBF per state, updated daily; ODbL."
+  }
+ },
+ "states": [
+  {
+   "iso": "DE-BW",
+   "name": "Baden-Württemberg",
+   "osm_extract": "https://download.geofabrik.de/europe/germany/baden-wuerttemberg.html",
+   "lod2": {
+    "status": "to verify",
+    "note": "Check the state geoportal or take the state from LoD2-DE.",
+    "url": null
+   }
+  },
+  {
+   "iso": "DE-BY",
+   "name": "Bayern",
+   "osm_extract": "https://download.geofabrik.de/europe/germany/bayern.html",
+   "lod2": {
+    "status": "to verify",
+    "note": "LoD2 download pages at geodaten.bayern.de (Open Data); a format description for LoD-DE v3.1 exists at ldbv.bayern.de.",
+    "url": "https://geodaten.bayern.de/opengeodata/"
+   }
+  },
+  {
+   "iso": "DE-BE",
+   "name": "Berlin",
+   "osm_extract": "https://download.geofabrik.de/europe/germany/berlin.html",
+   "lod2": {
+    "status": "to verify",
+    "note": "Check the state geoportal or take the state from LoD2-DE.",
+    "url": null
+   }
+  },
+  {
+   "iso": "DE-BB",
+   "name": "Brandenburg",
+   "osm_extract": "https://download.geofabrik.de/europe/germany/brandenburg.html",
+   "lod2": {
+    "status": "to verify",
+    "note": "Check the state geoportal or take the state from LoD2-DE.",
+    "url": null
+   }
+  },
+  {
+   "iso": "DE-HB",
+   "name": "Bremen",
+   "osm_extract": "https://download.geofabrik.de/europe/germany/bremen.html",
+   "lod2": {
+    "status": "to verify",
+    "note": "Check the state geoportal or take the state from LoD2-DE.",
+    "url": null
+   }
+  },
+  {
+   "iso": "DE-HH",
+   "name": "Hamburg",
+   "osm_extract": "https://download.geofabrik.de/europe/germany/hamburg.html",
+   "lod2": {
+    "status": "to verify",
+    "note": "Check the state geoportal or take the state from LoD2-DE.",
+    "url": null
+   }
+  },
+  {
+   "iso": "DE-HE",
+   "name": "Hessen",
+   "osm_extract": "https://download.geofabrik.de/europe/germany/hessen.html",
+   "lod2": {
+    "status": "to verify",
+    "note": "Check the state geoportal or take the state from LoD2-DE.",
+    "url": null
+   }
+  },
+  {
+   "iso": "DE-MV",
+   "name": "Mecklenburg-Vorpommern",
+   "osm_extract": "https://download.geofabrik.de/europe/germany/mecklenburg-vorpommern.html",
+   "lod2": {
+    "status": "to verify",
+    "note": "Check the state geoportal or take the state from LoD2-DE.",
+    "url": null
+   }
+  },
+  {
+   "iso": "DE-NI",
+   "name": "Niedersachsen",
+   "osm_extract": "https://download.geofabrik.de/europe/germany/niedersachsen.html",
+   "lod2": {
+    "status": "to verify",
+    "note": "Product and format description of LoD2 published by LGLN.",
+    "url": "https://www.lgln.niedersachsen.de/"
+   }
+  },
+  {
+   "iso": "DE-NW",
+   "name": "Nordrhein-Westfalen",
+   "osm_extract": "https://download.geofabrik.de/europe/germany/nordrhein-westfalen.html",
+   "lod2": {
+    "status": "checked",
+    "note": "Open data tiles of 1 km (CityGML), index at opengeodata.nrw.de; 11 tiles around Detmold analysed.",
+    "url": "https://www.opengeodata.nrw.de/produkte/geobasis/3dg/lod2_gml/"
+   }
+  },
+  {
+   "iso": "DE-RP",
+   "name": "Rheinland-Pfalz",
+   "osm_extract": "https://download.geofabrik.de/europe/germany/rheinland-pfalz.html",
+   "lod2": {
+    "status": "to verify",
+    "note": "Check the state geoportal or take the state from LoD2-DE.",
+    "url": null
+   }
+  },
+  {
+   "iso": "DE-SL",
+   "name": "Saarland",
+   "osm_extract": "https://download.geofabrik.de/europe/germany/saarland.html",
+   "lod2": {
+    "status": "to verify",
+    "note": "Check the state geoportal or take the state from LoD2-DE.",
+    "url": null
+   }
+  },
+  {
+   "iso": "DE-SN",
+   "name": "Sachsen",
+   "osm_extract": "https://download.geofabrik.de/europe/germany/sachsen.html",
+   "lod2": {
+    "status": "to verify",
+    "note": "Check the state geoportal or take the state from LoD2-DE.",
+    "url": null
+   }
+  },
+  {
+   "iso": "DE-ST",
+   "name": "Sachsen-Anhalt",
+   "osm_extract": "https://download.geofabrik.de/europe/germany/sachsen-anhalt.html",
+   "lod2": {
+    "status": "to verify",
+    "note": "Format description of LoD1/LoD2 (2023) published by LVermGeo Sachsen-Anhalt.",
+    "url": "https://www.lvermgeo.sachsen-anhalt.de/"
+   }
+  },
+  {
+   "iso": "DE-SH",
+   "name": "Schleswig-Holstein",
+   "osm_extract": "https://download.geofabrik.de/europe/germany/schleswig-holstein.html",
+   "lod2": {
+    "status": "to verify",
+    "note": "Check the state geoportal or take the state from LoD2-DE.",
+    "url": null
+   }
+  },
+  {
+   "iso": "DE-TH",
+   "name": "Thüringen",
+   "osm_extract": "https://download.geofabrik.de/europe/germany/thueringen.html",
+   "lod2": {
+    "status": "to verify",
+    "note": "Check the state geoportal or take the state from LoD2-DE.",
+    "url": null
+   }
+  }
+ ]
+}

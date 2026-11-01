@@ -9,14 +9,14 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=Silkscreen:wght@400;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=Archivo:wdth,wght@75..125,100..900&display=swap">
 <style>
 /* Layout: a drawing sheet. Header strip with sheet navigation, one slide at a time in the middle, a title block at the foot.
    Colour: ink-blue neutrals; the three height-map tones of the app (rust / ochre / sage) carry all data meaning; blue is the pipeline. */
 :root {
   --bg: #ffffff; --panel: #ffffff; --soft: #ececE6; --ink: #14161c; --muted: #4a4f5c; --line: #14161c;
   --accent: #e8452c; --h0: #c96a5c; --h1: #e8be6e; --h2: #a5d4af; --good: #2a8a52; --bad: #cc3f3f;
-  --display: 'Silkscreen', 'Courier New', monospace;
+  --display: 'Archivo', 'Arial Black', 'Helvetica Neue', Arial, sans-serif;
   --body: 'Chakra Petch', 'Segoe UI', sans-serif;
   --mono: 'Chakra Petch', ui-monospace, Consolas, monospace;
 }
@@ -243,6 +243,18 @@ h1 { font-size: clamp(2rem, 5vw, 3.6rem); } h2 { font-size: clamp(1.4rem, 3vw, 2
 .lodlabels { display: flex; gap: 6px; padding: 4px 4px 0; font-size: 0.66rem; font-family: var(--mono); }
 .lodlabels span { flex: 1; text-align: center; }
 @media (prefers-reduced-motion: reduce) { .lodhist i { transition: none; } }
+
+/* ---- bold type instead of the pixel font */
+h1, h2, h3, .brand, .node .nm, .stat b { font-family: var(--display); font-weight: 900; font-stretch: 112%; text-transform: none; letter-spacing: -0.02em; line-height: 1.02; }
+h1 { font-size: clamp(2.7rem, 6.6vw, 5.2rem); text-wrap: balance; }
+h2 { font-size: clamp(1.8rem, 3.8vw, 2.9rem); text-wrap: balance; }
+h3 { font-size: 1rem; letter-spacing: -0.005em; }
+.brand { font-size: 1.15rem; letter-spacing: -0.01em; }
+h1 mark { background: var(--accent); color: #fff; padding: 0 0.14em; margin-left: -0.04em; box-decoration-break: clone; -webkit-box-decoration-break: clone; box-shadow: 0.07em 0.07em 0 var(--ink); }
+.tcard h3, .aicard h3, .patwrap h3, .panel > h3, .facts2 h3 { text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.74rem; font-stretch: 100%; }
+.stat b { font-size: 2rem; letter-spacing: -0.03em; }
+.detail h3 { font-size: 1.15rem; }
+.mono { letter-spacing: 0.08em; }
 </style>
 
 <div class="deck">
@@ -259,7 +271,7 @@ h1 { font-size: clamp(2rem, 5vw, 3.6rem); } h2 { font-size: clamp(1.4rem, 3vw, 2
         <div class="cols">
           <div style="display:grid;gap:18px">
             <p class="mono">Project plan · 4 Nov 2026 · Nada Feniche</p>
-            <h1>How much of this attic can you stand in?</h1>
+            <h1>How much of this attic can you <mark>stand in?</mark></h1>
             <p class="lede">Under a pitched roof, usability changes across the room. <b>Usable Space</b> measures it, checks whether the furniture fits, and gives a floor-plan generator the feedback it is missing.</p>
             <div class="panel controls">
               <label>Roof pitch <input type="range" id="pitch" min="15" max="70" step="1" value="38" aria-label="Roof pitch"><output id="pitchO"></output></label>
@@ -1145,9 +1157,9 @@ $$('#patSeg button').forEach((b) => b.addEventListener('click', () => { patKind 
 /* ================================================================= toolbox */
 const TOOLS = [{"id":"cubicasa5k","n":"CubiCasa5K","t":"recognise","w":"now","s":"to verify","u":"Segment a plan image into rooms; first real plan data"},{"id":"deepfloorplan","n":"DeepFloorplan (Raster-to-Vector)","t":"recognise","w":"compare","s":"to verify","u":"Comparison against CubiCasa5K"},{"id":"qwen-vl","n":"Qwen-VL class vision-language model","t":"recognise","w":"now","s":"to verify","u":"Fastest route to import a plan; needs a model that accepts images behind the server's vllm"},{"id":"sam","n":"Segment Anything (SAM)","t":"recognise","w":"now","s":"to verify","u":"Cut rooms, walls and the roof outline out of plan images and photos"},{"id":"grounding-dino","n":"Grounding DINO","t":"recognise","w":"now","s":"to verify","u":"Label what SAM cuts out"},{"id":"dinov3","n":"DINOv3","t":"recognise","w":"feb","s":"to verify","u":"Similarity search over plans and roofs"},{"id":"rplan","n":"RPLAN","t":"generate","w":"feb","s":"to verify","u":"Training data of most plan generators; access is restricted"},{"id":"msd","n":"Modified Swiss Dwellings (MSD)","t":"generate","w":"feb","s":"to verify","u":"Plans with circulation, to compare with our access graph"},{"id":"housegan","n":"House-GAN / House-GAN++","t":"generate","w":"compare","s":"to verify","u":"Comparison with our rule-based builder"},{"id":"housediffusion","n":"HouseDiffusion","t":"generate","w":"compare","s":"to verify","u":"Comparison with our rule-based builder"},{"id":"graph2plan","n":"Graph2Plan","t":"generate","w":"compare","s":"to verify","u":"Comparison with our rule-based builder"},{"id":"tell2design","n":"Tell2Design","t":"generate","w":"compare","s":"to verify","u":"Text to plan; reference for an LLM front end"},{"id":"atiss","n":"ATISS","t":"furniture","w":"compare","s":"to verify","u":"Shows what is missing: it knows nothing about slopes"},{"id":"diffuscene","n":"DiffuScene","t":"furniture","w":"compare","s":"to verify","u":"Same comparison as ATISS"},{"id":"nrw-lod2","n":"NRW LoD2 building models","t":"roof","w":"now","s":"to verify","u":"Roof types for the site, including Detmold"},{"id":"roofn3d","n":"RoofN3D","t":"roof","w":"feb","s":"to verify","u":"Roof-type recognition"},{"id":"alkis","n":"ALKIS / AdV GeoInfoDok","t":"site","w":"now","s":"checked","u":"Site and building function attributes"},{"id":"inspire","n":"INSPIRE Buildings 3.0","t":"site","w":"feb","s":"checked","u":"Identifier pattern; building classes"},{"id":"citygml","n":"CityGML 3.0","t":"site","w":"feb","s":"checked","u":"One building, several representations"},{"id":"baunvo","n":"BauNVO and XPlanung","t":"site","w":"feb","s":"checked","u":"What may be built on the chosen site"},{"id":"osm","n":"OpenStreetMap","t":"site","w":"now","s":"to verify","u":"Site context where ALKIS is not at hand"},{"id":"momepy","n":"momepy and spatial signatures","t":"site","w":"feb","s":"checked","u":"Describe the neighbourhood of the site"},{"id":"aat","n":"Getty Art & Architecture Thesaurus","t":"vocab","w":"now","s":"checked","u":"Terms for roofs, rooms and materials, with German labels where they exist"},{"id":"aat-de","n":"AAT-Deutsch","t":"vocab","w":"feb","s":"checked","u":"German labels"},{"id":"fish","n":"FISH thesauri","t":"vocab","w":"feb","s":"checked","u":"Roof and building components"},{"id":"gemet","n":"GEMET","t":"vocab","w":"feb","s":"checked","u":"Urban concepts in German and English"},{"id":"bauo-nrw","n":"Landesbauordnung NRW (BauO NRW)","t":"law","w":"now","s":"to verify","u":"Rules as versioned data; every threshold cited"},{"id":"woflv","n":"Wohnflächenverordnung (WoFlV)","t":"law","w":"now","s":"to verify","u":"Basis of the 100 / 50 / 0 % height rule in the engine"},{"id":"geg","n":"Gebäudeenergiegesetz (GEG)","t":"law","w":"feb","s":"to verify","u":"Later: roof build-up and thickness"},{"id":"airflow","n":"Apache Airflow","t":"infra","w":"now","s":"to verify","u":"Data audit and later model runs as repeatable pipelines"},{"id":"duckdb","n":"DuckDB and Parquet","t":"infra","w":"now","s":"to verify","u":"Catalogue and feature tables without a server"},{"id":"dvc","n":"DVC","t":"infra","w":"feb","s":"to verify","u":"Reproducible datasets"},{"id":"geopandas","n":"GeoPandas","t":"infra","w":"now","s":"to verify","u":"Site, parcels, LoD2 footprints"},{"id":"ifcopenshell","n":"IfcOpenShell","t":"infra","w":"feb","s":"to verify","u":"Bridge to Real2Twin and Revit"},{"id":"vllm","n":"vllm and Open WebUI (team LLM)","t":"infra","w":"now","s":"checked","u":"Explain results and read regulations; ask whether an image model is served"}];
 const TRACKS = {"recognise":"Read a plan image into rooms","generate":"Bubble diagram to plan","roof":"Roof types, shapes and materials","furniture":"Furniture scenes","vocab":"Architecture and urbanism vocabulary","law":"Regulations","site":"Site and urban context","infra":"Workflow and tooling"};
-const SERVER = { sam: 'cached', 'grounding-dino': 'cached', duckdb: 'installed', dvc: 'installed', ifcopenshell: 'installed', geopandas: 'missing', airflow: 'missing', 'qwen-vl': 'class only' };
-const ON_SERVER = ['PyTorch 2.9 (NVIDIA build), transformers 5.21', 'SAM 2.1 tiny, Grounding DINO tiny, Depth Anything V2 small, CLIP base: all run (CLIP was downloaded on 31 Oct)', 'Qwen2.5-VL available as a model class', 'OpenCV 5, scikit-image, trimesh, shapely, networkx, scikit-learn', 'DuckDB 2.0, DVC 3.67, IfcOpenShell 0.9'];
-const MISSING = ['GeoPandas, pyproj, rasterio, momepy, osmnx', 'rdflib (for the vocabularies)', 'diffusers (for texture generation)', 'Apache Airflow (own stack, planned)'];
+const SERVER = { sam: 'cached', 'grounding-dino': 'cached', duckdb: 'installed', dvc: 'installed', ifcopenshell: 'installed', geopandas: 'installed', airflow: 'missing', 'qwen-vl': 'class only' };
+const ON_SERVER = ['PyTorch 2.9 (NVIDIA build), transformers 5.21', 'SAM 2.1 tiny, Grounding DINO tiny, Depth Anything V2 small, CLIP base: all run (CLIP was downloaded on 31 Oct)', 'Qwen2.5-VL available as a model class', 'OpenCV 5, scikit-image, trimesh, shapely, networkx, scikit-learn', 'DuckDB 2.0, DVC 3.67, IfcOpenShell 0.9', 'Installed on 1 Nov: GeoPandas, pyproj, rasterio, momepy, osmnx, rdflib, SPARQLWrapper, diffusers'];
+const MISSING = ['Apache Airflow (own stack on the server, or WSL2 locally after a restart)', 'Per-building LoD2 tables for the other 15 federal states (only Nordrhein-Westfalen downloaded so far)', 'Hosted copies of derived datasets (Zenodo or Hugging Face, planned)'];
 let toolTrack = 'all';
 function drawTools() {
   const tr = ['all', ...Object.keys(TRACKS)];
