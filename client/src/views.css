@@ -219,3 +219,5 @@ table.params tr.own .layer { color: var(--accent); }
 .walktip .ly { justify-content: flex-start; align-items: center; line-height: 1.5; }
 .walktip .ly i { width: 10px; height: 10px; flex: none; }
 .walktip .ly em { margin-left: auto; font-style: normal; color: #aeb8a8; }
+.walkenter { position: absolute; right: 16px; bottom: 16px; z-index: 5; font-family: var(--display); text-transform: uppercase; letter-spacing: 0.05em; font-size: 14px; padding: 12px 20px; background: #ff4d2e; color: #fff; border: 3px solid #fff; cursor: pointer; }
+.walkenter:hover { background: #fff; color: #0f1217; }

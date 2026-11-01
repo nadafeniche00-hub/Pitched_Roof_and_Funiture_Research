@@ -21,8 +21,8 @@ import { VignetteShader } from 'three/examples/jsm/shaders/VignetteShader.js';
 import { RectAreaLightUniformsLib } from 'three/examples/jsm/lights/RectAreaLightUniformsLib.js';
 
 // plan (x, y) -> three (x, z); height -> y. The attic sits on a lower storey (y from -3 to 0) so it reads as a house.
-// look=clean draws solid meshes; the default draws everything as Gaussian splats (Spark) in a misty forest
-const LOOK = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('look') === 'clean' ? 'clean' : 'splat';
+// default: plain extruded solids in flat colours; ?look=splat draws everything as Gaussian splats (Spark) in a misty forest
+const LOOK = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('look') === 'splat' ? 'splat' : 'clean';
 const EYE = 1.65, RADIUS = 0.22, MIN_HEAD = 1.25, WALL_MAX = 2.6, DOOR_H = 2.05, STOREY = 3;
 
 function addUV(geo) {
@@ -145,6 +145,7 @@ export default function WalkView() {
   const layout = useSelector((s) => s.layout.plan);
   const result = useSelector((s) => s.analysis.result);
   const tipRef = useRef(null);
+  const enterBtn = useRef(null);
   const dataRef = useRef({});
   dataRef.current = { room, items, result, layout };
   const [ready, setReady] = useState(false);
@@ -191,7 +192,7 @@ export default function WalkView() {
     composer.addPass(smaa);
     const content = new THREE.Group();
     scene.add(content);
-    const S = { yaw: Math.PI, pitch: 0, x: 0, z: 0, eye: EYE, keys: {}, outside: false, orbit: 0, colliders: [], tick: 0, last: performance.now(), locked: false, drag: false };
+    const S = { yaw: Math.PI, pitch: 0, x: 0, z: 0, eye: EYE, keys: {}, outside: true, auto: true, zoom: 1, elev: 0.28, orbit: 0.6, spawn: [0, 0], colliders: [], tick: 0, last: performance.now(), locked: false, drag: false };
     T.current = { scene, camera, content, S, renderer, composer };
     if (import.meta.env.DEV) window.__walk = T;
 
@@ -208,14 +209,17 @@ export default function WalkView() {
     ro.observe(el);
 
     const look = (dx, dy) => { S.yaw -= dx * 0.0025; S.pitch = Math.max(-1.3, Math.min(1.3, S.pitch - dy * 0.0025)); };
-    const onMove = (e) => { if (S.locked || S.drag) look(e.movementX, e.movementY); };
+    const onMove = (e) => {
+      if (S.outside) { if (S.drag) { S.auto = false; S.orbit -= e.movementX * 0.006; S.elev = Math.max(0.05, Math.min(1.2, S.elev + e.movementY * 0.004)); } return; }
+      if (S.locked || S.drag) look(e.movementX, e.movementY);
+    };
     const onLock = () => { S.locked = document.pointerLockElement === renderer.domElement; };
     const canvas = renderer.domElement;
-    const down = () => { S.drag = true; canvas.focus(); try { canvas.requestPointerLock?.(); } catch { /* the drag still looks around */ } };
+    const down = () => { S.drag = true; canvas.focus(); try { if (!S.outside) canvas.requestPointerLock?.()?.catch?.(() => {}); } catch { /* the drag still looks around */ } };
     const up = () => { S.drag = false; };
     const key = (down) => (e) => {
       if (!['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName) && /^(w|a|s|d|arrowup|arrowdown|arrowleft|arrowright|shift)$/i.test(e.key)) { S.keys[e.key.toLowerCase()] = down; if (down && e.key.startsWith('Arrow')) e.preventDefault(); }
-      if (down && e.key.toLowerCase() === 'v' && e.target === canvas) S.outside = !S.outside;
+      if (down && (e.key.toLowerCase() === 'v' || e.key === 'Enter') && e.target === canvas) { if (S.outside) T.current.enter(); else { S.outside = true; document.exitPointerLock?.(); } }
     };
     const kd = key(true), ku = key(false);
     canvas.addEventListener('mousedown', down);
@@ -268,6 +272,8 @@ export default function WalkView() {
     T.current.explode = () => { X.k += (X.target - X.k) * 0.14; xr.visible = X.k > 0.01; const sp = 0.115; xr.children.forEach((c) => { c.position.z = (c.userData.i - (xr.children.length - 1) / 2) * sp * X.k; }); };
     canvas.addEventListener('keydown', kd);
     window.addEventListener('keyup', ku);
+    canvas.addEventListener('wheel', (e) => { if (S.outside) { e.preventDefault(); S.zoom = Math.max(0.45, Math.min(2.2, S.zoom * (1 + e.deltaY * 0.001))); } }, { passive: false });
+    canvas.addEventListener('dblclick', () => { if (S.outside) T.current.enter(); });
 
     const free = (x, z) => {
       const W = T.current.dims?.W ?? 5, D = T.current.dims?.D ?? 7, rm = T.current.room;
@@ -276,6 +282,7 @@ export default function WalkView() {
       return !S.colliders.some((c) => hitRect(x, z, RADIUS, c));
     };
     T.current.free = free;
+    T.current.enter = () => { [S.x, S.z] = S.spawn; S.yaw = Math.PI; S.pitch = 0; S.outside = false; document.exitPointerLock?.(); canvas.focus(); };
 
     let raf = 0, alive = true;
     const frame = (now) => {
@@ -285,9 +292,9 @@ export default function WalkView() {
       if (!t?.dims) return;
       const { W, D } = t.dims;
       if (S.outside) {
-        S.orbit += dt * 0.18;
-        const r = Math.max(W, D) * 1.5 + 5;
-        camera.position.set(W / 2 + Math.sin(S.orbit) * r, 5.5, D / 2 + Math.cos(S.orbit) * r);
+        if (S.auto) S.orbit += dt * 0.12;
+        const r = (Math.max(W, D) * 1.5 + 5) * S.zoom;
+        camera.position.set(W / 2 + Math.sin(S.orbit) * r, 1.4 + S.elev * r * 0.9, D / 2 + Math.cos(S.orbit) * r);
         camera.lookAt(W / 2, -0.6, D / 2);
       } else {
         const f = (S.keys.w || S.keys.arrowup ? 1 : 0) - (S.keys.s || S.keys.arrowdown ? 1 : 0);
@@ -307,6 +314,7 @@ export default function WalkView() {
       }
       if (++S.tick % 12 === 0 && hud.current) {
         const r = t.layout?.rooms.find((q) => S.x >= q.rect[0] && S.x <= q.rect[2] && S.z >= q.rect[1] && S.z <= q.rect[3]);
+        if (enterBtn.current) enterBtn.current.style.display = S.outside ? 'block' : 'none';
         hud.current.textContent = S.outside ? 'exterior' : r ? `${r.id === 'hall' ? 'Stair hall' : r.type + ' · ' + r.id}  ·  ${r.counted.toFixed(1)} m² usable` : 'roof storey';
       }
       t.explode?.();
@@ -350,13 +358,14 @@ export default function WalkView() {
     const W = room.width, D = room.depth;
     t.dims = { W, D }; t.room = room; t.layout = layout;
     const tx = t.tex || (t.tex = makeTextures());
-    const wallMaps = pbr('wall', 0.5), roofMaps = pbr('roof', 0.7), floorMaps = pbr('floor', 0.5);
-    const coolWall = new THREE.Color(0.9, 0.9, 0.92); // near-neutral: the scanned plaster is beige, so it is cooled a little
+    const plain = LOOK === 'clean'; // plain extrusions: flat colours, no texture maps
+    const wallMaps = plain ? {} : pbr('wall', 0.5), roofMaps = plain ? {} : pbr('roof', 0.7), floorMaps = plain ? {} : pbr('floor', 0.5);
+    const coolWall = plain ? new THREE.Color(0xe9e6df) : new THREE.Color(0.9, 0.9, 0.92); // near-neutral: the scanned plaster is beige, so it is cooled a little
     const plaster = new THREE.MeshStandardMaterial({ ...wallMaps, color: coolWall, roughness: 1, side: THREE.DoubleSide });
-    const fach = t.fach || (t.fach = makeFachwerk());
-    const plasterOut = new THREE.MeshStandardMaterial({ map: fach, roughness: 1, side: THREE.FrontSide });
+    const fach = plain ? null : (t.fach || (t.fach = makeFachwerk()));
+    const plasterOut = new THREE.MeshStandardMaterial(plain ? { color: 0xece9e2, roughness: 1, side: THREE.FrontSide } : { map: fach, roughness: 1, side: THREE.FrontSide });
     const inside = new THREE.MeshStandardMaterial({ ...wallMaps, color: coolWall, roughness: 1, side: THREE.BackSide });
-    const tiles = new THREE.MeshStandardMaterial({ ...roofMaps, color: new THREE.Color(0.88, 0.84, 0.82), roughness: 1, side: THREE.FrontSide });
+    const tiles = new THREE.MeshStandardMaterial({ ...roofMaps, color: plain ? new THREE.Color(0xa4503a) : new THREE.Color(0.88, 0.84, 0.82), roughness: 1, side: THREE.FrontSide });
     const tag = (mesh, u) => { Object.assign(mesh.userData, u); return mesh; };
 
     // lights
@@ -385,7 +394,7 @@ export default function WalkView() {
     if (!t.forest || t.forestKey !== fkey) { // the forest around the house, built once per room size
       if (t.forest) { scene.remove(t.forest); disposeAll(t.forest); }
       if (t.forestSplat) { scene.remove(t.forestSplat); t.forestSplat.dispose?.(); }
-      t.forest = buildForest(W / 2, D / 2, -STOREY, { clear: Math.max(W, D) * 0.75 + 4 });
+      t.forest = buildForest(W / 2, D / 2, -STOREY, { clear: Math.max(W, D) * 0.75 + 4, plain: LOOK === 'clean' });
       t.forestKey = fkey; t.forestSplat = null;
       scene.add(t.forest);
     }
@@ -410,7 +419,7 @@ export default function WalkView() {
     const shape = new THREE.Shape([new THREE.Vector2(0, 0), new THREE.Vector2(W, 0), new THREE.Vector2(W, -D), new THREE.Vector2(0, -D)]);
     const sr = stairRect(room);
     if (sr) shape.holes.push(new THREE.Path([new THREE.Vector2(sr[0], -sr[1]), new THREE.Vector2(sr[0], -sr[3]), new THREE.Vector2(sr[2], -sr[3]), new THREE.Vector2(sr[2], -sr[1])]));
-    const floor = tag(new THREE.Mesh(new THREE.ShapeGeometry(shape).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ ...floorMaps, color: new THREE.Color(0.95, 0.92, 0.9), roughness: 1 })), { part: 'floor', interior: true, density: 800, size: 0.045 });
+    const floor = tag(new THREE.Mesh(new THREE.ShapeGeometry(shape).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ ...floorMaps, color: plain ? new THREE.Color(0xcaa57a) : new THREE.Color(0.95, 0.92, 0.9), roughness: 1 })), { part: 'floor', interior: true, density: 800, size: 0.045 });
     floor.receiveShadow = true;
     content.add(floor);
     const colliders = [];
@@ -483,7 +492,8 @@ export default function WalkView() {
     const hall = layout?.rooms.find((r) => r.id === 'hall');
     const [sx, sz] = hall ? [(hall.rect[0] + hall.rect[2]) / 2, (hall.rect[1] + hall.rect[3]) / 2] : [W / 2, D / 2];
     const spot = [[0, 0]].concat(Array.from({ length: 60 }, (_, i) => [Math.cos(i) * (0.2 + i * 0.07), Math.sin(i) * (0.2 + i * 0.07)])).map(([a, b]) => [sx + a, sz + b]).find(([x, z]) => t.free(x, z)) || [W / 2, D / 2];
-    [S.x, S.z] = spot;
+    S.spawn = spot;
+    if (!S.outside) [S.x, S.z] = spot;
   }, [room, items, layout, ready, tick]);
 
   return (
@@ -493,7 +503,7 @@ export default function WalkView() {
       </div>
       <div className="walkstage">
         <div ref={mount} className="walk" />
-        <div ref={tipRef} className="walktip" style={{ display: "none" }} /><div className="walkhud"><span ref={hud}>roof storey</span><i>drag or click to look · W A S D move · Shift run · V exterior</i></div>
+        <div ref={tipRef} className="walktip" style={{ display: "none" }} /><button ref={enterBtn} className="walkenter" onClick={() => T.current?.enter?.()}>Enter the house</button><div className="walkhud"><span ref={hud}>exterior</span><i>outside: drag to orbit · wheel to zoom · double-click or Enter to go in · inside: drag to look · W A S D move · Shift run · V back outside</i></div>
         <div className="walkcross" aria-hidden="true" />
       </div>
     </div>

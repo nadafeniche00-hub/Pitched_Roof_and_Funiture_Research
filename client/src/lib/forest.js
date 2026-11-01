@@ -24,9 +24,9 @@ function floorTexture() {
 }
 
 /** The forest group around (cx, cz), standing on the ground plane at height y0. Trees keep `clear` metres away from the house. */
-export function buildForest(cx, cz, y0, { seed = 3, clear = 9, outer = 46, trees = 74 } = {}) {
+export function buildForest(cx, cz, y0, { seed = 3, clear = 9, outer = 46, trees = 74, plain = false } = {}) {
   const R = mulberry32(seed), g = new THREE.Group();
-  const ground = new THREE.Mesh(new THREE.CircleGeometry(outer + 6, 72).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x3d5a2c, map: floorTexture(), roughness: 1 }));
+  const ground = new THREE.Mesh(new THREE.CircleGeometry(outer + 6, 72).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial(plain ? { color: 0x6f8f55, roughness: 1 } : { color: 0x3d5a2c, map: floorTexture(), roughness: 1 }));
   ground.position.set(cx, y0 - 0.02, cz);
   ground.receiveShadow = true;
   ground.userData = { density: 90, size: 0.3, flat: true };
@@ -53,7 +53,7 @@ export function buildForest(cx, cz, y0, { seed = 3, clear = 9, outer = 46, trees
     }
     return geo;
   };
-  const white = () => new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, side: THREE.DoubleSide });
+  const white = () => new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, side: THREE.DoubleSide, vertexColors: true });
 
   for (let i = 0; i < trees; i++) {
     const rad = Math.sqrt(clear * clear + R() * (outer * outer - clear * clear)), ang = R() * Math.PI * 2;
