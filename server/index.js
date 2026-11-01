@@ -1,4 +1,5 @@
 import express from 'express';
+try { process.loadEnvFile(new URL('./.env', import.meta.url)); } catch { /* no server/.env: the model paths stay off */ }
 import cors from 'cors';
 import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
@@ -14,10 +15,21 @@ import { windFor, cachedCells } from './wind.js';
 import { searchProducts, getProduct, facets, searchGlossary, upsertProduct, seed } from './library.js';
 import { scrapeUrl } from './scrape.js';
 import { guessType } from '../shared/furnitureTypes.js';
+import { aiStatus, briefFromText, planFromSketch } from './ai.js';
 
 const app = express();
 app.use(cors());
+// a sketch photo is big: this route takes its own, larger body before the general small limit applies
+app.post('/api/ai/sketch', express.json({ limit: '12mb' }), async (req, res) => {
+  try { res.json(await planFromSketch(req.body?.image)); } catch (e) { res.status(e.status || 502).json({ error: e.message || 'sketch reading failed' }); }
+});
 app.use(express.json({ limit: '200kb' }));
+app.get('/api/ai/status', async (_q, res) => res.json(await aiStatus()));
+app.post('/api/ai/brief', async (req, res) => {
+  const text = String(req.body?.text || '').slice(0, 1500);
+  if (!text.trim()) return res.status(400).json({ error: 'Describe the flat first, for example: 2 bedrooms, a bath next to them, a study of 6 m2.' });
+  res.json(await briefFromText(text));
+});
 
 const clean = (b) => ({ name: String(b.name || 'Untitled').slice(0, 80), room: sanitizeRoom(b.room), items: sanitizeItems(b.items), site: sanitizeSite(b.site), lph: sanitizeLph(b.lph) });
 const wrap = (fn) => async (req, res) => { try { await fn(req, res); } catch (e) { console.error(e); res.status(500).json({ error: e.message || 'server error' }); } };

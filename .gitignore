@@ -4,3 +4,5 @@ server/data/
 *.log
 .venv/
 pipeline/data/
+
+server/.env

@@ -6,6 +6,7 @@ import { itemsActions } from '../store/itemsSlice.js';
 import { uiActions } from '../store/uiSlice.js';
 import { layoutActions } from '../store/layoutSlice.js';
 import RoomTree from './RoomTree.jsx';
+import AiAssist from './AiAssist.jsx';
 import PuzzleEditor, { initialPieces } from './PuzzleEditor.jsx';
 import { fitBrief } from '@shared/roomTree.js';
 import { roomsFromPlanJson } from '@shared/planImport.js';
@@ -121,6 +122,7 @@ export default function PlanBuilder() {
         {mode === 'puzzle' ? <button onClick={solve}>Solve it for me</button> : <button onClick={generate}>Generate again</button>}
         <button className="primary" onClick={furnish} disabled={!plan}>Furnish this layout</button>
       </div>
+      <AiAssist onBrief={useTreeBrief} onPlan={importPlan} />
       {mode === 'tree' && <RoomTree path={treePath} setPath={setTreePath} onUse={useTreeBrief} />}
       {mode === 'puzzle' && <PuzzleEditor room={room} rooms={brief.rooms} pz={pz} setPz={setPz} />}
       {mode === 'bubbles' && <BubbleEditor rooms={brief.rooms} pos={pos} setPos={setPos} setRooms={setRooms} selected={selected} setSelected={setSelected} />}
