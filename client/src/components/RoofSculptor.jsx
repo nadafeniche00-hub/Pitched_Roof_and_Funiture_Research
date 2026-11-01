@@ -27,10 +27,11 @@ export default function RoofSculptor({ onClose }) {
   const [tool, setTool] = useState('move');
   const [axis, setAxis] = useState('y');
   const [snap, setSnap] = useState(true);
+  const [pickMode, setPickMode] = useState('edge'); // what a click grabs: a whole edge (both ends move together) or one vertex
   const [cutA, setCutA] = useState(null);
   const [note, setNote] = useState('');
   const S = useRef({});
-  S.current = { mesh, sel, tool, axis, snap, cutA, room };
+  S.current = { mesh, sel, tool, axis, snap, cutA, room, pickMode };
 
   const commit = (m) => dispatch(roomActions.setParam({ key: 'roof', value: m }));
   const push = () => { undo.current.push(clone(S.current.mesh)); if (undo.current.length > 60) undo.current.shift(); };
@@ -47,7 +48,7 @@ export default function RoofSculptor({ onClose }) {
     el.appendChild(renderer.domElement);
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0xffffff);
-    const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 200);
+    const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 300);
     const controls = new OrbitControls(camera, renderer.domElement);
     scene.add(new THREE.HemisphereLight(0xffffff, 0x9aa0a8, 1.3));
     const sunL = new THREE.DirectionalLight(0xffffff, 1.2); sunL.position.set(6, 12, 4); scene.add(sunL);
@@ -58,9 +59,9 @@ export default function RoofSculptor({ onClose }) {
     controls.addEventListener('change', render);
     const ro = new ResizeObserver(resize); ro.observe(el);
     const { width: W, depth: D, maxHeight: MH } = S.current.room;
-    const r = Math.max(W, D);
-    controls.target.set(W / 2, 1.3, D / 2);
-    camera.position.set(W / 2 + r * 0.95, r * 0.9, D / 2 + r * 1.25);
+    const dist = (0.5 * Math.hypot(W, D, MH) / Math.sin((camera.fov * Math.PI) / 360)) * 0.85;
+    controls.target.set(W / 2, MH * 0.35, D / 2);
+    camera.position.copy(controls.target).addScaledVector(new THREE.Vector3(0.75, 0.7, 1).normalize(), dist);
     controls.update();
 
     // static: ground, grid, the room's footprint and its height box
@@ -70,9 +71,10 @@ export default function RoofSculptor({ onClose }) {
     const box = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(W, MH, D)), new THREE.LineBasicMaterial({ color: 0xb7b7b7 })); box.position.set(W / 2, MH / 2, D / 2); stat.add(box);
 
     const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
-    ray.params.Line.threshold = 0.08;
+    ray.params.Line.threshold = 0.14;
     const t = { scene, camera, controls, render, dyn, pv, verts: [], edges: [], edgeLines: null, roofMesh: null, ray, ndc, drag: null, hover: null };
     T.current = t;
+    if (new URLSearchParams(window.location.search).has('debug')) window.__sculpt = { T, S, camera, renderer }; // test hook
 
     const setRay = (e) => { const b = renderer.domElement.getBoundingClientRect(); ndc.set(((e.clientX - b.left) / b.width) * 2 - 1, -((e.clientY - b.top) / b.height) * 2 + 1); ray.setFromCamera(ndc, camera); };
     const others = (skip) => S.current.mesh.v.map((p, i) => [p, i]).filter(([, i]) => !skip.includes(i));
@@ -128,7 +130,8 @@ export default function RoofSculptor({ onClose }) {
       downAt = [e.clientX, e.clientY];
       if (S.current.tool !== 'move' || e.button !== 0) return;
       setRay(e);
-      const vh = pickVert(), eh = vh ? null : pickEdge();
+      const vertexMode = S.current.pickMode === 'vertex';
+      const vh = vertexMode ? pickVert() : null, eh = vertexMode ? null : pickEdge();
       if (!vh && !eh) return;
       const m = S.current.mesh;
       const idx = vh ? [vh.object.userData.i] : eh;
@@ -189,7 +192,8 @@ export default function RoofSculptor({ onClose }) {
       downAt = null;
       setRay(e);
       if (S.current.tool === 'move') {
-        const vh = pickVert(), eh = vh ? null : pickEdge();
+        const vertexMode = S.current.pickMode === 'vertex';
+        const vh = vertexMode ? pickVert() : null, eh = vertexMode ? null : pickEdge();
         setSel(vh ? { k: 'v', i: vh.object.userData.i } : eh ? { k: 'e', a: eh[0], b: eh[1] } : null);
       } else {
         const p = cutPoint();
@@ -245,9 +249,21 @@ export default function RoofSculptor({ onClose }) {
       const m = new THREE.Mesh(new THREE.SphereGeometry(on ? 0.1 : 0.07, 14, 12), new THREE.MeshBasicMaterial({ color: on ? 0xe8452c : 0x14161c, depthTest: false }));
       m.position.copy(P3(p)); m.userData.i = i; m.renderOrder = 26; dyn.add(m); return m;
     });
+    if (sel) { // arrows along the three axes through the selection, the active one long and bright
+      const ids = sel.k === 'v' ? [sel.i] : [sel.a, sel.b];
+      const c = ids.reduce((acc, i) => acc.add(P3(mesh.v[i])), new THREE.Vector3()).multiplyScalar(1 / ids.length);
+      const COL = { x: 0xd64545, y: 0x2f9e5b, z: 0x3f6fd6 };
+      for (const ax of ['x', 'y', 'z']) {
+        const on = axis === ax, L = on ? 3 : 0.7, d = AXES[ax];
+        const ln = new THREE.Line(new THREE.BufferGeometry().setFromPoints([c.clone().addScaledVector(d, on ? -L : 0), c.clone().addScaledVector(d, L)]), new THREE.LineBasicMaterial({ color: COL[ax], depthTest: false, transparent: true, opacity: on ? 1 : 0.55 }));
+        ln.renderOrder = 28; dyn.add(ln);
+        const cone = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.18, 10), new THREE.MeshBasicMaterial({ color: COL[ax], depthTest: false }));
+        cone.position.copy(c).addScaledVector(d, L); cone.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d); cone.renderOrder = 29; dyn.add(cone);
+      }
+    }
     t.updatePreview?.();
     t.render();
-  }, [mesh, sel]);
+  }, [mesh, sel, axis]);
   useEffect(() => { T.current?.updatePreview?.(); }, [tool, cutA]);
 
   // ---------------------------------------------------------------- keys
@@ -258,6 +274,7 @@ export default function RoofSculptor({ onClose }) {
       if ((e.ctrlKey || e.metaKey) && k === 'z') { e.preventDefault(); doUndo(); return; }
       if (k === 'x') setAxis('x'); else if (k === 'y' || k === 'h') setAxis('y'); else if (k === 'z') setAxis('z'); else if (k === 'f') setAxis('free');
       else if (k === 'c') { setTool('cut'); setCutA(null); } else if (k === 'm') setTool('move');
+      else if (k === 'e') { setPickMode('edge'); setSel(null); } else if (k === 'v') { setPickMode('vertex'); setSel(null); }
       else if (k === 'escape') { setCutA(null); setSel(null); }
     };
     window.addEventListener('keydown', onKey);
@@ -276,7 +293,7 @@ export default function RoofSculptor({ onClose }) {
   return (
     <div className="card sculpt">
       <div className="cardhead">
-        <h2>Roof sculptor <small>{tool === 'move' ? 'click a vertex or an edge, then drag it along one axis' : cutA ? 'click the second point: the vertical plane through both splits every roof face it crosses' : 'click two points on the roof to draw a splitting plane'}</small></h2>
+        <h2>Roof sculptor <small>{tool === 'move' ? pickMode === 'edge' ? 'click an edge and drag it: both ends move together along the chosen axis (the long arrow)' : 'click a vertex and drag it along the chosen axis (the long arrow)' : cutA ? 'click the second point: the vertical plane through both splits every roof face it crosses' : 'click two points on the roof to draw a splitting plane'}</small></h2>
         <button className="mini primary" onClick={onClose}>done</button>
       </div>
       <div className="facebar sculptbar">
@@ -284,6 +301,12 @@ export default function RoofSculptor({ onClose }) {
           <button className={tool === 'move' ? 'primary' : ''} onClick={() => setTool('move')}>move (M)</button>
           <button className={tool === 'cut' ? 'primary' : ''} onClick={() => { setTool('cut'); setCutA(null); }}>split plane (C)</button>
         </span>
+        {tool === 'move' && (
+          <span className="seg">
+            <button className={pickMode === 'edge' ? 'primary' : ''} onClick={() => { setPickMode('edge'); setSel(null); }}>edges (E)</button>
+            <button className={pickMode === 'vertex' ? 'primary' : ''} onClick={() => { setPickMode('vertex'); setSel(null); }}>vertices (V)</button>
+          </span>
+        )}
         {tool === 'move' && (
           <span className="seg">
             {Object.keys(AXIS_LABEL).map((a) => <button key={a} className={axis === a ? 'primary' : ''} onClick={() => setAxis(a)}>{AXIS_LABEL[a]}</button>)}

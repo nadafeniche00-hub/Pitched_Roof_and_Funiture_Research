@@ -96,7 +96,7 @@ export default function Scene3D() {
     el.appendChild(renderer.domElement);
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0xffffff);
-    const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 200);
+    const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 300);
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = false;
     const hemi = new THREE.HemisphereLight(0xffffff, 0x8a8f98, 1.2);
@@ -152,14 +152,15 @@ export default function Scene3D() {
   const fit = () => {
     const t = T.current;
     if (!t) return;
-    const { width: W, depth: D } = room;
-    const r = Math.max(W, D);
-    t.controls.target.set(W / 2, 0.8, D / 2);
-    t.camera.position.set(W / 2 + r * 0.9, r * 0.95, D / 2 + r * 1.15);
+    const { width: W, depth: D, maxHeight: H } = room;
+    // frame the whole house (floor and ridge) with a narrow lens, so nothing is stretched by perspective
+    const dist = (0.5 * Math.hypot(W, D, H) / Math.sin((t.camera.fov * Math.PI) / 360)) * 0.85, dir = new THREE.Vector3(0.75, 0.7, 1).normalize();
+    t.controls.target.set(W / 2, H * 0.35, D / 2);
+    t.camera.position.copy(t.controls.target).addScaledVector(dir, dist);
     t.controls.update();
     t.render();
   };
-  useEffect(fit, [room.width, room.depth]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(fit, [room.width, room.depth, room.maxHeight]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const t = T.current;
