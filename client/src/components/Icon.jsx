@@ -22,6 +22,7 @@ const P = {
   splitEdge: 'M3 12h18M12 8v8M12 12a2 2 0 1 0 0 .01',
   selectAll: 'M4 4h4M10 4h4M16 4h4M4 20h4M10 20h4M16 20h4M4 8v4M4 14v4M20 8v4M20 14v4',
   undo: 'M9 7L4 12l5 5M4 12h10a6 6 0 0 1 0 12',
+  redo: 'M15 7l5 5-5 5M20 12H10a6 6 0 0 0 0 12',
   reset: 'M4 12a8 8 0 1 0 3-6.2M4 4v5h5',
   done: 'M4 12l5 5L20 6',
   magnet: 'M5 3v8a7 7 0 0 0 14 0V3h-4v8a3 3 0 0 1-6 0V3zM5 7h4M15 7h4',
@@ -47,6 +48,7 @@ const P = {
   skillion: 'M3 19V8l18 6v5z',
   flat: 'M3 9h18v10H3zM3 9l3-3h12l3 3',
   custom: 'M4 20l4-9 4 4 4-8 4 13z',
+  download: 'M12 3v12M7 11l5 5 5-5M4 20h16',
   eye: 'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z',
 };
 

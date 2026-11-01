@@ -251,3 +251,4 @@ table.params tr.own .layer { color: var(--accent); }
 .dragtip small { font-size: 10px; color: #aeb4bd; letter-spacing: 0.02em; }
 .dragtip .caret { display: inline-block; width: 2px; height: 18px; margin-left: 2px; vertical-align: -3px; background: #fff; animation: blink 1s steps(1) infinite; }
 @keyframes blink { 50% { opacity: 0; } }
+.sheetprev svg { width: 100%; height: auto; border: 3px solid var(--ink); background: #fff; }

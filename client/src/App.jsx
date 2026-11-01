@@ -7,6 +7,7 @@ import SectionView from './components/SectionView.jsx';
 import Scene3D from './components/Scene3D.jsx';
 import MapPanel from './components/MapPanel.jsx';
 import PlanBuilder from './components/PlanBuilder.jsx';
+import PlanExport from './components/PlanExport.jsx';
 import WalkView from './components/WalkView.jsx';
 import ResultsPanel from './components/ResultsPanel.jsx';
 import LibraryView from './components/LibraryView.jsx';
@@ -71,7 +72,7 @@ export default function App() {
             </nav>
             {/* only the active workspace is mounted: the 3D scene and the map size themselves on mount */}
             {centerTab === 'plan' && <PlanView />}
-            {centerTab === 'rooms' && <PlanBuilder />}
+            {centerTab === 'rooms' && <><PlanBuilder /><PlanExport /></>}
             {centerTab === '3d' && <Scene3D />}
             {centerTab === 'walk' && <WalkView />}
             {centerTab === 'section' && <SectionView />}

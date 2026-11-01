@@ -7,6 +7,7 @@ import { getGrid, itemRects, stairRect, roofHeight } from '@shared/engine.js';
 import { heatColor, useHeatImage, STATUS_COLOR } from './PlanView.jsx';
 import { sunVectorPlan, sunPath } from '../lib/solar.js';
 import RoofSculptor from './RoofSculptor.jsx';
+import { IconBtn } from './Icon.jsx';
 import { wallsOf, wallSolid } from '../lib/walls.js';
 import { prismParts } from '../lib/prism.js';
 import { buildFurniture, FRONT_ANGLE, preloadModels } from '../lib/furnitureModels.js';
@@ -332,6 +333,10 @@ export default function Scene3D() {
     return () => { cancelAnimationFrame(raf); sky.remove(lines); disposeAll(lines); t.render(); };
   }, [showWind, wind, site.azimuth, room.width, room.depth]);
 
+  // history for the room edits: every change keeps the rooms as they were (quick slider drags count as one step)
+  const hist = useRef([]), histT = useRef(0);
+  const snap = () => { const n = Date.now(); if (n - histT.current > 500) { hist.current.push(cells); if (hist.current.length > 60) hist.current.shift(); } histT.current = n; };
+  const undoCells = () => { const c = hist.current.pop(); if (c) { setCells(c); setSel(null); setEdited(true); } };
   // push/pull, subdivide, delete: the selected face edits its room
   const cur = cells.find((c) => c.id === sel?.id);
   const FACE = { top: 'top', px: 'east side', nx: 'west side', pz: 'south side', nz: 'north side' };
@@ -352,21 +357,31 @@ export default function Scene3D() {
     setSnapMsg(hit ? `snapped to ${hit[1]}` : '');
     return hit ? hit[0] : Math.round(v / 0.05) * 0.05;
   };
-  const push = (v) => { setEdited(true); setCells((cs) => cs.map((c) => {
+  const push = (v) => { snap(); setEdited(true); setCells((cs) => cs.map((c) => {
     if (c.id !== sel.id) return c;
     const [lo, hi] = range(c, sel.face), x = Math.max(lo, Math.min(hi, snapValue(c, sel.face, v))), r = [...c.rect];
     if (sel.face === 'top') return { ...c, h: x };
     if (sel.face === 'px') r[2] = x; else if (sel.face === 'nx') r[0] = x; else if (sel.face === 'pz') r[3] = x; else r[1] = x;
     return { ...c, rect: r };
   })); };
-  const split = (axis, k = 0.5) => { setEdited(true); setCells((cs) => cs.flatMap((c) => {
+  const split = (axis, k = 0.5) => { snap(); setEdited(true); setCells((cs) => cs.flatMap((c) => {
     if (c.id !== sel.id) return [c];
     const [x0, z0, x1, z1] = c.rect, h = c.h;
     if (axis === 'x') { const xm = x0 + (x1 - x0) * k; return [{ ...c, id: c.id + 'a', rect: [x0, z0, xm, z1], h }, { ...c, id: c.id + 'b', rect: [xm, z0, x1, z1], h }]; }
     const zm = z0 + (z1 - z0) * k; return [{ ...c, id: c.id + 'a', rect: [x0, z0, x1, zm], h }, { ...c, id: c.id + 'b', rect: [x0, zm, x1, z1], h }];
   })); };
-  const remove = () => { setEdited(true); setCells((cs) => cs.filter((c) => c.id !== sel.id)); setSel(null); };
-  const reset = () => { setCells(fromLayout()); setSel(null); setEdited(false); };
+  const remove = () => { snap(); setEdited(true); setCells((cs) => cs.filter((c) => c.id !== sel.id)); setSel(null); };
+  const reset = () => { snap(); setCells(fromLayout()); setSel(null); setEdited(false); };
+  useEffect(() => { // Ctrl+Z undoes, Delete removes the selected room
+    const onKey = (e) => {
+      if (sculpt || ['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return;
+      const k = e.key.toLowerCase();
+      if ((e.ctrlKey || e.metaKey) && k === 'z') { e.preventDefault(); undoCells(); }
+      else if ((k === 'delete' || k === 'backspace') && sel) { e.preventDefault(); remove(); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }); // eslint-disable-line react-hooks/exhaustive-deps
   const area = cur ? (cur.rect[2] - cur.rect[0]) * (cur.rect[3] - cur.rect[1]) : 0;
 
   return (
@@ -378,6 +393,7 @@ export default function Scene3D() {
         <label><input type="checkbox" checked={showWind} disabled={!wind || wind.stormDir == null} onChange={(e) => setShowWind(e.target.checked)} /> wind</label>
 
         <label>roof <input type="range" min="0" max="0.9" step="0.05" value={roofOpacity} onChange={(e) => setRoofOpacity(+e.target.value)} aria-label="Roof opacity" /></label>
+        <IconBtn icon="undo" label="Undo (Ctrl+Z)" onClick={undoCells} />
         <button className="mini" onClick={fit}>reset view</button>
         <button className="mini primary" onClick={() => setSculpt(true)}>roof sculptor</button>
       </div>
@@ -391,7 +407,7 @@ export default function Scene3D() {
           {snapMsg && <span className="snapnote">{snapMsg}</span>}
           <button className="mini" onClick={() => split('x')}>split left | right</button>
           <button className="mini" onClick={() => split('z')}>split front / back</button>
-          <button className="mini ghost" onClick={remove}>delete</button>
+          <IconBtn icon="remove" label="Delete this room (Del)" onClick={remove} />
           <button className="mini ghost" onClick={reset}>reset plan</button>
         </div>
       ) : <p className="hint facehint">Click a room face to select it. Then push or pull it, split the room in two, or delete it.</p>}

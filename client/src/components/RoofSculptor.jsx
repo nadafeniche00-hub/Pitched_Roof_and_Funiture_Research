@@ -116,6 +116,7 @@ export default function RoofSculptor({ onClose }) {
   const tipRef = useRef(null);
   const T = useRef(null);
   const undo = useRef([]);
+  const redo = useRef([]);
   const [mesh, setMesh] = useState(() => clone(room.roof || autoMesh(room)));
   const [mode, setMode] = useState('p');
   const [sel, setSel] = useState(EMPTY);
@@ -130,7 +131,7 @@ export default function RoofSculptor({ onClose }) {
   S.current = { mesh, sel, mode, tool, axis, snapCfg, cutA, room };
 
   const commit = (m) => dispatch(roomActions.setParam({ key: 'roof', value: m }));
-  const push = () => { undo.current.push(clone(S.current.mesh)); if (undo.current.length > 60) undo.current.shift(); };
+  const push = () => { undo.current.push(clone(S.current.mesh)); redo.current = []; if (undo.current.length > 60) undo.current.shift(); };
   const apply = (m, nextSel = EMPTY) => { push(); setMesh(m); commit(m); setSel(nextSel); };
   const count = sel.vs.length + sel.es.length + sel.ts.length;
   const reading = recognizeRoof(mesh); // which pattern this roof is, from its planes
@@ -519,7 +520,8 @@ export default function RoofSculptor({ onClose }) {
   };
   const doSplitEdge = () => { if (!sel.es.length) return; let m = mesh, last = null; for (const [a, b] of sel.es) { const r = splitEdge(m, a, b); m = r.mesh; last = r.index; } apply(m, { ...EMPTY, vs: [last] }); setMode('v'); };
   const doSelectAll = () => setSel(mode === 'v' ? { ...EMPTY, vs: mesh.v.map((_, i) => i) } : mode === 'e' ? { ...EMPTY, es: T.current.edges.map((e) => [...e]) } : { ...EMPTY, ts: mesh.t.map((_, i) => i) });
-  const doUndo = () => { const m = undo.current.pop(); if (!m) return; setMesh(m); commit(m); setSel(EMPTY); };
+  const doUndo = () => { const m = undo.current.pop(); if (!m) return; redo.current.push(clone(S.current.mesh)); setMesh(m); commit(m); setSel(EMPTY); };
+  const doRedo = () => { const m = redo.current.pop(); if (!m) return; undo.current.push(clone(S.current.mesh)); setMesh(m); commit(m); setSel(EMPTY); };
   const doReset = () => { undo.current = []; setSel(EMPTY); setCutA(null); dispatch(roomActions.setParam({ key: 'roof', value: null })); setMesh(autoMesh(room)); };
   const oneVertex = sel.vs.length === 1 ? mesh.v[sel.vs[0]] : null;
   const setCoord = (c, value) => {
@@ -541,7 +543,8 @@ export default function RoofSculptor({ onClose }) {
       }
       if (k === 'g') { tt?.startGrab(); return; }
       if (k === 'tab' && e.shiftKey) { e.preventDefault(); setSnapCfg((c) => ({ ...c, on: !c.on })); return; } // Shift+Tab toggles snapping
-      if ((e.ctrlKey || e.metaKey) && k === 'z') { e.preventDefault(); doUndo(); return; }
+      if ((e.ctrlKey || e.metaKey) && k === 'z' && !e.shiftKey) { e.preventDefault(); doUndo(); return; }
+      if ((e.ctrlKey || e.metaKey) && (k === 'y' || (k === 'z' && e.shiftKey))) { e.preventDefault(); doRedo(); return; }
       if ((e.ctrlKey || e.metaKey) && k === 'a') { e.preventDefault(); doSelectAll(); return; }
       if (k === '1') switchMode('v'); else if (k === '2') switchMode('e'); else if (k === '4') switchMode('p'); else if (k === '5') switchMode('el');
       else if (k === 'x') setAxis('x'); else if (k === 'y' || k === 'h') setAxis('y'); else if (k === 'z') setAxis('z'); else if (k === 'f') setAxis('free');
@@ -597,9 +600,10 @@ export default function RoofSculptor({ onClose }) {
         <button className="mini" disabled={!sel.ts.length} onClick={doInset}>inset</button>
         <button className="mini" disabled={vertsOf(mesh, sel).length < 2} onClick={doWeld}>weld</button>
         <button className="mini" disabled={!sel.es.length} onClick={doSplitEdge}>split edge</button>
-        <button className="mini" disabled={!sel.ts.length && !sel.vs.length} onClick={doRemove}>remove (Del)</button>
+        <IconBtn icon="remove" label="Delete the selected faces or vertices (Del)" disabled={!sel.ts.length && !sel.vs.length} onClick={doRemove} />
         <button className="mini ghost" onClick={doSelectAll}>select all (Ctrl A)</button>
-        <button className="mini" onClick={doUndo} disabled={!undo.current.length}>undo</button>
+        <IconBtn icon="undo" label="Undo (Ctrl+Z)" onClick={doUndo} />
+        <IconBtn icon="redo" label="Redo (Ctrl+Y)" onClick={doRedo} />
         <button className="mini ghost" onClick={doReset}>back to automatic roof</button>
       </div>
       <div className="facebar sculptbar">
