@@ -24,7 +24,7 @@ const chat = async (messages, model, timeout) => (await call('/chat/completions'
 const jsonIn = (text) => { const m = String(text).match(/\{[\s\S]*\}/); if (!m) throw new Error('the model did not answer with JSON'); return JSON.parse(m[0]); };
 
 // CLIP, if a clip service runs (pipeline/services/clip_service.py): fast zero-shot naming of a roof photo, much quicker than asking the chat model
-const clipUrl = () => (process.env.CLIP_URL || 'http://127.0.0.1:5001').replace(//+$/, '');
+const clipUrl = () => (process.env.CLIP_URL || 'http://127.0.0.1:5001').replace(/\/+$/, '');
 async function clipUp() { try { const r = await fetch(clipUrl() + '/health', { signal: AbortSignal.timeout(1200) }); return r.ok ? await r.json() : null; } catch { return null; } }
 const CLIP_LABELS = {
   gabled: 'a photo of a house with a gabled roof, two slopes meeting at a ridge',
@@ -96,7 +96,7 @@ const PATTERNS = ['gabled', 'hipped', 'half-hipped', 'mansard', 'pyramidal', 'sk
 
 /** Name the roof shape on a photo (the job CLIP did in the notebook) with the server's vision model. */
 export async function roofFromPhoto(dataUrl) {
-  if (/^data:image/(png|jpe?g|webp);base64,/.test(dataUrl || '')) { const c = await clipRoof(dataUrl).catch(() => null); if (c) return c; } // CLIP first, when it runs
+  if (/^data:image\/(png|jpe?g|webp);base64,/.test(dataUrl || '')) { const c = await clipRoof(dataUrl).catch(() => null); if (c) return c; } // CLIP first, when it runs
   if (!configured()) throw Object.assign(new Error('Roof reading needs the model server: set LLM_URL, LLM_API_KEY and LLM_MODEL in server/.env.'), { status: 501 });
   if (!/^data:image\/(png|jpe?g|webp);base64,/.test(dataUrl || '')) throw Object.assign(new Error('Send a PNG, JPEG or WebP image.'), { status: 400 });
   const t0 = Date.now();
