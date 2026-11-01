@@ -6,15 +6,104 @@ import { autoMesh, cutMesh, splitEdge } from '@shared/roofMesh.js';
 import { roomActions } from '../store/roomSlice.js';
 import { heatColor } from './PlanView.jsx';
 
-// Roof sculptor: the roof as a triangle mesh whose vertices and edges can be picked and moved along one axis at a time (ortho),
-// snapped to the grid and to the other vertices; a vertical plane drawn with two clicks splits every roof face it crosses.
-// plan [x, y, h] -> three (x, h, y)
+// Roof sculptor, after the Editable Poly of 3ds Max: sub-object modes (vertex 1, edge 2, polygon 4, element 5), Ctrl-click to add to or
+// remove from the selection, a gumball (arrows: one axis, squares: a plane, ball: free) that moves the whole selection with snapping,
+// and Extrude, Inset, Weld, Remove, Split edge and a drawn splitting plane. The roof is a triangle mesh; a "polygon" is a group of
+// coplanar triangles that share edges. plan [x, y, h] -> three (x, h, y)
 const P3 = (p) => new THREE.Vector3(p[0], p[2], p[1]);
 const GRID = 0.05, SNAP_V = 0.12;
 const AXES = { x: new THREE.Vector3(1, 0, 0), y: new THREE.Vector3(0, 1, 0), z: new THREE.Vector3(0, 0, 1) };
 const AXIS_LABEL = { x: 'X across', y: 'Height', z: 'Z along', free: 'Free' };
+const MODES = [['v', 'vertex', '1'], ['e', 'edge', '2'], ['p', 'polygon', '4'], ['el', 'element', '5']];
 
 const clone = (m) => ({ v: m.v.map((p) => [...p]), t: m.t.map((q) => [...q]) });
+const ek = (a, b) => (a < b ? `${a},${b}` : `${b},${a}`);
+const EMPTY = { vs: [], es: [], ts: [] };
+
+// ---------------------------------------------------------------- mesh helpers
+const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+const cross3 = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+const dot3 = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+const triNormal = (m, tri) => { const [a, b, c] = tri.map((i) => m.v[i]); return cross3(sub(b, a), sub(c, a)); }; // length = twice the area
+const unit = (n) => { const l = Math.hypot(...n) || 1; return [n[0] / l, n[1] / l, n[2] / l]; };
+
+function edgeMap(m) {
+  const map = new Map();
+  m.t.forEach((tri, i) => [[0, 1], [1, 2], [2, 0]].forEach(([p, q]) => { const k = ek(tri[p], tri[q]); (map.get(k) || map.set(k, []).get(k)).push(i); }));
+  return map;
+}
+/** the coplanar triangles around triangle `ti` that share edges: what 3ds Max would call one polygon */
+function polygonOf(m, ti) {
+  const em = edgeMap(m), n0 = unit(triNormal(m, m.t[ti])), p0 = m.v[m.t[ti][0]], seen = new Set([ti]), q = [ti];
+  while (q.length) {
+    const cur = q.pop(), tri = m.t[cur];
+    for (const [p, r] of [[0, 1], [1, 2], [2, 0]]) for (const nb of em.get(ek(tri[p], tri[r])) || []) {
+      if (seen.has(nb)) continue;
+      const nn = unit(triNormal(m, m.t[nb]));
+      if (Math.abs(dot3(nn, n0)) < 0.9998 || m.t[nb].some((i) => Math.abs(dot3(n0, sub(m.v[i], p0))) > 1e-3)) continue;
+      seen.add(nb); q.push(nb);
+    }
+  }
+  return [...seen];
+}
+/** every triangle connected to `ti` through shared edges */
+function elementOf(m, ti) {
+  const em = edgeMap(m), seen = new Set([ti]), q = [ti];
+  while (q.length) {
+    const tri = m.t[q.pop()];
+    for (const [p, r] of [[0, 1], [1, 2], [2, 0]]) for (const nb of em.get(ek(tri[p], tri[r])) || []) if (!seen.has(nb)) { seen.add(nb); q.push(nb); }
+  }
+  return [...seen];
+}
+const vertsOf = (m, sel) => [...new Set([...sel.vs, ...sel.es.flat(), ...sel.ts.flatMap((i) => m.t[i] || [])])].filter((i) => i < m.v.length);
+
+/** drop unused vertices and degenerate triangles */
+function compact(m) {
+  const t = m.t.filter(([a, b, c]) => a !== b && b !== c && a !== c && Math.hypot(...triNormal(m, [a, b, c])) > 1e-9);
+  const used = [...new Set(t.flat())].sort((a, b) => a - b), map = new Map(used.map((o, i) => [o, i]));
+  return { v: used.map((i) => [...m.v[i]]), t: t.map((tri) => tri.map((i) => map.get(i))) };
+}
+
+/** Extrude (offset along the polygon's outward normal) or Inset (toward its centre): the selected triangles move onto copies of their vertices, a ring of triangles joins old and new. */
+function dupRegion(m, ts, mode, amt, centre) {
+  const set = new Set(ts), v = m.v.map((p) => [...p]), t = [];
+  const used = [...new Set(ts.flatMap((i) => m.t[i]))];
+  let n = [0, 0, 0];
+  for (const i of ts) { // outward: away from the middle of the house
+    const a = triNormal(m, m.t[i]), c = m.t[i].map((k) => m.v[k]).reduce((s, p) => [s[0] + p[0] / 3, s[1] + p[1] / 3, s[2] + p[2] / 3], [0, 0, 0]);
+    const f = dot3(a, sub(c, centre)) < 0 ? -1 : 1;
+    n = [n[0] + a[0] * f, n[1] + a[1] * f, n[2] + a[2] * f];
+  }
+  n = unit(n);
+  const mid = used.reduce((s, i) => [s[0] + m.v[i][0] / used.length, s[1] + m.v[i][1] / used.length, s[2] + m.v[i][2] / used.length], [0, 0, 0]);
+  const map = new Map();
+  for (const i of used) {
+    const p = m.v[i];
+    let q;
+    if (mode === 'extrude') q = [p[0] + n[0] * amt, p[1] + n[1] * amt, p[2] + n[2] * amt];
+    else { const d = sub(mid, p), L = Math.hypot(...d) || 1, k = Math.min(amt, L * 0.8) / L; q = [p[0] + d[0] * k, p[1] + d[1] * k, p[2] + d[2] * k]; }
+    map.set(i, v.length); v.push(q);
+  }
+  const em = edgeMap(m);
+  m.t.forEach((tri, i) => {
+    if (!set.has(i)) { t.push(tri); return; }
+    t.push(tri.map((k) => map.get(k)));
+    for (const [p, r] of [[0, 1], [1, 2], [2, 0]]) { // boundary edges of the selection get a side wall
+      const a = tri[p], b = tri[r];
+      if ((em.get(ek(a, b)) || []).some((o) => o !== i && set.has(o))) continue;
+      t.push([a, b, map.get(b)], [a, map.get(b), map.get(a)]);
+    }
+  });
+  return { mesh: { v, t }, ts: ts.slice() }; // the selected triangles keep their indices
+}
+
+function weld(m, vs) {
+  if (vs.length < 2) return m;
+  const keep = vs[0], v = m.v.map((p) => [...p]);
+  v[keep] = [0, 1, 2].map((c) => vs.reduce((s, i) => s + m.v[i][c], 0) / vs.length);
+  const set = new Set(vs);
+  return compact({ v, t: m.t.map((tri) => tri.map((i) => (set.has(i) ? keep : i))) });
+}
 
 export default function RoofSculptor({ onClose }) {
   const room = useSelector((s) => s.room);
@@ -23,22 +112,24 @@ export default function RoofSculptor({ onClose }) {
   const T = useRef(null);
   const undo = useRef([]);
   const [mesh, setMesh] = useState(() => clone(room.roof || autoMesh(room)));
-  const [sel, setSel] = useState(null); // { k: 'v', i } | { k: 'e', a, b }
+  const [mode, setMode] = useState('p');
+  const [sel, setSel] = useState(EMPTY);
   const [tool, setTool] = useState('move');
   const [axis, setAxis] = useState('y');
   const [snap, setSnap] = useState(true);
-  const [pickMode, setPickMode] = useState('edge'); // what a click grabs: a whole edge (both ends move together) or one vertex
   const [cutA, setCutA] = useState(null);
   const [note, setNote] = useState('');
+  const [amt, setAmt] = useState(0.4);
   const S = useRef({});
-  S.current = { mesh, sel, tool, axis, snap, cutA, room, pickMode };
+  S.current = { mesh, sel, mode, tool, axis, snap, cutA, room };
 
   const commit = (m) => dispatch(roomActions.setParam({ key: 'roof', value: m }));
   const push = () => { undo.current.push(clone(S.current.mesh)); if (undo.current.length > 60) undo.current.shift(); };
-  const apply = (m, { save = true } = {}) => { if (save) push(); setMesh(m); commit(m); };
+  const apply = (m, nextSel = EMPTY) => { push(); setMesh(m); commit(m); setSel(nextSel); };
+  const count = sel.vs.length + sel.es.length + sel.ts.length;
 
   // the automatic roof changed (pitch, knee wall, width or depth edited in the side panel): start again from it
-  useEffect(() => { if (!room.roof) { setMesh(autoMesh(room)); setSel(null); undo.current = []; } }, [room.roof, room.width, room.depth, room.pitch, room.kneeWall]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (!room.roof) { setMesh(autoMesh(room)); setSel(EMPTY); undo.current = []; } }, [room.roof, room.width, room.depth, room.pitch, room.kneeWall]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ---------------------------------------------------------------- scene
   useEffect(() => {
@@ -54,7 +145,8 @@ export default function RoofSculptor({ onClose }) {
     const sunL = new THREE.DirectionalLight(0xffffff, 1.2); sunL.position.set(6, 12, 4); scene.add(sunL);
     const stat = new THREE.Group(), dyn = new THREE.Group(), pv = new THREE.Group();
     scene.add(stat, dyn, pv);
-    const render = () => renderer.render(scene, camera);
+    let gum = null; // the gumball keeps the same size on screen, wherever the camera is
+    const render = () => { if (gum) gum.scale.setScalar(camera.position.distanceTo(gum.position) * 0.11); renderer.render(scene, camera); };
     const resize = () => { const w = el.clientWidth, h = el.clientHeight; if (!w || !h) return; renderer.setSize(w, h); camera.aspect = w / h; camera.updateProjectionMatrix(); render(); };
     controls.addEventListener('change', render);
     const ro = new ResizeObserver(resize); ro.observe(el);
@@ -64,7 +156,6 @@ export default function RoofSculptor({ onClose }) {
     camera.position.copy(controls.target).addScaledVector(new THREE.Vector3(0.75, 0.7, 1).normalize(), dist);
     controls.update();
 
-    // static: ground, grid, the room's footprint and its height box
     const ground = new THREE.Mesh(new THREE.PlaneGeometry(W, D).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xf1efe8 }));
     ground.position.set(W / 2, -0.005, D / 2); stat.add(ground);
     const grid = new THREE.GridHelper(Math.max(W, D) * 3, Math.round(Math.max(W, D) * 3), 0xcfcfcf, 0xe6e6e6); grid.position.set(W / 2, -0.01, D / 2); stat.add(grid);
@@ -72,7 +163,7 @@ export default function RoofSculptor({ onClose }) {
 
     const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
     ray.params.Line.threshold = 0.14;
-    const t = { scene, camera, controls, render, dyn, pv, verts: [], edges: [], edgeLines: null, roofMesh: null, ray, ndc, drag: null, hover: null };
+    const t = { scene, camera, controls, render, dyn, pv, verts: [], edges: [], edgeLines: null, roofMesh: null, ray, ndc, drag: null, hover: null, handles: [], setGum: (g) => { gum = g; } };
     T.current = t;
     if (new URLSearchParams(window.location.search).has('debug')) window.__sculpt = { T, S, camera, renderer }; // test hook
 
@@ -88,6 +179,7 @@ export default function RoofSculptor({ onClose }) {
 
     const pickVert = () => ray.intersectObjects(t.verts, false)[0];
     const pickEdge = () => { if (!t.edgeLines) return null; const h = ray.intersectObject(t.edgeLines, false)[0]; return h ? t.edges[Math.floor(h.index / 2)] : null; };
+    const pickTri = () => { const h = t.roofMesh ? ray.intersectObject(t.roofMesh, false)[0] : null; return h ? h.faceIndex : null; };
 
     // a point on the roof (or the ground) for the cutting plane, snapped to vertices, edge middles, grid
     const cutPoint = () => {
@@ -126,32 +218,34 @@ export default function RoofSculptor({ onClose }) {
 
     // ---------------- pointer
     let downAt = null;
-    const onDown = (e) => {
-      downAt = [e.clientX, e.clientY];
-      if (S.current.tool !== 'move' || e.button !== 0) return;
-      setRay(e);
-      const vertexMode = S.current.pickMode === 'vertex';
-      const vh = vertexMode ? pickVert() : null, eh = vertexMode ? null : pickEdge();
-      if (!vh && !eh) return;
-      const m = S.current.mesh;
-      const idx = vh ? [vh.object.userData.i] : eh;
-      const selection = vh ? { k: 'v', i: idx[0] } : { k: 'e', a: eh[0], b: eh[1] };
-      setSel(selection);
-      const orig = idx.map((i) => [...m.v[i]]);
-      const c3 = orig.reduce((acc, p) => acc.add(P3(p)), new THREE.Vector3()).multiplyScalar(1 / orig.length);
-      const camDir = new THREE.Vector3(); camera.getWorldDirection(camDir);
-      const ax = S.current.axis;
-      const anchor = ax === 'free' ? ray.ray.intersectPlane(new THREE.Plane().setFromNormalAndCoplanarPoint(camDir, c3), new THREE.Vector3()) : axisParam(ray.ray, c3, AXES[ax]);
-      if (anchor === null || anchor === undefined) return;
-      t.drag = { idx, orig, c3, camDir, anchor, ax, moved: false };
-      controls.enabled = false;
-      push();
-      renderer.domElement.setPointerCapture?.(e.pointerId);
-    };
     const axisParam = (rr, c, a) => { // where on the axis line through c the pointer ray comes closest
       const d = rr.direction, w = rr.origin.clone().sub(c), b = d.dot(a), den = 1 - b * b;
       if (den < 1e-4) return null;
       return (a.dot(w) - b * d.dot(w)) / den;
+    };
+    const onDown = (e) => {
+      downAt = [e.clientX, e.clientY];
+      if (S.current.tool !== 'move' || e.button !== 0) return;
+      setRay(e);
+      const { sel: cs, mesh: m } = S.current;
+      const gh = t.handles.length ? ray.intersectObjects(t.handles, false)[0] : null; // a gumball handle: move the whole selection
+      if (!gh) return;
+      const idx = vertsOf(m, cs);
+      if (!idx.length) return;
+      const orig = idx.map((i) => [...m.v[i]]);
+      const c3 = orig.reduce((acc, p) => acc.add(P3(p)), new THREE.Vector3()).multiplyScalar(1 / orig.length);
+      const camDir = new THREE.Vector3(); camera.getWorldDirection(camDir);
+      let ax = S.current.axis, nrm = camDir;
+      const hd = gh.object.userData.handle; // 'x' | 'y' | 'z' arrows, 'xz' | 'xy' | 'zy' planes, 'free' ball
+      if (hd.length === 1) { ax = hd; setAxis(hd); } else if (hd === 'free') ax = 'free';
+      else { ax = 'plane'; nrm = AXES[['x', 'y', 'z'].find((a) => !hd.includes(a))]; }
+      const planar = ax === 'free' || ax === 'plane';
+      const anchor = planar ? ray.ray.intersectPlane(new THREE.Plane().setFromNormalAndCoplanarPoint(nrm, c3), new THREE.Vector3()) : axisParam(ray.ray, c3, AXES[ax]);
+      if (anchor === null || anchor === undefined) return;
+      t.drag = { idx, orig, c3, camDir: nrm, anchor, ax, moved: false };
+      controls.enabled = false;
+      push();
+      renderer.domElement.setPointerCapture?.(e.pointerId);
     };
     const onMove = (e) => {
       setRay(e);
@@ -161,7 +255,7 @@ export default function RoofSculptor({ onClose }) {
         return;
       }
       let delta = new THREE.Vector3();
-      if (d.ax === 'free') {
+      if (d.ax === 'free' || d.ax === 'plane') {
         const p = ray.ray.intersectPlane(new THREE.Plane().setFromNormalAndCoplanarPoint(d.camDir, d.c3), new THREE.Vector3());
         if (!p) return;
         delta = p.sub(d.anchor);
@@ -191,16 +285,31 @@ export default function RoofSculptor({ onClose }) {
       if (!downAt || Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) > 4) return; // that was an orbit
       downAt = null;
       setRay(e);
-      if (S.current.tool === 'move') {
-        const vertexMode = S.current.pickMode === 'vertex';
-        const vh = vertexMode ? pickVert() : null, eh = vertexMode ? null : pickEdge();
-        setSel(vh ? { k: 'v', i: vh.object.userData.i } : eh ? { k: 'e', a: eh[0], b: eh[1] } : null);
-      } else {
+      if (S.current.tool === 'cut') {
         const p = cutPoint();
         if (!p) return;
         const A = S.current.cutA;
         if (!A) setCutA(p);
-        else if (Math.hypot(p[0] - A[0], p[1] - A[1]) > 0.05) { const m = cutMesh(S.current.mesh, A, p); push(); setMesh(m); commit(m); setCutA(null); setSel(null); }
+        else if (Math.hypot(p[0] - A[0], p[1] - A[1]) > 0.05) { const m = cutMesh(S.current.mesh, A, p); push(); setMesh(m); commit(m); setCutA(null); setSel(EMPTY); }
+        return;
+      }
+      // sub-object selection; Ctrl or Shift adds to the selection or removes from it
+      const add = e.ctrlKey || e.metaKey || e.shiftKey, md = S.current.mode, m = S.current.mesh, cur = S.current.sel;
+      const toggle = (list, item, same) => (list.some((x) => same(x, item)) ? list.filter((x) => !same(x, item)) : [...list, item]);
+      if (md === 'v') {
+        const h = pickVert();
+        if (!h) { if (!add) setSel(EMPTY); return; }
+        const i = h.object.userData.i;
+        setSel({ ...EMPTY, vs: add ? toggle(cur.vs, i, (x, y) => x === y) : [i] });
+      } else if (md === 'e') {
+        const h = pickEdge();
+        if (!h) { if (!add) setSel(EMPTY); return; }
+        setSel({ ...EMPTY, es: add ? toggle(cur.es, h, (x, y) => ek(...x) === ek(...y)) : [h] });
+      } else {
+        const ti = pickTri();
+        if (ti === null) { if (!add) setSel(EMPTY); return; }
+        const grp = md === 'el' ? elementOf(m, ti) : polygonOf(m, ti), has = grp.every((i) => cur.ts.includes(i));
+        setSel({ ...EMPTY, ts: add ? (has ? cur.ts.filter((i) => !grp.includes(i)) : [...new Set([...cur.ts, ...grp])]) : grp });
       }
     };
     renderer.domElement.addEventListener('pointerdown', onDown);
@@ -228,43 +337,86 @@ export default function RoofSculptor({ onClose }) {
     dyn.add(roof); t.roofMesh = roof;
     // edges (unique)
     const seen = new Map();
-    for (const [a, b, c] of mesh.t) for (const [i, j] of [[a, b], [b, c], [c, a]]) { const k = i < j ? `${i},${j}` : `${j},${i}`; if (!seen.has(k)) seen.set(k, i < j ? [i, j] : [j, i]); }
+    for (const [a, b, c] of mesh.t) for (const [i, j] of [[a, b], [b, c], [c, a]]) { const k = ek(i, j); if (!seen.has(k)) seen.set(k, i < j ? [i, j] : [j, i]); }
     t.edges = [...seen.values()];
     const ep = [];
     for (const [a, b] of t.edges) ep.push(...P3(mesh.v[a]).toArray(), ...P3(mesh.v[b]).toArray());
     const eg = new THREE.BufferGeometry(); eg.setAttribute('position', new THREE.Float32BufferAttribute(ep, 3));
     t.edgeLines = new THREE.LineSegments(eg, new THREE.LineBasicMaterial({ color: 0x14161c }));
     dyn.add(t.edgeLines);
-    // the selected edge or vertex, drawn on top
-    const hot = new THREE.LineBasicMaterial({ color: 0xe8452c, depthTest: false });
-    if (sel?.k === 'e') {
-      const hl = new THREE.Line(new THREE.BufferGeometry().setFromPoints([P3(mesh.v[sel.a]), P3(mesh.v[sel.b])]), hot); hl.renderOrder = 25;
-      const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 1, 8), new THREE.MeshBasicMaterial({ color: 0xe8452c, depthTest: false }));
-      const A = P3(mesh.v[sel.a]), B = P3(mesh.v[sel.b]); tube.position.copy(A).add(B).multiplyScalar(0.5); tube.scale.y = A.distanceTo(B);
-      tube.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), B.clone().sub(A).normalize()); tube.renderOrder = 25;
-      dyn.add(hl, tube);
+    // the selection, drawn on top
+    if (sel.ts.length) {
+      const sp = [];
+      for (const ti of sel.ts) for (const i of mesh.t[ti] || []) sp.push(mesh.v[i][0], mesh.v[i][2], mesh.v[i][1]);
+      const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.Float32BufferAttribute(sp, 3));
+      const ov = new THREE.Mesh(sg, new THREE.MeshBasicMaterial({ color: 0xe8452c, transparent: true, opacity: 0.55, depthTest: false, side: THREE.DoubleSide })); ov.renderOrder = 24; dyn.add(ov);
     }
-    t.verts = mesh.v.map((p, i) => {
-      const on = (sel?.k === 'v' && sel.i === i) || (sel?.k === 'e' && (sel.a === i || sel.b === i));
+    for (const [a, b] of sel.es) {
+      const A = P3(mesh.v[a]), B = P3(mesh.v[b]);
+      const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 1, 8), new THREE.MeshBasicMaterial({ color: 0xe8452c, depthTest: false }));
+      tube.position.copy(A).add(B).multiplyScalar(0.5); tube.scale.y = A.distanceTo(B);
+      tube.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), B.clone().sub(A).normalize()); tube.renderOrder = 25; dyn.add(tube);
+    }
+    const hot = new Set(vertsOf(mesh, sel));
+    t.verts = mode === 'v' ? mesh.v.map((p, i) => {
+      const on = hot.has(i);
       const m = new THREE.Mesh(new THREE.SphereGeometry(on ? 0.1 : 0.07, 14, 12), new THREE.MeshBasicMaterial({ color: on ? 0xe8452c : 0x14161c, depthTest: false }));
       m.position.copy(P3(p)); m.userData.i = i; m.renderOrder = 26; dyn.add(m); return m;
-    });
-    if (sel) { // arrows along the three axes through the selection, the active one long and bright
-      const ids = sel.k === 'v' ? [sel.i] : [sel.a, sel.b];
+    }) : [];
+    // the gumball: arrows (one axis), squares (a plane), ball (free)
+    t.handles = [];
+    if (hot.size && tool === 'move') {
+      const ids = [...hot];
       const c = ids.reduce((acc, i) => acc.add(P3(mesh.v[i])), new THREE.Vector3()).multiplyScalar(1 / ids.length);
       const COL = { x: 0xd64545, y: 0x2f9e5b, z: 0x3f6fd6 };
+      const gm = new THREE.Group(); gm.position.copy(c);
+      const mat = (col, op = 1) => new THREE.MeshBasicMaterial({ color: col, depthTest: false, transparent: true, opacity: op, side: THREE.DoubleSide });
+      const add = (m, handle, order = 40) => { m.userData.handle = handle; m.renderOrder = order; gm.add(m); t.handles.push(m); return m; };
       for (const ax of ['x', 'y', 'z']) {
-        const on = axis === ax, L = on ? 3 : 0.7, d = AXES[ax];
-        const ln = new THREE.Line(new THREE.BufferGeometry().setFromPoints([c.clone().addScaledVector(d, on ? -L : 0), c.clone().addScaledVector(d, L)]), new THREE.LineBasicMaterial({ color: COL[ax], depthTest: false, transparent: true, opacity: on ? 1 : 0.55 }));
-        ln.renderOrder = 28; dyn.add(ln);
-        const cone = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.18, 10), new THREE.MeshBasicMaterial({ color: COL[ax], depthTest: false }));
-        cone.position.copy(c).addScaledVector(d, L); cone.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d); cone.renderOrder = 29; dyn.add(cone);
+        const on = axis === ax, d = AXES[ax], q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), d);
+        const shaft = add(new THREE.Mesh(new THREE.CylinderGeometry(on ? 0.045 : 0.03, on ? 0.045 : 0.03, 0.85, 8), mat(COL[ax])), ax);
+        shaft.position.copy(d).multiplyScalar(0.575); shaft.quaternion.copy(q);
+        const cone = add(new THREE.Mesh(new THREE.ConeGeometry(0.11, 0.3, 14), mat(COL[ax])), ax);
+        cone.position.copy(d).multiplyScalar(1.15); cone.quaternion.copy(q);
       }
-    }
+      for (const [name, u, v2, n, colr] of [['xz', 'x', 'z', 'y', COL.y], ['xy', 'x', 'y', 'z', COL.z], ['zy', 'z', 'y', 'x', COL.x]]) {
+        const sq = add(new THREE.Mesh(new THREE.PlaneGeometry(0.28, 0.28), mat(colr, 0.55)), name);
+        sq.position.copy(AXES[u]).multiplyScalar(0.4).addScaledVector(AXES[v2], 0.4);
+        sq.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), AXES[n]);
+      }
+      add(new THREE.Mesh(new THREE.SphereGeometry(0.13, 16, 12), mat(0xffffff)), 'free', 41);
+      dyn.add(gm); t.setGum(gm);
+    } else t.setGum(null);
     t.updatePreview?.();
     t.render();
-  }, [mesh, sel, axis]);
+  }, [mesh, sel, axis, tool, mode]);
   useEffect(() => { T.current?.updatePreview?.(); }, [tool, cutA]);
+
+  // ---------------------------------------------------------------- operations (the Edit Poly rollout)
+  const switchMode = (md) => {
+    setMode(md); setTool('move');
+    setSel(md === 'v' ? { ...EMPTY, vs: vertsOf(mesh, sel) } : EMPTY); // vertices carry over, the rest starts clean
+  };
+  const doExtrude = () => { if (!sel.ts.length) return; const r = dupRegion(mesh, sel.ts, 'extrude', amt, [room.width / 2, room.depth / 2, 0]); apply(r.mesh, { ...EMPTY, ts: r.ts }); };
+  const doInset = () => { if (!sel.ts.length) return; const r = dupRegion(mesh, sel.ts, 'inset', amt, [room.width / 2, room.depth / 2, 0]); apply(r.mesh, { ...EMPTY, ts: r.ts }); };
+  const doWeld = () => { const vs = vertsOf(mesh, sel); if (vs.length < 2) return; apply(weld(mesh, vs)); };
+  const doRemove = () => {
+    let ts = sel.ts;
+    if (sel.vs.length) ts = mesh.t.map((tri, i) => (tri.some((k) => sel.vs.includes(k)) ? i : -1)).filter((i) => i >= 0);
+    if (!ts.length) return;
+    const drop = new Set(ts), m = compact({ v: mesh.v, t: mesh.t.filter((_, i) => !drop.has(i)) });
+    if (m.t.length < 2) { setNote('a roof needs at least two faces'); return; }
+    apply(m);
+  };
+  const doSplitEdge = () => { if (!sel.es.length) return; let m = mesh, last = null; for (const [a, b] of sel.es) { const r = splitEdge(m, a, b); m = r.mesh; last = r.index; } apply(m, { ...EMPTY, vs: [last] }); setMode('v'); };
+  const doSelectAll = () => setSel(mode === 'v' ? { ...EMPTY, vs: mesh.v.map((_, i) => i) } : mode === 'e' ? { ...EMPTY, es: T.current.edges.map((e) => [...e]) } : { ...EMPTY, ts: mesh.t.map((_, i) => i) });
+  const doUndo = () => { const m = undo.current.pop(); if (!m) return; setMesh(m); commit(m); setSel(EMPTY); };
+  const doReset = () => { undo.current = []; setSel(EMPTY); setCutA(null); dispatch(roomActions.setParam({ key: 'roof', value: null })); setMesh(autoMesh(room)); };
+  const oneVertex = sel.vs.length === 1 ? mesh.v[sel.vs[0]] : null;
+  const setCoord = (c, value) => {
+    if (!oneVertex || !Number.isFinite(value)) return;
+    const m = clone(mesh); m.v[sel.vs[0]][c] = Math.max(0, Math.min(c === 0 ? room.width : c === 1 ? room.depth : 6, value)); apply(m, sel);
+  };
 
   // ---------------------------------------------------------------- keys
   useEffect(() => {
@@ -272,62 +424,62 @@ export default function RoofSculptor({ onClose }) {
       if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return;
       const k = e.key.toLowerCase();
       if ((e.ctrlKey || e.metaKey) && k === 'z') { e.preventDefault(); doUndo(); return; }
-      if (k === 'x') setAxis('x'); else if (k === 'y' || k === 'h') setAxis('y'); else if (k === 'z') setAxis('z'); else if (k === 'f') setAxis('free');
+      if ((e.ctrlKey || e.metaKey) && k === 'a') { e.preventDefault(); doSelectAll(); return; }
+      if (k === '1') switchMode('v'); else if (k === '2') switchMode('e'); else if (k === '4') switchMode('p'); else if (k === '5') switchMode('el');
+      else if (k === 'x') setAxis('x'); else if (k === 'y' || k === 'h') setAxis('y'); else if (k === 'z') setAxis('z'); else if (k === 'f') setAxis('free');
       else if (k === 'c') { setTool('cut'); setCutA(null); } else if (k === 'm') setTool('move');
-      else if (k === 'e') { setPickMode('edge'); setSel(null); } else if (k === 'v') { setPickMode('vertex'); setSel(null); }
-      else if (k === 'escape') { setCutA(null); setSel(null); }
+      else if (k === 'delete' || k === 'backspace') doRemove();
+      else if (k === 'escape') { setCutA(null); setSel(EMPTY); }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const doUndo = () => { const m = undo.current.pop(); if (!m) return; setMesh(m); commit(m); setSel(null); };
-  const doSplit = () => { if (sel?.k !== 'e') return; const { mesh: m, index } = splitEdge(mesh, sel.a, sel.b); apply(m); setSel({ k: 'v', i: index }); };
-  const doReset = () => { undo.current = []; setSel(null); setCutA(null); dispatch(roomActions.setParam({ key: 'roof', value: null })); setMesh(autoMesh(room)); };
-  const setCoord = (c, value) => {
-    if (sel?.k !== 'v' || !Number.isFinite(value)) return;
-    const m = clone(mesh); m.v[sel.i][c] = Math.max(0, Math.min(c === 0 ? room.width : c === 1 ? room.depth : 6, value)); apply(m);
-  };
-  const sv = sel?.k === 'v' ? mesh.v[sel.i] : null;
+  const hint = tool === 'cut'
+    ? (cutA ? 'click the second point: the vertical plane through both splits every roof face it crosses' : 'click two points on the roof to draw a splitting plane')
+    : `${MODES.find((m) => m[0] === mode)[1]} mode: click to select, Ctrl-click to add or remove, then drag the gumball (arrows: one axis, squares: a plane, white ball: free)`;
 
   return (
     <div className="card sculpt">
       <div className="cardhead">
-        <h2>Roof sculptor <small>{tool === 'move' ? pickMode === 'edge' ? 'click an edge and drag it: both ends move together along the chosen axis (the long arrow)' : 'click a vertex and drag it along the chosen axis (the long arrow)' : cutA ? 'click the second point: the vertical plane through both splits every roof face it crosses' : 'click two points on the roof to draw a splitting plane'}</small></h2>
+        <h2>Roof sculptor <small>{hint}</small></h2>
         <button className="mini primary" onClick={onClose}>done</button>
       </div>
       <div className="facebar sculptbar">
+        <b>Sub-object</b>
         <span className="seg">
-          <button className={tool === 'move' ? 'primary' : ''} onClick={() => setTool('move')}>move (M)</button>
+          {MODES.map(([k, label, key]) => <button key={k} className={mode === k && tool === 'move' ? 'primary' : ''} onClick={() => switchMode(k)}>{label} ({key})</button>)}
+        </span>
+        <span className="seg">
           <button className={tool === 'cut' ? 'primary' : ''} onClick={() => { setTool('cut'); setCutA(null); }}>split plane (C)</button>
         </span>
-        {tool === 'move' && (
-          <span className="seg">
-            <button className={pickMode === 'edge' ? 'primary' : ''} onClick={() => { setPickMode('edge'); setSel(null); }}>edges (E)</button>
-            <button className={pickMode === 'vertex' ? 'primary' : ''} onClick={() => { setPickMode('vertex'); setSel(null); }}>vertices (V)</button>
-          </span>
-        )}
-        {tool === 'move' && (
-          <span className="seg">
-            {Object.keys(AXIS_LABEL).map((a) => <button key={a} className={axis === a ? 'primary' : ''} onClick={() => setAxis(a)}>{AXIS_LABEL[a]}</button>)}
-          </span>
-        )}
-        <label className="inline"><input type="checkbox" checked={snap} onChange={(e) => setSnap(e.target.checked)} /> snap to grid {GRID * 100} cm</label>
-        <button className="mini" disabled={sel?.k !== 'e'} onClick={doSplit}>split edge</button>
-        <button className="mini" onClick={doUndo} disabled={!undo.current.length}>undo</button>
-        <button className="mini ghost" onClick={doReset}>back to automatic roof</button>
+        <span className="snapnote">{count ? `${count} selected` : 'nothing selected'}</span>
         {note && <span className="snapnote">{note}</span>}
       </div>
-      {sv && (
-        <div className="facebar sculptbar">
-          <b>vertex {sel.i}</b>
-          {[['x across', 0], ['y along', 1], ['height', 2]].map(([label, c]) => (
-            <label key={c} className="inline">{label}
-              <input type="number" step="0.05" value={+sv[c].toFixed(2)} onChange={(e) => setCoord(c, e.target.valueAsNumber)} style={{ width: 70 }} /> m
-            </label>
-          ))}
-        </div>
-      )}
+      <div className="facebar sculptbar">
+        <b>Edit</b>
+        <label className="inline">amount <input type="number" step="0.05" min="0.05" value={amt} onChange={(e) => setAmt(Math.max(0.05, e.target.valueAsNumber || 0.05))} style={{ width: 64 }} /> m</label>
+        <button className="mini" disabled={!sel.ts.length} onClick={doExtrude}>extrude</button>
+        <button className="mini" disabled={!sel.ts.length} onClick={doInset}>inset</button>
+        <button className="mini" disabled={vertsOf(mesh, sel).length < 2} onClick={doWeld}>weld</button>
+        <button className="mini" disabled={!sel.es.length} onClick={doSplitEdge}>split edge</button>
+        <button className="mini" disabled={!sel.ts.length && !sel.vs.length} onClick={doRemove}>remove (Del)</button>
+        <button className="mini ghost" onClick={doSelectAll}>select all (Ctrl A)</button>
+        <button className="mini" onClick={doUndo} disabled={!undo.current.length}>undo</button>
+        <button className="mini ghost" onClick={doReset}>back to automatic roof</button>
+      </div>
+      <div className="facebar sculptbar">
+        <b>Gumball</b>
+        <span className="seg">
+          {Object.keys(AXIS_LABEL).map((a) => <button key={a} className={axis === a ? 'primary' : ''} onClick={() => setAxis(a)}>{AXIS_LABEL[a]}</button>)}
+        </span>
+        <label className="inline"><input type="checkbox" checked={snap} onChange={(e) => setSnap(e.target.checked)} /> snap to grid {GRID * 100} cm and to vertices</label>
+        {oneVertex && [['x', 0], ['y', 1], ['height', 2]].map(([label, c]) => (
+          <label key={c} className="inline">{label}
+            <input type="number" step="0.05" value={+oneVertex[c].toFixed(2)} onChange={(e) => setCoord(c, e.target.valueAsNumber)} style={{ width: 70 }} /> m
+          </label>
+        ))}
+      </div>
       <div ref={mount} className="scene3d" style={{ background: '#fff' }} />
       <p className="hint">Heights count for the usable area only where the roof is 1 m or higher (half) and 2 m or higher (full). The numbers on the right follow the sculpted roof. The walk-through still builds the automatic roof.</p>
     </div>
