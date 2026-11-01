@@ -1,0 +1,361 @@
+<title>Usable Space Presentation</title>
+<style>
+:root { --ink:#0f1217; --paper:#f3efe6; --hot:#ff4d2e; --moss:#2f7d4f; --sky:#7fb6d9; --sun:#ffc533; --mute:#6b6f76; --line:#d9d2c3; color-scheme: light; }
+* { box-sizing: border-box; margin: 0; }
+html, body { height: 100%; overflow: hidden; background: #07090c; font-family: 'Archivo', 'Arial Black', system-ui, sans-serif; }
+#stage { position: absolute; left: 50%; top: 50%; width: 1920px; height: 1200px; transform-origin: 0 0; background: var(--paper); overflow: hidden; color: var(--ink); }
+.slide { position: absolute; inset: 0 0 96px 0; padding: 72px 96px 0; opacity: 0; visibility: hidden; transition: opacity .45s; }
+.slide.on { opacity: 1; visibility: visible; }
+.dark { background: var(--ink); color: #fff; }
+.slide.dark::before { content: ""; position: absolute; inset: -9999px; background: var(--ink); z-index: -1; }
+h1 { font-weight: 900; font-size: 150px; line-height: .92; letter-spacing: -.035em; text-transform: uppercase; }
+h2 { font-weight: 900; font-size: 104px; line-height: .95; letter-spacing: -.03em; text-transform: uppercase; max-width: 1500px; }
+.tag { font-weight: 800; font-size: 26px; letter-spacing: .22em; text-transform: uppercase; color: var(--hot); margin-bottom: 22px; }
+.big { font-size: 46px; font-weight: 700; line-height: 1.15; }
+.mute { color: var(--mute); } .dark .mute { color: #9aa1ab; }
+.hot { color: var(--hot); } .moss { color: var(--moss); }
+.abs { position: absolute; }
+.pop { opacity: 0; transform: translateY(40px) scale(.96); }
+.on .pop { animation: pop .7s cubic-bezier(.2,.9,.25,1.2) forwards; animation-delay: calc(var(--i, 0) * .18s + .2s); }
+@keyframes pop { to { opacity: 1; transform: none; } }
+.fade { opacity: 0; } .on .fade { animation: fade .8s forwards; animation-delay: calc(var(--i, 0) * .25s + .2s); }
+@keyframes fade { to { opacity: 1; } }
+.draw { stroke-dasharray: 2400; stroke-dashoffset: 2400; } .on .draw { animation: draw 2.2s ease forwards; animation-delay: calc(var(--i, 0) * .3s + .2s); }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+/* method strip */
+#method { position: absolute; left: 0; right: 0; bottom: 0; height: 96px; background: var(--ink); display: flex; align-items: center; gap: 0; padding: 0 96px; z-index: 5; }
+#method button { all: unset; cursor: pointer; flex: 1; text-align: center; font-weight: 800; font-size: 22px; letter-spacing: .16em; text-transform: uppercase; color: #5d6470; padding: 30px 0; border-bottom: 6px solid transparent; transition: .3s; }
+#method button.on { color: #fff; border-color: var(--hot); }
+#count { position: absolute; right: 40px; top: 28px; font-weight: 800; font-size: 22px; color: var(--mute); z-index: 6; letter-spacing: .1em; }
+.dark ~ #count { }
+.chip { display: inline-block; padding: 8px 22px; border-radius: 999px; font-weight: 800; font-size: 30px; }
+.card { background: #fff; border: 4px solid var(--ink); box-shadow: 14px 14px 0 var(--ink); }
+.dark .card { background: #171b22; border-color: #fff; box-shadow: 14px 14px 0 var(--hot); }
+img.shot { display: block; border: 4px solid #fff; box-shadow: 14px 14px 0 var(--hot); }
+.logo { width: 120px; height: 120px; border-radius: 24px; background: #fff; display: grid; place-items: center; box-shadow: 0 6px 0 rgba(0,0,0,.25); }
+.logo svg { width: 66px; height: 66px; }
+.logos { display: grid; grid-template-columns: repeat(8, 120px); gap: 26px 0; justify-content: space-between; }
+.logos div { text-align: center; font-weight: 800; font-size: 19px; } .logos .logo { margin: 0 auto 10px; }
+.bar { height: 100%; width: 0; }
+.row { display: grid; grid-template-columns: 330px 1fr 300px; white-space: nowrap; align-items: center; gap: 20px; height: 56px; font-weight: 800; font-size: 28px; }
+.row .track { height: 38px; background: rgba(255,255,255,.1); }
+.slide:not(.dark) .row .track { background: var(--line); }
+.node { position: absolute; padding: 18px 30px; font-weight: 900; font-size: 38px; text-transform: uppercase; border: 4px solid var(--ink); background: #fff; }
+</style>
+
+<div id="stage">
+<div id="count"></div>
+
+<!-- 1 hook -->
+<section class="slide dark" data-step="0" id="s1">
+  <div class="tag">Usable Space</div>
+  <h1 class="pop" style="--i:0; max-width: 1060px; font-size: 128px">How much of your attic can you really live in?</h1>
+  <p class="big pop mute" style="--i:3; margin-top: 44px">A second opinion for every attic plan.</p>
+  <svg class="abs" style="right: 60px; top: 190px" width="720" height="640" viewBox="0 0 720 640">
+    <circle cx="590" cy="110" r="64" fill="#ffc533" class="pop" style="--i:4"/>
+    <path class="draw" style="--i:1" d="M30 590 H690 M70 590 V360 L360 120 L650 360 V590" fill="none" stroke="#fff" stroke-width="14" stroke-linejoin="round"/>
+    <path class="fade" style="--i:5" d="M70 360 L360 120 L650 360 Z" fill="#ff4d2e"/>
+    <rect class="fade" style="--i:5" x="300" y="440" width="120" height="150" fill="#fff"/>
+    <rect class="fade" style="--i:6" x="130" y="420" width="90" height="90" fill="#7fb6d9"/><rect class="fade" style="--i:6" x="500" y="420" width="90" height="90" fill="#7fb6d9"/>
+  </svg>
+</section>
+
+<!-- 2 problem -->
+<section class="slide" data-step="0" id="s2">
+  <div class="tag">The problem</div>
+  <h2 class="pop">Under a slanted roof, not every square metre counts</h2>
+  <svg class="abs" id="sec2" style="left: 96px; top: 470px" width="1730" height="520" viewBox="0 0 1730 520"></svg>
+  <div class="abs" style="right: 96px; top: 440px; display: grid; gap: 18px; text-align: right">
+    <div class="pop" style="--i:6"><span class="chip" style="background:#2f7d4f;color:#fff">2 m or higher</span> <b style="font-size:54px">100 %</b></div>
+    <div class="pop" style="--i:7"><span class="chip" style="background:#ffc533">1 to 2 m</span> <b style="font-size:54px">50 %</b></div>
+    <div class="pop" style="--i:8"><span class="chip" style="background:#ff4d2e;color:#fff">under 1 m</span> <b style="font-size:54px">0 %</b></div>
+  </div>
+</section>
+
+<!-- 3 question -->
+<section class="slide" data-step="1" id="s3">
+  <div class="tag">Our research question</div>
+  <h2 class="pop">Can we tell, in seconds, how much of a pitched roof is usable?</h2>
+  <div class="abs" style="left: 96px; top: 560px; width: 1730px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 40px">
+    <div class="card pop" style="--i:3; padding: 34px"><div class="tag" style="font-size:22px">Guess</div><p class="big">Real roofs follow a few patterns. A tool can learn them and judge a plan against them.</p></div>
+    <div class="card pop" style="--i:4; padding: 34px"><div class="tag" style="font-size:22px">Proof</div><p class="big">Real roofs from open maps, then real furniture on the real floor.</p></div>
+    <div class="card pop" style="--i:5; padding: 34px"><div class="tag" style="font-size:22px">Honest</div><p class="big">We show how many buildings each number rests on, and where it breaks.</p></div>
+  </div>
+</section>
+
+<!-- 4 zoom -->
+<section class="slide dark" data-step="2" id="s4">
+  <div class="tag">The data</div>
+  <div id="zcap" class="abs" style="left: 96px; top: 150px; width: 640px"></div>
+  <div class="abs" style="left: 800px; top: 40px; width: 1030px; height: 1040px; background: #11151b; border: 4px solid #fff; overflow: hidden">
+    <svg id="zmap" width="1030" height="1040" viewBox="0 0 1000 1365" preserveAspectRatio="xMidYMid slice" style="position:absolute; inset:0"></svg>
+    <svg id="zdet" width="1030" height="1040" viewBox="0 0 20400 20000" preserveAspectRatio="xMidYMid slice" style="position:absolute; inset:0; opacity:0"></svg>
+    <svg id="zroof" width="1030" height="1040" viewBox="0 0 1030 1040" style="position:absolute; inset:0; opacity:0"></svg>
+  </div>
+  <button id="zreplay" class="abs" style="all:unset; position:absolute; cursor:pointer; left: 96px; top: 960px; font-weight:800; font-size:26px; letter-spacing:.14em; color:#9aa1ab">&#8635; PLAY AGAIN</button>
+</section>
+
+<!-- 5 Germany -->
+<section class="slide" data-step="3" id="s5">
+  <div class="tag">Evidence 1: all of Germany</div>
+  <h2 class="pop" style="font-size: 88px">Gabled roofs: <span class="hot" id="gshare"></span> of tagged homes</h2>
+  <div id="gbars" class="abs" style="left: 96px; top: 330px; width: 1730px"></div>
+  <p class="abs mute" style="left: 96px; top: 1010px; font-size: 26px; font-weight: 700" id="gnote"></p>
+</section>
+
+<!-- 6 Detmold -->
+<section class="slide" data-step="3" id="s6">
+  <div class="tag">Evidence 2: one city, surveyed</div>
+  <h2 class="pop" style="font-size: 88px">How steep are the roofs in Detmold?</h2>
+  <svg class="abs" id="hist" style="left: 96px; top: 330px" width="1200" height="660" viewBox="0 0 1200 660"></svg>
+  <div class="abs" style="left: 1380px; top: 340px; width: 450px; display: grid; gap: 28px">
+    <div class="card pop" style="--i:6; padding: 26px"><div class="tag" style="font-size:20px">Old centre</div><b style="font-size:92px;line-height:1">43.3°</b><div class="mute" style="font-size:24px;font-weight:700">602 gabled roofs</div></div>
+    <div class="card pop" style="--i:7; padding: 26px"><div class="tag" style="font-size:20px">Outskirts</div><b style="font-size:92px;line-height:1">38.5°</b><div class="mute" style="font-size:24px;font-weight:700">777 gabled roofs</div></div>
+    <p class="big pop" style="--i:8">Our default roof: <b class="hot">38°</b>, a fairly typical one.</p>
+  </div>
+  <p class="abs mute" style="left: 96px; top: 1010px; font-size: 26px; font-weight: 700">3D building models of NRW (LoD2), 11 map squares of 1 km, 10,949 buildings, 1,379 gabled dwellings.</p>
+</section>
+
+<!-- 7 decision tree -->
+<section class="slide" data-step="4" id="s7">
+  <div class="tag">Method</div>
+  <h2 class="pop" style="font-size: 88px">One question decides the most</h2>
+  <svg class="abs" style="left: 0; top: 280px" width="1920" height="780" viewBox="0 0 1920 780" id="tree"></svg>
+</section>
+
+<!-- 8 product -->
+<section class="slide dark" data-step="4" id="s8">
+  <div class="tag">The tool</div>
+  <h2 class="pop" style="font-size: 88px">Draw the rooms your way</h2>
+  <div class="abs" style="left: 96px; top: 330px; display: flex; gap: 40px; align-items: flex-start">
+    <div class="pop" style="--i:2"><img class="shot" src="{{IMG_app_bubbles}}" width="410"><p class="big" style="margin-top:24px">Bubbles</p></div>
+    <div class="pop" style="--i:3"><img class="shot" src="{{IMG_app_tree}}" width="410"><p class="big" style="margin-top:24px">Tree</p></div>
+    <div class="pop" style="--i:4"><img class="shot" src="{{IMG_app_puzzle}}" width="410"><p class="big" style="margin-top:24px">Puzzle</p></div>
+    <div class="pop" style="--i:5"><img class="shot" src="{{IMG_app_plan}}" width="410"><p class="big" style="margin-top:24px">Plan</p></div>
+  </div>
+</section>
+
+<!-- 9 walk -->
+<section class="slide dark" data-step="4" id="s9">
+  <div class="tag">Walk inside</div>
+  <h2 class="pop" style="font-size: 88px">Hover a roof, see what it is made of</h2>
+  <img class="shot pop" style="--i:3; position:absolute; left: 96px; top: 330px" src="{{IMG_app_house}}" width="900">
+  <svg class="abs" id="layers" style="left: 1060px; top: 300px" width="770" height="740" viewBox="0 0 770 740"></svg>
+  <p class="abs mute" style="left: 1060px; top: 1010px; font-size: 24px; font-weight: 700">Typical build-up, a rule of thumb, not measured.</p>
+</section>
+
+<!-- 10 AI -->
+<section class="slide" data-step="4" id="s10">
+  <div class="tag">AI that reads a roof</div>
+  <h2 class="pop" style="font-size: 88px">Four models, one roof photo</h2>
+  <div class="abs" id="aipipe" style="left: 96px; top: 340px; width: 1730px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 50px"></div>
+  <p class="abs big pop" style="--i:9; left: 96px; top: 900px; width: 1500px">They find the roof, cut it out, guess its depth and name its shape. We use that to inspire the plan check, never to replace it.</p>
+</section>
+
+<!-- 11 server -->
+<section class="slide dark" data-step="4" id="s11">
+  <div class="tag">Why a server</div>
+  <h2 class="pop" style="font-size: 88px">The laptop is small. The server is big.</h2>
+  <div class="abs" style="left: 96px; top: 360px; width: 1730px; display: grid; gap: 54px">
+    <div><p class="big">Laptop graphics memory</p><div style="height:70px;background:rgba(255,255,255,.1);margin-top:12px"><div class="bar" data-w="6.6" style="background:#ffc533;display:flex;align-items:center;justify-content:flex-end;padding-right:16px;font-weight:900;font-size:36px;color:#0f1217;white-space:nowrap">8 GB</div></div></div>
+    <div><p class="big">Office server (GX10)</p><div style="height:70px;background:rgba(255,255,255,.1);margin-top:12px"><div class="bar" data-w="100" style="background:#2f7d4f;display:flex;align-items:center;justify-content:flex-end;padding-right:16px;font-weight:900;font-size:36px;white-space:nowrap">121 GB, shared with the team</div></div></div>
+  </div>
+  <p class="abs big pop" style="--i:6; left: 96px; top: 800px; width: 1600px">Big AI models and 16 map files fit there. The laptop would choke. The server also keeps running overnight.</p>
+</section>
+
+<!-- 12 tools -->
+<section class="slide" data-step="4" id="s12">
+  <div class="tag">Built on open source</div>
+  <h2 class="pop" style="font-size: 88px">Standing on giants</h2>
+  <div class="abs logos" id="logos" style="left: 96px; top: 320px; width: 1730px"></div>
+</section>
+
+<!-- 13 limits -->
+<section class="slide" data-step="5" id="s13">
+  <div class="tag">Honest limits and next</div>
+  <h2 class="pop" style="font-size: 88px">What we do not know yet</h2>
+  <div class="abs" style="left: 96px; top: 330px; width: 1730px; display: grid; grid-template-columns: 1fr 1fr; gap: 60px">
+    <div style="display:grid;gap:26px">
+      <div class="card pop" style="--i:2;padding:26px 34px"><p class="big">Map volunteers tag some homes, not all.</p></div>
+      <div class="card pop" style="--i:3;padding:26px 34px"><p class="big">The surveyed numbers come from one city.</p></div>
+      <div class="card pop" style="--i:4;padding:26px 34px"><p class="big">Pitch and wall height are not the whole story.</p></div>
+    </div>
+    <div style="display:grid;gap:26px">
+      <div class="card pop" style="--i:5;padding:26px 34px;background:#ffe9e3"><p class="big">Next: more cities, 16 states of surveyed roofs.</p></div>
+      <div class="card pop" style="--i:6;padding:26px 34px;background:#ffe9e3"><p class="big">Next: test on real plans from architects.</p></div>
+      <div class="card pop" style="--i:7;padding:26px 34px;background:#ffe9e3"><p class="big">Next: plug into the floor-plan generator as a second opinion.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 14 ask -->
+<section class="slide dark" data-step="6" id="s14">
+  <div class="tag">The ask</div>
+  <h1 class="pop" style="max-width: 1500px">Give us one real attic plan</h1>
+  <p class="big pop mute" style="--i:3; margin-top: 50px">We will tell you what is usable, what fits, and how sure we are.</p>
+  <div class="abs" style="left: 96px; top: 760px; display: flex; gap: 30px">
+    <span class="chip pop" style="--i:5;background:#ff4d2e">Feedback</span><span class="chip pop" style="--i:6;background:#ffc533;color:#0f1217">Real plans</span><span class="chip pop" style="--i:7;background:#2f7d4f">More cities</span>
+  </div>
+</section>
+
+<div id="method"></div>
+</div>
+
+<script>
+const LOGOS = {{LOGOS}};
+const STATES = {{STATES}};
+const DET = {{DETMOLD}};
+const SUM = {{SUM}};
+const AI = {{AI}};
+const $ = (s, r = document) => r.querySelector(s), SVGNS = 'http://www.w3.org/2000/svg';
+const el = (tag, attrs = {}, parent) => { const e = document.createElementNS(SVGNS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; };
+const ease = (t) => (t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+
+/* ---------- stage scaling: fixed 1920 x 1200 canvas, scaled to fit, never scrolls */
+const stage = $('#stage');
+function fit() { const k = Math.min(innerWidth / 1920, innerHeight / 1200); stage.style.transform = `scale(${k}) translate(-50%, -50%)`; stage.style.transformOrigin = '0 0'; stage.style.left = '50%'; stage.style.top = '50%'; }
+addEventListener('resize', fit); fit();
+
+/* ---------- roof section (shared by slide 2 and the zoom end) */
+function roofSection(svg, { span, pitch, knee, W, H, ox = 0, oy = 0, show = true }) {
+  const ridge = knee + Math.tan(pitch * Math.PI / 180) * span / 2, sc = Math.min((W - 80) / span, (H - 120) / (ridge + 0.6)), gy = oy + H - 40, gx = ox + (W - span * sc) / 2;
+  const X = (m) => gx + m * sc, Y = (m) => gy - m * sc;
+  const g = el('g', {}, svg);
+  const pts = [[0, 0], [0, knee], [span / 2, ridge], [span, knee], [span, 0]].map(([x, y]) => `${X(x)},${Y(y)}`).join(' ');
+  const id = 'cp' + Math.random().toString(36).slice(2, 7);
+  const cp = el('clipPath', { id }, g); el('polygon', { points: pts }, cp);
+  const band = (a, b, c) => el('rect', { x: X(0) - 2, y: Y(b), width: span * sc + 4, height: (b - a) * sc, fill: c, 'clip-path': `url(#${id})` }, g);
+  band(0, 1, '#ff4d2e'); band(1, 2, '#ffc533'); band(2, ridge + 1, '#2f7d4f');
+  el('polygon', { points: pts, fill: 'none', stroke: '#0f1217', 'stroke-width': 9, 'stroke-linejoin': 'round' }, g);
+  el('line', { x1: X(-0.4), x2: X(span + 0.4), y1: Y(0), y2: Y(0), stroke: '#0f1217', 'stroke-width': 9 }, g);
+  for (const m of [1, 2]) { el('line', { x1: X(-0.4), x2: X(span + 0.4), y1: Y(m), y2: Y(m), stroke: '#0f1217', 'stroke-width': 3, 'stroke-dasharray': '14 10' }, g); const t = el('text', { x: X(-0.5), y: Y(m) + 9, 'text-anchor': 'end', 'font-size': 30, 'font-weight': 800, fill: '#0f1217' }, g); t.textContent = m + ' m'; }
+  return g;
+}
+const sec2 = $('#sec2'); roofSection(sec2, { span: 9, pitch: 40, knee: .9, W: 1500, H: 520, ox: 0 });
+for (const e of sec2.querySelectorAll('g > *')) { e.classList.add('fade'); }
+sec2.querySelectorAll('g > *').forEach((e, i) => e.style.setProperty('--i', 2 + i * 0.3));
+
+/* ---------- slide 4: zoom Germany > NRW > Detmold > one roof */
+const zmap = $('#zmap'), zdet = $('#zdet'), zroof = $('#zroof'), zcap = $('#zcap');
+for (const [k, s] of Object.entries(STATES.states)) { const p = el('path', { d: s.d, fill: k === 'DE-NW' ? '#ff4d2e' : '#2b323d', stroke: '#fff', 'stroke-width': 1.4, 'stroke-linejoin': 'round', id: 'st-' + k }, zmap); }
+const dot = el('circle', { cx: 328, cy: 552, r: 4, fill: '#ffc533', stroke: '#0f1217', 'stroke-width': 1 }, zmap);
+const COLS = ['#7fb6d9', '#5fbf9f', '#ff4d2e', '#ffc533', '#ff9a3c', '#c58cff', '#8a929e', '#5b616b'];
+for (const b of DET.buildings) el('path', { d: b.d, fill: COLS[b.r] || '#5b616b', stroke: 'none' }, zdet);
+let timer = 0, run = 0;
+const vb = (svg, a, b, t) => svg.setAttribute('viewBox', a.map((v, i) => v + (b[i] - v) * t).join(' '));
+const anim = (ms, f) => new Promise((res, rej) => { const id = run, t0 = performance.now(); (function st(n) { if (id !== run) return rej(); const t = Math.min(1, (n - t0) / ms); f(ease(t)); t < 1 ? requestAnimationFrame(st) : res(); })(t0); });
+const wait = (ms) => new Promise((res, rej) => { const id = run; setTimeout(() => (id === run ? res() : rej()), ms); });
+const caption = (n, t, sub) => { zcap.innerHTML = `<div style="font-weight:900;font-size:110px;line-height:.95;letter-spacing:-.03em">${n}</div><div style="font-weight:800;font-size:44px;margin-top:14px;line-height:1.1">${t}</div><div class="mute" style="font-size:28px;font-weight:700;margin-top:14px">${sub}</div>`; };
+async function zoomPlay() {
+  run++; zdet.style.opacity = 0; zroof.style.opacity = 0; zmap.style.opacity = 1; zmap.style.transition = zdet.style.transition = zroof.style.transition = 'opacity .9s';
+  zmap.setAttribute('viewBox', '0 0 1000 1365'); zdet.setAttribute('viewBox', '0 0 20400 20000'); zroof.innerHTML = '';
+  caption(SUM.total.toLocaleString('en'), 'tagged homes in Germany', '16 federal states, OpenStreetMap');
+  try {
+    await wait(2200);
+    caption(SUM.nw.toLocaleString('en'), 'in North Rhine-Westphalia', 'the state with the most data');
+    await anim(2200, (t) => vb(zmap, [0, 0, 1000, 1365], [0, 440, 420, 410], t));
+    await wait(900);
+    caption('Detmold', 'a city of 75,000 people', 'we zoom into its building map');
+    await anim(2200, (t) => vb(zmap, [0, 440, 420, 410], [318, 543, 20, 20], t));
+    zmap.style.opacity = 0; zdet.style.opacity = 1;
+    zdet.setAttribute('viewBox', '7000 5200 4000 3900');
+    await anim(2600, (t) => vb(zdet, [7000, 5200, 4000, 3900], [-67, -404, 20480, 20400], t));
+    caption(DET.buildings.length.toLocaleString('en'), 'buildings in a 2 km square', 'coloured by roof: orange gabled, blue flat, yellow hipped');
+    await wait(1800);
+    caption('1 roof', 'about 44° steep, 103 m² of footprint', 'surveyed from the air');
+    await anim(2400, (t) => vb(zdet, [-67, -404, 20480, 20400], [7960, 6100, 330, 330], t));
+    await wait(300);
+    zdet.style.opacity = 0; zroof.style.opacity = 1;
+    roofSection(zroof, { span: 9, pitch: 44, knee: .9, W: 1030, H: 1040 });
+    caption('84 %', 'of its floor is usable', 'median of 1,379 gabled roofs, 0.9 m low wall');
+  } catch (e) { /* replaced by a newer run */ }
+}
+$('#zreplay').addEventListener('click', (e) => { e.stopPropagation(); zoomPlay(); });
+
+/* ---------- slide 5: Germany bars */
+{
+  const list = Object.values(STATES.states).sort((a, b) => b.g - a.g), box = $('#gbars');
+  $('#gshare').textContent = SUM.gshare + ' %';
+  list.forEach((s, i) => {
+    const r = document.createElement('div'); r.className = 'row'; r.style.height = '38px'; r.style.fontSize = '24px';
+    r.innerHTML = `<span>${s.name}</span><div class="track" style="height:26px"><div class="bar" data-w="${s.g}" style="background:${s.g >= 80 ? '#ff4d2e' : '#0f1217'}"></div></div><span>${s.g} % <small style="color:#6b6f76">n=${s.n.toLocaleString('en')}</small></span>`;
+    box.appendChild(r);
+  });
+  $('#gnote').textContent = `${SUM.total.toLocaleString('en')} homes whose roof shape a mapper typed in; small states (Saarland, n=3,323) are less reliable.`;
+}
+/* ---------- slide 6: pitch histogram */
+{
+  const svg = $('#hist'), h = DET.hist, ks = Object.keys(h), max = Math.max(...Object.values(h)), bw = 1200 / ks.length;
+  ks.forEach((k, i) => { const v = h[k], H = (v / max) * 540, lo = parseInt(k), r = el('rect', { x: i * bw + 6, y: 600 - H, width: bw - 12, height: H, fill: lo >= 40 ? '#ff4d2e' : '#0f1217', class: 'pop', style: `--i:${1 + i * .22}` }, svg); const t = el('text', { x: i * bw + bw / 2, y: 640, 'text-anchor': 'middle', 'font-size': 24, 'font-weight': 800, fill: '#6b6f76' }, svg); t.textContent = lo + '°'; });
+  const x38 = ((38 - 10) / 5) * bw;
+  const l = el('line', { x1: x38, x2: x38, y1: 40, y2: 600, stroke: '#2f7d4f', 'stroke-width': 6, 'stroke-dasharray': '12 8', class: 'fade', style: '--i:7' }, svg);
+  const t = el('text', { x: x38 + 12, y: 70, 'font-size': 30, 'font-weight': 900, fill: '#2f7d4f', class: 'fade', style: '--i:7' }, svg); t.textContent = 'our default 38°';
+}
+/* ---------- slide 7: decision tree */
+{
+  const svg = $('#tree'), N = [{ x: 560, y: 20, w: 800, t: 'Low wall under the roof?', c: '#fff' }], leaves = [
+    { x: 80, t: 'Low · 0.5 m', v: '74 %', c: '#ff4d2e' }, { x: 700, t: 'Normal · 0.9 m', v: '84 %', c: '#ffc533' }, { x: 1320, t: 'High · 1.3 m', v: '91 %', c: '#2f7d4f' }];
+  leaves.forEach((L, i) => {
+    el('path', { d: `M960 120 C960 260 ${L.x + 260} 250 ${L.x + 260} 380`, fill: 'none', stroke: '#0f1217', 'stroke-width': 8, class: 'draw', style: `--i:${1 + i * .5}` }, svg);
+    const g = el('g', { class: 'pop', style: `--i:${3 + i * .6}` }, svg);
+    el('rect', { x: L.x, y: 380, width: 520, height: 300, fill: L.c, stroke: '#0f1217', 'stroke-width': 5 }, g);
+    const a = el('text', { x: L.x + 260, y: 460, 'text-anchor': 'middle', 'font-size': 40, 'font-weight': 900, fill: i === 1 ? '#0f1217' : '#fff' }, g); a.textContent = L.t.toUpperCase();
+    const b = el('text', { x: L.x + 260, y: 590, 'text-anchor': 'middle', 'font-size': 120, 'font-weight': 900, fill: i === 1 ? '#0f1217' : '#fff' }, g); b.textContent = L.v;
+    const c = el('text', { x: L.x + 260, y: 650, 'text-anchor': 'middle', 'font-size': 26, 'font-weight': 800, fill: i === 1 ? '#0f1217' : '#fff' }, g); c.textContent = 'of the floor counts';
+  });
+  const g = el('g', { class: 'pop', style: '--i:0' }, svg);
+  el('rect', { x: 560, y: 20, width: 800, height: 100, fill: '#0f1217' }, g);
+  const t = el('text', { x: 960, y: 86, 'text-anchor': 'middle', 'font-size': 44, 'font-weight': 900, fill: '#fff' }, g); t.textContent = 'HOW HIGH IS THE LOW WALL?';
+  const n = el('text', { x: 960, y: 740, 'text-anchor': 'middle', 'font-size': 26, 'font-weight': 800, fill: '#6b6f76', class: 'fade', style: '--i:8' }, svg); n.textContent = 'Median of 1,379 gabled roofs in Detmold, rule: full above 2 m, half from 1 to 2 m.';
+}
+/* ---------- slide 9: exploded layers */
+{
+  const svg = $('#layers'), L = [['Roof tiles', '#a4503a'], ['Battens', '#b98a55'], ['Membrane', '#2f3a46'], ['Insulation', '#d9c27a'], ['Vapour barrier', '#6fa3c7'], ['Plasterboard', '#e8e6df']];
+  L.forEach(([n, c], i) => {
+    const g = el('g', { style: `transition: transform 1.2s cubic-bezier(.2,.9,.25,1.1) ${i * .12}s; transform: translateY(${300 - i * 10}px)`, class: 'lay' }, svg);
+    el('polygon', { points: '40,40 380,0 500,50 160,90', fill: c, stroke: '#fff', 'stroke-width': 3 }, g);
+    el('polygon', { points: '40,40 160,90 160,104 40,54', fill: c, stroke: '#fff', 'stroke-width': 3, opacity: .7 }, g);
+    
+    const lbl = el('text', { x: 530, y: 56, 'text-anchor': 'start', 'font-size': 30, 'font-weight': 800, fill: '#fff' }, g); lbl.textContent = n;
+  });
+  window.explode = (on) => svg.querySelectorAll('.lay').forEach((g, i) => { g.style.transform = `translateY(${on ? 30 + i * 112 : 300 - i * 10}px)`; });
+}
+/* ---------- slide 10: AI pipeline */
+{
+  const steps = [['Find', 'Grounding DINO', 'draws a box around the roof'], ['Cut out', 'SAM 2', 'traces its exact outline'], ['Depth', 'Depth Anything', 'guesses how far each part is'], ['Name', 'CLIP', 'says: gabled, hip, flat, mansard']];
+  const box = $('#aipipe');
+  const icons = [
+    '<rect x="30" y="50" width="160" height="120" fill="none" stroke="#ff4d2e" stroke-width="10" stroke-dasharray="26 14"/><path d="M50 150 L110 80 L170 150Z" fill="#0f1217"/>',
+    '<path d="M30 160 L110 50 L190 160Z" fill="#ff4d2e" stroke="#0f1217" stroke-width="8"/>',
+    '<defs><linearGradient id="dg" x1="0" x2="1"><stop offset="0" stop-color="#0f1217"/><stop offset="1" stop-color="#7fb6d9"/></linearGradient></defs><path d="M30 160 L110 50 L190 160Z" fill="url(#dg)"/>',
+    '<path d="M30 160 L110 50 L190 160Z" fill="#2f7d4f"/><rect x="70" y="170" width="80" height="24" fill="#ffc533"/>'];
+  steps.forEach((s, i) => { const d = document.createElement('div'); d.className = 'card pop'; d.style.cssText = `--i:${2 + i};padding:26px;text-align:center`; d.innerHTML = `<svg width="220" height="210" viewBox="0 0 220 210">${icons[i]}</svg><div class="tag" style="font-size:22px;margin:10px 0 6px">${s[0]}</div><b style="font-size:34px">${s[1]}</b><p class="mute" style="font-size:24px;font-weight:700;margin-top:8px">${s[2]}</p>`; box.appendChild(d); });
+  if (AI.img) { const im = document.createElement('img'); im.src = AI.img; im.className = 'shot fade'; im.style.cssText = '--i:8;position:absolute;left:1000px;top:640px;width:820px;box-shadow:14px 14px 0 #ff4d2e'; $('#s10').appendChild(im); $('#s10 > p').style.width = '860px'; }
+}
+/* ---------- slide 12: logos */
+{
+  const box = $('#logos'), keep = ['python', 'pytorch', 'huggingface', 'nvidia', 'apachespark', 'apacheairflow', 'apacheparquet', 'duckdb', 'pandas', 'geopandas', 'scikitlearn', 'jupyter', 'openstreetmap', 'qgis', 'react', 'threedotjs', 'vite', 'redux', 'nodedotjs', 'sqlite', 'docker', 'ubuntu', 'git', 'github', 'opencv', 'numpy', 'polars', 'plotly', 'blender', 'unrealengine', 'autodesk', 'express'];
+  keep.filter((k) => LOGOS[k]).slice(0, 32).forEach((k, i) => { const l = LOGOS[k], d = document.createElement('div'); d.className = 'pop'; d.style.setProperty('--i', i * .09); d.innerHTML = `<div class="logo"><svg viewBox="0 0 24 24"><path fill="#${l.h}" d="${l.p}"/></svg></div>${l.t}`; box.appendChild(d); });
+  box.style.gridTemplateColumns = 'repeat(8, 120px)';
+}
+
+/* ---------- navigation */
+const slides = [...stage.querySelectorAll('.slide')], STEPS = ['Question', 'Hypothesis', 'Data', 'Evidence', 'Method', 'Limits', 'Next'];
+const mbox = $('#method'); STEPS.forEach((s, i) => { const b = document.createElement('button'); b.textContent = s; b.onclick = (e) => { e.stopPropagation(); const j = slides.findIndex((x) => +x.dataset.step === i); if (j >= 0) go(j); }; mbox.appendChild(b); });
+const STEPMAP = [0, 1, 2, 3, 3, 4, 4, 4, 4, 4, 5, 5, 6, 6];
+let cur = -1;
+function go(n) {
+  n = Math.max(0, Math.min(slides.length - 1, n)); if (n === cur) return;
+  slides.forEach((s, i) => s.classList.toggle('on', i === n)); cur = n;
+  const dark = slides[n].classList.contains('dark'); $('#count').style.color = dark ? '#9aa1ab' : '#6b6f76'; $('#count').textContent = `${n + 1} / ${slides.length}`;
+  const st = +slides[n].dataset.step; mbox.querySelectorAll('button').forEach((b, i) => b.classList.toggle('on', i === st));
+  history.replaceState(null, '', '#' + (n + 1));
+  slides[n].querySelectorAll('.bar').forEach((b) => { b.style.width = '0'; b.style.transition = 'none'; void b.offsetWidth; b.style.transition = 'width 1.6s cubic-bezier(.2,.8,.2,1)'; setTimeout(() => (b.style.width = b.dataset.w + '%'), 300 + Math.random() * 400); });
+  if (slides[n].id === 's4') zoomPlay(); else run++;
+  if (slides[n].id === 's9') { window.explode(false); setTimeout(() => window.explode(true), 900); }
+}
+document.addEventListener('keydown', (e) => { if (['ArrowRight', 'PageDown', ' ', 'Enter'].includes(e.key)) { e.preventDefault(); go(cur + 1); } if (['ArrowLeft', 'PageUp', 'Backspace'].includes(e.key)) { e.preventDefault(); go(cur - 1); } if (e.key === 'Home') go(0); if (e.key === 'End') go(slides.length - 1); });
+stage.addEventListener('click', (e) => { const r = stage.getBoundingClientRect(); go(cur + (e.clientX - r.left < r.width * 0.25 ? -1 : 1)); });
+let tx = 0; addEventListener('touchstart', (e) => (tx = e.touches[0].clientX)); addEventListener('touchend', (e) => { const d = e.changedTouches[0].clientX - tx; if (Math.abs(d) > 50) go(cur + (d < 0 ? 1 : -1)); });
+go(Math.max(0, (parseInt(location.hash.slice(1)) || 1) - 1));
+</script>

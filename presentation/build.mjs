@@ -1,0 +1,21 @@
+import fs from 'node:fs';
+const R = (p) => fs.readFileSync(new URL(p, import.meta.url));
+let h = R('./deck.src.html').toString('utf8');
+const logos = JSON.parse(R('./data/logos.json')), sv = JSON.parse(R('./data/states_svg.json')), det = JSON.parse(R('./data/detmold.json'));
+const sp = JSON.parse(R('../shared/statePatterns.json')).states, lod = JSON.parse(R('../shared/lod2Patterns.json'));
+const states = { states: {} }; let total = 0, gab = 0;
+for (const [k, s] of Object.entries(sv.states)) { const p = sp[k]; if (!p) continue; states.states[k] = { name: s.name, d: s.d, n: p.n, g: p.share.gabled }; total += p.n; gab += p.counts.gabled; }
+const SUM = { total, nw: sp['DE-NW'].n, gshare: Math.round((100 * gab) / total) };
+const D = { buildings: det.buildings, hist: lod.gabled_pitch_hist };
+const img = (n) => 'data:image/jpeg;base64,' + R('./img/' + n + '.jpg').toString('base64');
+let ai = { img: null };
+if (fs.existsSync(new URL('./img/roofs_montage.jpg', import.meta.url))) ai.img = img('roofs_montage');
+const keep = ['python','pytorch','huggingface','nvidia','apachespark','apacheairflow','apacheparquet','duckdb','pandas','geopandas','scikitlearn','jupyter','openstreetmap','qgis','react','threedotjs','vite','redux','nodedotjs','sqlite','docker','ubuntu','git','github','opencv','numpy','polars','plotly','blender','unrealengine','autodesk','express'];
+const L = Object.fromEntries(keep.filter((k) => logos[k]).map((k) => [k, logos[k]]));
+const J = (o) => JSON.stringify(o).replace(/</g, '\u003c');
+h = h.replace('{{LOGOS}}', () => J(L)).replace('{{STATES}}', () => J(states)).replace('{{DETMOLD}}', () => J(D)).replace('{{SUM}}', () => J(SUM)).replace('{{AI}}', () => J(ai));
+h = h.replace(/\{\{IMG_(\w+)\}\}/g, (_, n) => img(n));
+const HEAD = '</title><meta name="claude:viewport-fit-sides" content="cover"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800;900&display=swap">';
+fs.writeFileSync(new URL('./deck.fragment.html', import.meta.url), h.replace('</title>', () => HEAD));
+fs.writeFileSync(new URL('./deck.html', import.meta.url), '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800;900&display=swap">' + h);
+console.log('built', (h.length / 1e6).toFixed(2) + ' MB', SUM, Object.keys(L).length + ' logos');

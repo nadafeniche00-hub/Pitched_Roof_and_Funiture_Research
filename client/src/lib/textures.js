@@ -95,3 +95,31 @@ export function pbr(slot, repeat) {
   pbrCache.set(key, maps);
   return maps;
 }
+
+/** Half-timbered (Fachwerk) wall: off-white plaster panels in a dark oak frame with diagonal braces. One tile = 3 m x 3 m. */
+export function makeFachwerk() {
+  const S = 512, c = document.createElement('canvas');
+  c.width = c.height = S;
+  const g = c.getContext('2d'), R = rng(41);
+  g.fillStyle = '#e4e3dc'; g.fillRect(0, 0, S, S);
+  for (let i = 0; i < 5000; i++) { g.fillStyle = `rgba(${R() < 0.5 ? '110,108,98' : '255,255,255'},${0.03 + R() * 0.06})`; g.fillRect(R() * S, R() * S, 1 + R() * 3, 1 + R() * 3); }
+  const W = 30, timber = (x, y, w, h) => {
+    g.fillStyle = '#2a1e17'; g.fillRect(x, y, w, h);
+    g.strokeStyle = 'rgba(90,64,45,0.5)'; g.lineWidth = 1;
+    for (let i = 0; i < 9; i++) { g.beginPath(); if (w > h) { const yy = y + 3 + R() * (h - 6); g.moveTo(x, yy); g.lineTo(x + w, yy + (R() - 0.5) * 3); } else { const xx = x + 3 + R() * (w - 6); g.moveTo(xx, y); g.lineTo(xx + (R() - 0.5) * 3, y + h); } g.stroke(); }
+  };
+  const brace = (x0, y0, x1, y1) => { g.save(); g.strokeStyle = '#2a1e17'; g.lineWidth = W * 0.8; g.lineCap = 'butt'; g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke(); g.restore(); };
+  timber(0, 0, S, W); timber(0, S / 2 - W / 2, S, W); timber(0, S - W, S, W);          // rails
+  timber(0, 0, W, S); timber(S / 3 - W / 2, 0, W, S); timber((2 * S) / 3 - W / 2, 0, W, S); timber(S - W, 0, W, S); // studs
+  brace(W, S / 2 - W / 2, S / 3 - W / 2, S / 2 + 110 > S ? S : W + 110); // short braces in the lower panels
+  brace(S / 3 + W / 2, S - W, (2 * S) / 3 - W / 2, S / 2 + W / 2);
+  brace((2 * S) / 3 + W / 2, S / 2 + W / 2, S - W, S - W);
+  brace(W, W, S / 3 - W / 2, S / 2 - W / 2);
+  brace((2 * S) / 3 - W / 2, W, S / 3 + W / 2, S / 2 - W / 2);
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(1 / 3, 1 / 3);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 8;
+  return t;
+}

@@ -211,3 +211,11 @@ table.params tr.own .layer { color: var(--accent); }
 .pz-tray { font: 700 0.24px var(--display); fill: var(--muted); text-transform: uppercase; }
 .pz-done { font: 700 0.3px var(--body); fill: #1a7f45; }
 @media (prefers-reduced-motion: reduce) { .rt-edge, .rt-col { animation: none; } }
+.walktip { position: absolute; left: 0; top: 0; z-index: 5; width: 250px; background: rgba(16, 20, 18, 0.9); color: #eef2ea; padding: 9px 12px; font-size: 12px; pointer-events: none; border-left: 3px solid #8fb36a; }
+.walktip b { display: block; font-family: var(--display); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+.walktip div { display: flex; justify-content: space-between; gap: 8px; line-height: 1.6; }
+.walktip div span { color: #aeb8a8; }
+.walktip p { margin: 6px 0 2px; color: #aeb8a8; font-size: 11px; }
+.walktip .ly { justify-content: flex-start; align-items: center; line-height: 1.5; }
+.walktip .ly i { width: 10px; height: 10px; flex: none; }
+.walktip .ly em { margin-left: auto; font-style: normal; color: #aeb8a8; }

@@ -7,6 +7,7 @@ import SiteResults from './SiteResults.jsx';
 import ItemInspector from './ItemInspector.jsx';
 import RulesPanel from './RulesPanel.jsx';
 import RegionalCheck from './RegionalCheck.jsx';
+import StateRoofs from './StateRoofs.jsx';
 
 const pc = (v) => `${Math.round(v * 100)}%`;
 const ICON = { ok: '✓', warn: '!', fail: '✕', unplaced: '–' };
@@ -58,6 +59,7 @@ export default function ResultsPanel() {
       <RulesPanel />
 
       <RegionalCheck />
+      <StateRoofs />
 
       <ItemInspector />
 

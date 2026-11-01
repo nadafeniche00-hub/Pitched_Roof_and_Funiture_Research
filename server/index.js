@@ -1,6 +1,9 @@
 import express from 'express';
 import cors from 'cors';
 import { randomUUID } from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { evaluate, solve, sanitizeRoom, sanitizeItems, DEFAULT_RULES } from '../shared/engine.js';
 import { sanitizeSite } from '../shared/site.js';
 import { sanitizeLph } from '../shared/lph.js';
@@ -109,6 +112,13 @@ app.delete('/api/projects/:id', (req, res) => {
   const { changes } = q.del.run(req.params.id);
   changes ? res.status(204).end() : res.status(404).json({ error: 'not found' });
 });
+
+// production: serve the built client (npm run build) from the same port, so one process is the whole app
+const dist = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../client/dist');
+if (fs.existsSync(dist)) {
+  app.use(express.static(dist));
+  app.get(/^\/(?!api\/).*/, (_req, res) => res.sendFile(path.join(dist, 'index.html')));
+}
 
 seed();
 const port = process.env.PORT || 4000;

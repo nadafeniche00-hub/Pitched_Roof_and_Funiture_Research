@@ -1,0 +1,422 @@
+{
+ "source": "OpenStreetMap contributors (ODbL), Geofabrik state extracts, ways with building and roof:shape tags",
+ "when": "2026-11-01",
+ "states": {
+  "DE-BW": {
+   "name": "Baden-Württemberg",
+   "n": 234340,
+   "n_all_buildings_with_roof_shape": 437637,
+   "counts": {
+    "gabled": 187535,
+    "hipped": 8491,
+    "half-hipped": 1980,
+    "flat": 23305,
+    "mansard": 356,
+    "pyramidal": 1293,
+    "skillion": 6048,
+    "other": 5332
+   },
+   "share": {
+    "gabled": 80.0,
+    "hipped": 3.6,
+    "half-hipped": 0.8,
+    "flat": 9.9,
+    "mansard": 0.2,
+    "pyramidal": 0.6,
+    "skillion": 2.6,
+    "other": 2.3
+   },
+   "file_mb": 652
+  },
+  "DE-BY": {
+   "name": "Bayern",
+   "n": 256226,
+   "n_all_buildings_with_roof_shape": 550750,
+   "counts": {
+    "gabled": 215565,
+    "hipped": 10369,
+    "half-hipped": 2412,
+    "flat": 15284,
+    "mansard": 675,
+    "pyramidal": 1795,
+    "skillion": 5495,
+    "other": 4631
+   },
+   "share": {
+    "gabled": 84.1,
+    "hipped": 4.0,
+    "half-hipped": 0.9,
+    "flat": 6.0,
+    "mansard": 0.3,
+    "pyramidal": 0.7,
+    "skillion": 2.1,
+    "other": 1.8
+   },
+   "file_mb": 857
+  },
+  "DE-BE": {
+   "name": "Berlin",
+   "n": 50089,
+   "n_all_buildings_with_roof_shape": 107884,
+   "counts": {
+    "gabled": 27531,
+    "hipped": 4568,
+    "half-hipped": 1363,
+    "flat": 9250,
+    "mansard": 260,
+    "pyramidal": 1117,
+    "skillion": 2165,
+    "other": 3835
+   },
+   "share": {
+    "gabled": 55.0,
+    "hipped": 9.1,
+    "half-hipped": 2.7,
+    "flat": 18.5,
+    "mansard": 0.5,
+    "pyramidal": 2.2,
+    "skillion": 4.3,
+    "other": 7.7
+   },
+   "file_mb": 100
+  },
+  "DE-BB": {
+   "name": "Brandenburg",
+   "n": 111228,
+   "n_all_buildings_with_roof_shape": 235318,
+   "counts": {
+    "gabled": 66906,
+    "hipped": 11528,
+    "half-hipped": 4716,
+    "flat": 14542,
+    "mansard": 556,
+    "pyramidal": 2774,
+    "skillion": 3473,
+    "other": 6733
+   },
+   "share": {
+    "gabled": 60.2,
+    "hipped": 10.4,
+    "half-hipped": 4.2,
+    "flat": 13.1,
+    "mansard": 0.5,
+    "pyramidal": 2.5,
+    "skillion": 3.1,
+    "other": 6.1
+   },
+   "file_mb": 297
+  },
+  "DE-HB": {
+   "name": "Bremen",
+   "n": 43817,
+   "n_all_buildings_with_roof_shape": 56841,
+   "counts": {
+    "gabled": 37442,
+    "hipped": 1091,
+    "half-hipped": 580,
+    "flat": 2696,
+    "mansard": 56,
+    "pyramidal": 94,
+    "skillion": 469,
+    "other": 1389
+   },
+   "share": {
+    "gabled": 85.5,
+    "hipped": 2.5,
+    "half-hipped": 1.3,
+    "flat": 6.2,
+    "mansard": 0.1,
+    "pyramidal": 0.2,
+    "skillion": 1.1,
+    "other": 3.2
+   },
+   "file_mb": 21
+  },
+  "DE-HH": {
+   "name": "Hamburg",
+   "n": 73330,
+   "n_all_buildings_with_roof_shape": 132713,
+   "counts": {
+    "gabled": 44983,
+    "hipped": 5336,
+    "half-hipped": 2372,
+    "flat": 11922,
+    "mansard": 589,
+    "pyramidal": 481,
+    "skillion": 3356,
+    "other": 4291
+   },
+   "share": {
+    "gabled": 61.3,
+    "hipped": 7.3,
+    "half-hipped": 3.2,
+    "flat": 16.3,
+    "mansard": 0.8,
+    "pyramidal": 0.7,
+    "skillion": 4.6,
+    "other": 5.9
+   },
+   "file_mb": 54
+  },
+  "DE-HE": {
+   "name": "Hessen",
+   "n": 84716,
+   "n_all_buildings_with_roof_shape": 167844,
+   "counts": {
+    "gabled": 65610,
+    "hipped": 5689,
+    "half-hipped": 1358,
+    "flat": 8102,
+    "mansard": 227,
+    "pyramidal": 684,
+    "skillion": 1211,
+    "other": 1835
+   },
+   "share": {
+    "gabled": 77.4,
+    "hipped": 6.7,
+    "half-hipped": 1.6,
+    "flat": 9.6,
+    "mansard": 0.3,
+    "pyramidal": 0.8,
+    "skillion": 1.4,
+    "other": 2.2
+   },
+   "file_mb": 347
+  },
+  "DE-MV": {
+   "name": "Mecklenburg-Vorpommern",
+   "n": 20964,
+   "n_all_buildings_with_roof_shape": 68248,
+   "counts": {
+    "gabled": 14612,
+    "hipped": 1877,
+    "half-hipped": 1993,
+    "flat": 1286,
+    "mansard": 54,
+    "pyramidal": 340,
+    "skillion": 341,
+    "other": 461
+   },
+   "share": {
+    "gabled": 69.7,
+    "hipped": 9.0,
+    "half-hipped": 9.5,
+    "flat": 6.1,
+    "mansard": 0.3,
+    "pyramidal": 1.6,
+    "skillion": 1.6,
+    "other": 2.2
+   },
+   "file_mb": 129
+  },
+  "DE-NI": {
+   "name": "Niedersachsen",
+   "n": 227712,
+   "n_all_buildings_with_roof_shape": 417061,
+   "counts": {
+    "gabled": 175909,
+    "hipped": 14285,
+    "half-hipped": 12263,
+    "flat": 14198,
+    "mansard": 413,
+    "pyramidal": 1514,
+    "skillion": 1755,
+    "other": 7375
+   },
+   "share": {
+    "gabled": 77.3,
+    "hipped": 6.3,
+    "half-hipped": 5.4,
+    "flat": 6.2,
+    "mansard": 0.2,
+    "pyramidal": 0.7,
+    "skillion": 0.8,
+    "other": 3.2
+   },
+   "file_mb": 509
+  },
+  "DE-NW": {
+   "name": "Nordrhein-Westfalen",
+   "n": 488428,
+   "n_all_buildings_with_roof_shape": 912319,
+   "counts": {
+    "gabled": 392436,
+    "hipped": 14324,
+    "half-hipped": 10021,
+    "flat": 46852,
+    "mansard": 534,
+    "pyramidal": 2577,
+    "skillion": 8108,
+    "other": 13576
+   },
+   "share": {
+    "gabled": 80.3,
+    "hipped": 2.9,
+    "half-hipped": 2.1,
+    "flat": 9.6,
+    "mansard": 0.1,
+    "pyramidal": 0.5,
+    "skillion": 1.7,
+    "other": 2.8
+   },
+   "file_mb": 916
+  },
+  "DE-RP": {
+   "name": "Rheinland-Pfalz",
+   "n": 51662,
+   "n_all_buildings_with_roof_shape": 95954,
+   "counts": {
+    "gabled": 42126,
+    "hipped": 2948,
+    "half-hipped": 1065,
+    "flat": 3014,
+    "mansard": 242,
+    "pyramidal": 500,
+    "skillion": 717,
+    "other": 1050
+   },
+   "share": {
+    "gabled": 81.5,
+    "hipped": 5.7,
+    "half-hipped": 2.1,
+    "flat": 5.8,
+    "mansard": 0.5,
+    "pyramidal": 1.0,
+    "skillion": 1.4,
+    "other": 2.0
+   },
+   "file_mb": 274
+  },
+  "DE-SL": {
+   "name": "Saarland",
+   "n": 3323,
+   "n_all_buildings_with_roof_shape": 17221,
+   "counts": {
+    "gabled": 2173,
+    "hipped": 202,
+    "half-hipped": 95,
+    "flat": 469,
+    "mansard": 31,
+    "pyramidal": 47,
+    "skillion": 82,
+    "other": 224
+   },
+   "share": {
+    "gabled": 65.4,
+    "hipped": 6.1,
+    "half-hipped": 2.9,
+    "flat": 14.1,
+    "mansard": 0.9,
+    "pyramidal": 1.4,
+    "skillion": 2.5,
+    "other": 6.7
+   },
+   "file_mb": 55
+  },
+  "DE-SN": {
+   "name": "Sachsen",
+   "n": 57756,
+   "n_all_buildings_with_roof_shape": 135696,
+   "counts": {
+    "gabled": 41148,
+    "hipped": 6104,
+    "half-hipped": 2445,
+    "flat": 2804,
+    "mansard": 504,
+    "pyramidal": 1247,
+    "skillion": 695,
+    "other": 2809
+   },
+   "share": {
+    "gabled": 71.2,
+    "hipped": 10.6,
+    "half-hipped": 4.2,
+    "flat": 4.9,
+    "mansard": 0.9,
+    "pyramidal": 2.2,
+    "skillion": 1.2,
+    "other": 4.9
+   },
+   "file_mb": 270
+  },
+  "DE-ST": {
+   "name": "Sachsen-Anhalt",
+   "n": 20815,
+   "n_all_buildings_with_roof_shape": 53246,
+   "counts": {
+    "gabled": 15885,
+    "hipped": 1756,
+    "half-hipped": 885,
+    "flat": 1274,
+    "mansard": 45,
+    "pyramidal": 348,
+    "skillion": 171,
+    "other": 451
+   },
+   "share": {
+    "gabled": 76.3,
+    "hipped": 8.4,
+    "half-hipped": 4.3,
+    "flat": 6.1,
+    "mansard": 0.2,
+    "pyramidal": 1.7,
+    "skillion": 0.8,
+    "other": 2.2
+   },
+   "file_mb": 177
+  },
+  "DE-SH": {
+   "name": "Schleswig-Holstein",
+   "n": 104431,
+   "n_all_buildings_with_roof_shape": 142761,
+   "counts": {
+    "gabled": 75396,
+    "hipped": 5929,
+    "half-hipped": 6049,
+    "flat": 8985,
+    "mansard": 229,
+    "pyramidal": 599,
+    "skillion": 2191,
+    "other": 5053
+   },
+   "share": {
+    "gabled": 72.2,
+    "hipped": 5.7,
+    "half-hipped": 5.8,
+    "flat": 8.6,
+    "mansard": 0.2,
+    "pyramidal": 0.6,
+    "skillion": 2.1,
+    "other": 4.8
+   },
+   "file_mb": 159
+  },
+  "DE-TH": {
+   "name": "Thüringen",
+   "n": 22680,
+   "n_all_buildings_with_roof_shape": 64108,
+   "counts": {
+    "gabled": 17536,
+    "hipped": 2012,
+    "half-hipped": 896,
+    "flat": 788,
+    "mansard": 141,
+    "pyramidal": 326,
+    "skillion": 258,
+    "other": 723
+   },
+   "share": {
+    "gabled": 77.3,
+    "hipped": 8.9,
+    "half-hipped": 4.0,
+    "flat": 3.5,
+    "mansard": 0.6,
+    "pyramidal": 1.4,
+    "skillion": 1.1,
+    "other": 3.2
+   },
+   "file_mb": 160
+  }
+ }
+}
