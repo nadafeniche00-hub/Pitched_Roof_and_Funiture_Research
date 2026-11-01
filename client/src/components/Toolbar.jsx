@@ -4,6 +4,9 @@ import { uiActions } from '../store/uiSlice.js';
 import { itemsActions } from '../store/itemsSlice.js';
 import { autoPlace, saveProject, loadProject, deleteProject } from '../store/thunks.js';
 import { useT, useLang } from '../lib/i18n.js';
+import { IconBtn } from './Icon.jsx';
+
+const VIEW_ICON = { planner: 'house', library: 'library', ifc: 'cube', lph5: 'clipboard', knowledge: 'book' };
 
 export default function Toolbar() {
   const dispatch = useDispatch();
@@ -16,12 +19,11 @@ export default function Toolbar() {
     <header className="toolbar">
       <div className="brand">
         <h1>Usable Space</h1>
-        <span>roof storey × furniture fit</span>
       </div>
 
-      <nav className="tabs" aria-label="Views">
+      <nav className="tabs icontabs" aria-label="Views">
         {['planner', 'library', 'ifc', 'lph5', 'knowledge'].map((v) => (
-          <button key={v} className={view === v ? 'on' : ''} onClick={() => dispatch(uiActions.setView(v))}>{t(`tab_${v}`)}</button>
+          <IconBtn key={v} icon={VIEW_ICON[v]} label={t(`tab_${v}`)} cap={t(`tab_${v}`)} size={22} active={view === v} onClick={() => dispatch(uiActions.setView(v))} />
         ))}
       </nav>
 
@@ -31,11 +33,11 @@ export default function Toolbar() {
             const p = presets.find((x) => x.id === e.target.value);
             if (p) dispatch(loadScenario({ name: p.name, note: p.note, room: p.room, items: p.items }));
           }}>
-            <option value="">Load example…</option>
+            <option value="">Examples…</option>
             {presets.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
-          <button className="primary" disabled={busy} onClick={() => dispatch(autoPlace())}>{busy ? 'Searching…' : 'Auto-place furniture'}</button>
-          <button onClick={() => dispatch(itemsActions.unplaceAll())}>Clear layout</button>
+          <IconBtn icon="wand" className="primary" label="Auto-place the furniture" cap={busy ? 'Searching…' : 'Auto-place'} disabled={busy} onClick={() => dispatch(autoPlace())} />
+          <IconBtn icon="remove" label="Clear the layout" onClick={() => dispatch(itemsActions.unplaceAll())} />
         </div>
       )}
 
@@ -43,16 +45,14 @@ export default function Toolbar() {
 
       <div className="tgroup" role="group" aria-label="Project">
         <input className="name" value={projectName} onChange={(e) => dispatch(uiActions.setName(e.target.value))} aria-label="Project name" />
-        <button disabled={!serverUp} onClick={() => dispatch(saveProject()).unwrap().catch(() => dispatch(uiActions.setToast('Save failed')))}>Save</button>
+        <IconBtn icon="save" label="Save the project" disabled={!serverUp} onClick={() => dispatch(saveProject()).unwrap().catch(() => dispatch(uiActions.setToast('Save failed')))} />
         <select aria-label="Open a saved project" value="" disabled={!serverUp || !list.length} onChange={(e) => e.target.value && dispatch(loadProject(e.target.value))}>
-          <option value="">{serverUp ? (list.length ? 'Open saved…' : 'No saved projects') : 'API offline'}</option>
+          <option value="">{serverUp ? (list.length ? 'Open…' : 'Nothing saved') : 'Offline'}</option>
           {list.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
         </select>
         {list.some((p) => p.name === projectName) && (
-          <button className="ghost" title="Delete the saved project with this name"
-            onClick={() => { const p = list.find((x) => x.name === projectName); if (p && confirm(`Delete saved project “${p.name}”?`)) dispatch(deleteProject(p.id)); }}>
-            Delete
-          </button>
+          <IconBtn icon="remove" className="ghost" label="Delete the saved project with this name"
+            onClick={() => { const p = list.find((x) => x.name === projectName); if (p && confirm(`Delete saved project “${p.name}”?`)) dispatch(deleteProject(p.id)); }} />
         )}
       </div>
 

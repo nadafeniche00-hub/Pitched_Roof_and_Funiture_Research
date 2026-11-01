@@ -5,6 +5,7 @@ import { FRONT, bodySize, doorRect, dormerRect, getGrid, itemRects, stairRect, w
 import { itemsActions } from '../store/itemsSlice.js';
 import { uiActions } from '../store/uiSlice.js';
 import { wallsOf } from '../lib/walls.js';
+import { IconBtn } from './Icon.jsx';
 
 export const STATUS_COLOR = { ok: '#2f9e5b', warn: '#d99a1c', fail: '#d64545', unplaced: '#8a8f98' };
 const PAD = 0.7;
@@ -78,9 +79,9 @@ export default function PlanView() {
   return (
     <div className="card plan">
       <div className="cardhead">
-        <h2>Plan <small>standing height across the floor</small></h2>
-        <label><input type="checkbox" checked={showHeat} onChange={() => dispatch(uiActions.toggle('showHeat'))} /> height map</label>
-        <label><input type="checkbox" checked={showClearances} onChange={() => dispatch(uiActions.toggle('showClearances'))} /> clearances</label>
+        <h2>Plan</h2>
+        <IconBtn icon="heatmap" label="Standing height across the floor" active={showHeat} onClick={() => dispatch(uiActions.toggle('showHeat'))} />
+        <IconBtn icon="clearance" label="Clearances around the furniture" active={showClearances} onClick={() => dispatch(uiActions.toggle('showClearances'))} />
       </div>
 
       <svg ref={svgRef} viewBox={`${-PAD} ${-PAD} ${W + 2 * PAD} ${D + 2 * PAD}`} onPointerMove={move} onPointerUp={up} onPointerCancel={up}

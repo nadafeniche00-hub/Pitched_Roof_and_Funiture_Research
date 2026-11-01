@@ -4,11 +4,12 @@ import { roomActions } from '../store/roomSlice.js';
 import { itemsActions } from '../store/itemsSlice.js';
 import { resolveDormer } from '@shared/params.js';
 import DesignPanel from './DesignPanel.jsx';
+import { Icon, IconBtn } from './Icon.jsx';
 
-function Slider({ label, value, min, max, step, unit, onChange }) {
+function Slider({ label, icon, value, min, max, step, unit, onChange }) {
   return (
     <label className="row">
-      <span>{label}</span>
+      <span className="rl">{icon && <Icon name={icon} size={18} />}{label}</span>
       <input type="range" min={min} max={max} step={step} value={value} onChange={(e) => onChange(+e.target.value)} />
       <output>{(+value).toFixed(step < 0.1 ? 2 : 1)}{unit}</output>
     </label>
@@ -34,13 +35,13 @@ function Openings({ kind, title }) {
   const patch = (i, p) => dispatch(roomActions.patchOpening({ kind, i, patch: p }));
   return (
     <section>
-      <h3>{title} <button className="mini" onClick={() => dispatch(roomActions.addOpening(kind))}>+ add</button></h3>
+      <h3><span className="h3t"><Icon name={kind === 'doors' ? 'door' : 'window'} size={18} /> {title}</span><IconBtn icon="plus" size={16} className="mini" label={`Add a ${kind === 'doors' ? 'door' : 'window'}`} onClick={() => dispatch(roomActions.addOpening(kind))} /></h3>
       {list.map((o, i) => (
         <div className="line" key={i}>
           <select value={o.wall} onChange={(e) => patch(i, { wall: e.target.value })}>{WALLS.map((w) => <option key={w}>{w}</option>)}</select>
           <Num label="at" value={o.pos} onChange={(v) => patch(i, { pos: v })} />
           <Num label="w" value={o.width} onChange={(v) => patch(i, { width: v })} />
-          <button className="mini" onClick={() => dispatch(roomActions.removeOpening({ kind, i }))}>×</button>
+          <IconBtn icon="close" size={16} className="mini" label="Remove" onClick={() => dispatch(roomActions.removeOpening({ kind, i }))} />
         </div>
       ))}
     </section>
@@ -57,17 +58,17 @@ export default function RoomPanel() {
   return (
     <div className="panel">
       <section>
-        <h3>Room under the roof</h3>
-        <Slider label="Width" unit=" m" min={3} max={10} step={0.1} value={room.width} onChange={set('width')} />
-        <Slider label="Depth" unit=" m" min={3} max={12} step={0.1} value={room.depth} onChange={set('depth')} />
-        <Slider label="Knee wall" unit=" m" min={0} max={2} step={0.05} value={room.kneeWall} onChange={set('kneeWall')} />
-        <Slider label="Roof pitch" unit="°" min={15} max={70} step={1} value={room.pitch} onChange={set('pitch')} />
-        <Slider label="Max. height" unit=" m" min={2} max={4.5} step={0.1} value={room.maxHeight} onChange={set('maxHeight')} />
+        <h3><span className="h3t"><Icon name="roof" size={18} /> Room under the roof</span></h3>
+        <Slider label="Width" icon="width" unit=" m" min={3} max={10} step={0.1} value={room.width} onChange={set('width')} />
+        <Slider label="Depth" icon="depth" unit=" m" min={3} max={12} step={0.1} value={room.depth} onChange={set('depth')} />
+        <Slider label="Knee wall" icon="kneewall" unit=" m" min={0} max={2} step={0.05} value={room.kneeWall} onChange={set('kneeWall')} />
+        <Slider label="Roof pitch" icon="pitch" unit="°" min={15} max={70} step={1} value={room.pitch} onChange={set('pitch')} />
+        <Slider label="Max. height" icon="heightRuler" unit=" m" min={2} max={4.5} step={0.1} value={room.maxHeight} onChange={set('maxHeight')} />
       </section>
 
       <section>
-        <h3>Dormers <button className="mini" onClick={() => dispatch(roomActions.addDormer())}>+ add</button></h3>
-        <p className="hint" style={{ margin: '0 0 6px' }}>Defaults for every dormer - a dormer only stores what it overrides:</p>
+        <h3><span className="h3t"><Icon name="dormer" size={18} /> Dormers</span><IconBtn icon="plus" size={16} className="mini" label="Add a dormer" onClick={() => dispatch(roomActions.addDormer())} /></h3>
+        <p className="hint" style={{ margin: '0 0 6px' }}>Defaults for every dormer:</p>
         <div className="line wrap">
           {['width', 'depth', 'height'].map((k) => (
             <Num key={k} label={k} value={room.dormerDefaults[k]} onChange={(v) => dispatch(roomActions.setDormerDefault({ key: k, value: v }))} />
@@ -87,21 +88,21 @@ export default function RoomPanel() {
               {field('width', 'width')}
               {field('depth', 'depth')}
               {field('height', 'height')}
-              <button className="mini" onClick={() => dispatch(roomActions.removeDormer(i))}>×</button>
+              <IconBtn icon="close" size={16} className="mini" label="Remove this dormer" onClick={() => dispatch(roomActions.removeDormer(i))} />
             </div>
           );
         })}
-        {!room.dormers.length && <p className="hint">None - the roof slope runs unbroken.</p>}
+        {!room.dormers.length && <p className="hint">No dormers</p>}
       </section>
 
       <section>
-        <h3>Stair opening <button className="mini" onClick={() => dispatch(roomActions.toggleStair())}>{room.stair ? 'remove' : '+ add'}</button></h3>
+        <h3><span className="h3t"><Icon name="stair" size={18} /> Stair opening</span><IconBtn icon={room.stair ? 'remove' : 'plus'} size={16} className="mini" label={room.stair ? 'Remove the stair opening' : 'Add a stair opening'} onClick={() => dispatch(roomActions.toggleStair())} /></h3>
         {room.stair && (
           <div className="line wrap">
             {['x', 'y', 'w', 'd'].map((k) => <Num key={k} label={k} value={room.stair[k]} onChange={(v) => dispatch(roomActions.patchStair({ [k]: v }))} />)}
           </div>
         )}
-        {!room.stair && <p className="hint">No entry defined: circulation is not checked.</p>}
+        {!room.stair && <p className="hint">No stair: circulation is not checked.</p>}
       </section>
 
       <Openings kind="windows" title="Windows" />
@@ -110,7 +111,7 @@ export default function RoomPanel() {
       <DesignPanel />
 
       <section>
-        <h3>Furniture programme</h3>
+        <h3><span className="h3t"><Icon name="sofa" size={18} /> Furniture</span></h3>
         <div className="chips">
           {Object.entries(PROGRAMS).map(([k, p]) => (
             <button key={k} className="mini" onClick={() => p.types.forEach((t) => dispatch(itemsActions.addItem(t)))}>+ {p.label}</button>

@@ -7,7 +7,7 @@ import { getGrid, itemRects, stairRect, roofHeight } from '@shared/engine.js';
 import { heatColor, useHeatImage, STATUS_COLOR } from './PlanView.jsx';
 import { sunVectorPlan, sunPath } from '../lib/solar.js';
 import RoofSculptor from './RoofSculptor.jsx';
-import { IconBtn } from './Icon.jsx';
+import { Icon, IconBtn } from './Icon.jsx';
 import { wallsOf, wallSolid } from '../lib/walls.js';
 import { prismParts } from '../lib/prism.js';
 import { buildFurniture, FRONT_ANGLE, preloadModels } from '../lib/furnitureModels.js';
@@ -389,28 +389,29 @@ export default function Scene3D() {
     {sculpt && <RoofSculptor onClose={() => { setSculpt(false); setTimeout(() => T.current?.resize(), 50); }} />}
     <div className="card" style={sculpt ? { display: 'none' } : undefined}>
       <div className="cardhead">
-        <h2>3D <small>drag to orbit, scroll to zoom, click a face to edit it</small></h2>
-        <label><input type="checkbox" checked={showWind} disabled={!wind || wind.stormDir == null} onChange={(e) => setShowWind(e.target.checked)} /> wind</label>
+        <h2>3D</h2>
+        <IconBtn icon="orbit" className="ghost" label="Drag to orbit · scroll to zoom · right-drag to pan · click a room face to edit it" />
+        <IconBtn icon="wind" label="Wind streaks" active={showWind} disabled={!wind || wind.stormDir == null} onClick={() => setShowWind(!showWind)} />
 
-        <label>roof <input type="range" min="0" max="0.9" step="0.05" value={roofOpacity} onChange={(e) => setRoofOpacity(+e.target.value)} aria-label="Roof opacity" /></label>
+        <label className="rooflbl" data-tip="Roof transparency"><Icon name="roof" size={20} /><input type="range" min="0" max="0.9" step="0.05" value={roofOpacity} onChange={(e) => setRoofOpacity(+e.target.value)} aria-label="Roof opacity" /></label>
         <IconBtn icon="undo" label="Undo (Ctrl+Z)" onClick={undoCells} />
-        <button className="mini" onClick={fit}>reset view</button>
-        <button className="mini primary" onClick={() => setSculpt(true)}>roof sculptor</button>
+        <IconBtn icon="eye" label="Reset the view" onClick={fit} />
+        <IconBtn icon="roof" className="primary" label="Roof sculptor" cap="Sculptor" onClick={() => setSculpt(true)} />
       </div>
       {cur ? (
         <div className="facebar">
-          <b>{cur.type !== 'room' ? cur.type + ' · ' : ''}{cur.id}</b><span>{FACE[sel.face]} · {area.toFixed(1)} m² · {prismParts(room, cur.rect, hOf(cur)).peak.toFixed(2)} m at the highest point</span>
-          <label>{sel.face === 'top' ? 'height limit' : 'push / pull'}
+          <b>{cur.type !== 'room' ? cur.type + ' · ' : ''}{cur.id}</b><span>{FACE[sel.face]} · {area.toFixed(1)} m² · {prismParts(room, cur.rect, hOf(cur)).peak.toFixed(2)} m</span>
+          <label data-tip={sel.face === 'top' ? 'Height limit' : 'Push or pull the wall'}><Icon name={sel.face === 'top' ? 'heightRuler' : 'width'} size={22} />
             <input type="range" min={range(cur, sel.face)[0]} max={range(cur, sel.face)[1]} step="0.05" value={val(cur, sel.face)} onChange={(e) => push(+e.target.value)} />
             <output>{val(cur, sel.face).toFixed(2)} m</output>
           </label>
           {snapMsg && <span className="snapnote">{snapMsg}</span>}
-          <button className="mini" onClick={() => split('x')}>split left | right</button>
-          <button className="mini" onClick={() => split('z')}>split front / back</button>
+          <IconBtn icon="splitH" label="Split left | right" onClick={() => split('x')} />
+          <IconBtn icon="splitV" label="Split front / back" onClick={() => split('z')} />
           <IconBtn icon="remove" label="Delete this room (Del)" onClick={remove} />
-          <button className="mini ghost" onClick={reset}>reset plan</button>
+          <IconBtn icon="reset" className="ghost" label="Reset the rooms" onClick={reset} />
         </div>
-      ) : <p className="hint facehint">Click a room face to select it. Then push or pull it, split the room in two, or delete it.</p>}
+      ) : <p className="hint facehint"><Icon name="mouse" size={18} /> click a room face</p>}
       <div ref={mount} className="scene3d" style={{ background: '#fff' }} />
     </div>
     </>

@@ -9,6 +9,7 @@ import { SparkRenderer } from '@sparkjsdev/spark';
 import { buildSplats } from '../lib/splat.js';
 import { buildForest } from '../lib/forest.js';
 import { wallsOf, wallStrip } from '../lib/walls.js';
+import { Icon } from './Icon.jsx';
 import { partInfo, LAYERS } from '../lib/partInfo.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
@@ -98,6 +99,7 @@ export default function WalkView() {
   const result = useSelector((s) => s.analysis.result);
   const tipRef = useRef(null);
   const enterBtn = useRef(null);
+  const hudBox = useRef(null);
   const dataRef = useRef({});
   dataRef.current = { room, items, result, layout };
   const [ready, setReady] = useState(false);
@@ -271,6 +273,7 @@ export default function WalkView() {
       if (++S.tick % 12 === 0 && hud.current) {
         const r = t.layout?.rooms.find((q) => S.x >= q.rect[0] && S.x <= q.rect[2] && S.z >= q.rect[1] && S.z <= q.rect[3]);
         if (enterBtn.current) enterBtn.current.style.display = S.outside ? 'block' : 'none';
+        if (hudBox.current) hudBox.current.dataset.mode = S.outside ? 'out' : 'in';
         hud.current.textContent = S.outside ? 'exterior' : r ? `${r.id === 'hall' ? 'Stair hall' : r.type + ' · ' + r.id}  ·  ${r.counted.toFixed(1)} m² usable` : 'roof storey';
       }
       t.explode?.();
@@ -459,7 +462,22 @@ export default function WalkView() {
       </div>
       <div className="walkstage">
         <div ref={mount} className="walk" />
-        <div ref={tipRef} className="walktip" style={{ display: "none" }} /><button ref={enterBtn} className="walkenter" onClick={() => T.current?.enter?.()}>Enter the house</button><div className="walkhud"><span ref={hud}>exterior</span><i>outside: drag to orbit · wheel to zoom · double-click or Enter to go in · inside: click to capture the mouse, mouse looks · W A S D move · Shift walk · Ctrl crouch · Space jump · Esc release · V outside</i></div>
+        <div ref={tipRef} className="walktip" style={{ display: "none" }} /><button ref={enterBtn} className="walkenter" onClick={() => T.current?.enter?.()}><Icon name="enter" size={22} /> Enter</button><div className="walkhud" ref={hudBox} data-mode="out">
+          <span ref={hud}>exterior</span>
+          <div className="keys out">
+            <kbd className="kc" data-tip="Drag to orbit"><Icon name="orbit" size={18} /></kbd>
+            <kbd className="kc" data-tip="Scroll to zoom">scroll</kbd>
+            <kbd className="kc" data-tip="Double-click, or press Enter, to go in"><Icon name="enter" size={18} /></kbd>
+          </div>
+          <div className="keys in">
+            <kbd className="kc" data-tip="Click once, then the mouse looks around (Esc lets go)"><Icon name="mouse" size={18} /></kbd>
+            <kbd className="kc" data-tip="Move">W A S D</kbd>
+            <kbd className="kc" data-tip="Walk slowly">Shift</kbd>
+            <kbd className="kc" data-tip="Crouch">Ctrl</kbd>
+            <kbd className="kc" data-tip="Jump"><Icon name="jump" size={16} /> Space</kbd>
+            <kbd className="kc" data-tip="Back outside">V</kbd>
+          </div>
+        </div>
         <div className="walkcross" aria-hidden="true" />
       </div>
     </div>

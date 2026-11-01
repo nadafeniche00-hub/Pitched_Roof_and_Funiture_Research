@@ -7,6 +7,7 @@ import { uiActions } from '../store/uiSlice.js';
 import { layoutActions } from '../store/layoutSlice.js';
 import RoomTree from './RoomTree.jsx';
 import AiAssist from './AiAssist.jsx';
+import { Icon, IconBtn } from './Icon.jsx';
 import PuzzleEditor, { initialPieces } from './PuzzleEditor.jsx';
 import { fitBrief } from '@shared/roomTree.js';
 import { roomsFromPlanJson } from '@shared/planImport.js';
@@ -110,17 +111,17 @@ export default function PlanBuilder() {
   return (
     <div className="card pb">
       <div className="cardhead">
-        <h2>Room layout <small>from a bubble brief, under this roof</small></h2>
-        <nav className="tabs" aria-label="How to describe the rooms">
-          <button className={mode === 'bubbles' ? 'on' : ''} onClick={() => setMode('bubbles')}>Draw bubbles</button>
-          <button className={mode === 'tree' ? 'on' : ''} onClick={() => setMode('tree')}>Answer questions</button>
-          <button className={mode === 'puzzle' ? 'on' : ''} onClick={() => setMode('puzzle')}>Puzzle</button>
-          <button className={mode === 'form' ? 'on' : ''} onClick={() => setMode('form')}>Type rooms</button>
+        <h2>Room layout</h2>
+        <nav className="tabs icontabs" aria-label="How to describe the rooms">
+          <IconBtn icon="bubbles" label="Draw bubbles" cap="Bubbles" size={22} active={mode === 'bubbles'} onClick={() => setMode('bubbles')} />
+          <IconBtn icon="tree" label="Answer a few questions" cap="Questions" size={22} active={mode === 'tree'} onClick={() => setMode('tree')} />
+          <IconBtn icon="puzzle" label="Assemble the rooms like a puzzle" cap="Puzzle" size={22} active={mode === 'puzzle'} onClick={() => setMode('puzzle')} />
+          <IconBtn icon="list" label="Type the rooms" cap="List" size={22} active={mode === 'form'} onClick={() => setMode('form')} />
         </nav>
-        <button onClick={async () => importPlan(await (await fetch('/samples/sample-plan.json')).json(), 'sample plan')}>Sample plan</button>
-        <label className="filebtn">Import plan…<input type="file" accept=".json,application/json" hidden onChange={(e) => e.target.files[0] && openPlanFile(e.target.files[0])} /></label>
-        {mode === 'puzzle' ? <button onClick={solve}>Solve it for me</button> : <button onClick={generate}>Generate again</button>}
-        <button className="primary" onClick={furnish} disabled={!plan}>Furnish this layout</button>
+        <IconBtn icon="file" label="Load the sample plan" onClick={async () => importPlan(await (await fetch('/samples/sample-plan.json')).json(), 'sample plan')} />
+        <label className="ib filebtn" data-tip="Import a plan file (JSON)"><Icon name="upload" size={20} /><input type="file" accept=".json,application/json" hidden onChange={(e) => e.target.files[0] && openPlanFile(e.target.files[0])} /></label>
+        {mode === 'puzzle' ? <IconBtn icon="wand" label="Solve the puzzle for me" onClick={solve} /> : <IconBtn icon="dice" label="Generate again" onClick={generate} />}
+        <IconBtn icon="sofa" className="primary" label="Furnish this layout" cap="Furnish" disabled={!plan} onClick={furnish} />
       </div>
       <AiAssist onBrief={useTreeBrief} onPlan={importPlan} />
       {mode === 'tree' && <RoomTree path={treePath} setPath={setTreePath} onUse={useTreeBrief} />}

@@ -8,6 +8,7 @@ import Scene3D from './components/Scene3D.jsx';
 import MapPanel from './components/MapPanel.jsx';
 import PlanBuilder from './components/PlanBuilder.jsx';
 import PlanExport from './components/PlanExport.jsx';
+import { IconBtn } from './components/Icon.jsx';
 import WalkView from './components/WalkView.jsx';
 import ResultsPanel from './components/ResultsPanel.jsx';
 import LibraryView from './components/LibraryView.jsx';
@@ -18,7 +19,7 @@ import { fetchPresets, fetchProjects, fetchWind } from './store/thunks.js';
 import { itemsActions } from './store/itemsSlice.js';
 import { uiActions } from './store/uiSlice.js';
 
-const WORKSPACE = [['plan', 'Plan'], ['rooms', 'Rooms'], ['3d', '3D'], ['walk', 'Walk'], ['section', 'Section'], ['site', 'Site: sun & wind']];
+const WORKSPACE = [['plan', 'Plan', 'plan', 'Plan'], ['rooms', 'Rooms', 'rooms', 'Rooms'], ['3d', '3D', 'cube', '3D'], ['walk', 'Walk', 'walk', 'Walk'], ['section', 'Section', 'section', 'Section'], ['site', 'Site: sun & wind', 'sun', 'Site']];
 
 export default function App() {
   const dispatch = useDispatch();
@@ -65,9 +66,9 @@ export default function App() {
           <aside className="left"><RoomPanel /></aside>
           <main className="center">
             {note && <p className="note">{note}</p>}
-            <nav className="tabs workspace-tabs" aria-label="Workspace">
-              {WORKSPACE.map(([id, label]) => (
-                <button key={id} className={centerTab === id ? 'on' : ''} onClick={() => dispatch(uiActions.setCenterTab(id))}>{label}</button>
+            <nav className="tabs workspace-tabs icontabs" aria-label="Workspace">
+              {WORKSPACE.map(([id, label, icon, cap]) => (
+                <IconBtn key={id} icon={icon} label={label} cap={cap} size={24} active={centerTab === id} onClick={() => dispatch(uiActions.setCenterTab(id))} />
               ))}
             </nav>
             {/* only the active workspace is mounted: the 3D scene and the map size themselves on mount */}

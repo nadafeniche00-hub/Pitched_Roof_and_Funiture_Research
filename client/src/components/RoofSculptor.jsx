@@ -574,14 +574,14 @@ export default function RoofSculptor({ onClose }) {
   }); // eslint-disable-line react-hooks/exhaustive-deps
 
   const hint = tool === 'cut'
-    ? (cutA ? 'click the second point: the vertical plane through both splits every roof face it crosses' : 'click two points on the roof to draw a splitting plane')
-    : `${MODES.find((m) => m[0] === mode)[1]} mode: click to select, Ctrl-click to add or remove, then drag the gumball (arrows: one axis, squares: a plane, white ball: free), or press G and type a distance`;
+    ? (cutA ? 'click the second point' : 'click two points on the roof')
+    : `${MODES.find((m) => m[0] === mode)[1]}: click · Ctrl-click adds · G types a distance`;
 
   return (
     <div className="card sculpt">
       <div className="cardhead">
         <h2>Roof sculptor <small>{hint}</small></h2>
-        <button className="mini primary" onClick={onClose}>done</button>
+        <IconBtn icon="done" className="primary" label="Done" cap="Done" onClick={onClose} />
       </div>
       <div className="facebar sculptbar patterns">
         <span className="seg">
@@ -603,33 +603,30 @@ export default function RoofSculptor({ onClose }) {
         </span>
       </div>
       <div className="facebar sculptbar">
-        <b>Sub-object</b>
         <span className="seg">
-          {MODES.map(([k, label, key]) => <button key={k} className={mode === k && tool === 'move' ? 'primary' : ''} onClick={() => switchMode(k)}>{label} ({key})</button>)}
+          {MODES.map(([k, label, key]) => <IconBtn key={k} icon={{ v: 'vertex', e: 'edge', p: 'polygon', el: 'element' }[k]} label={label} keyHint={key} size={24} active={mode === k && tool === 'move'} onClick={() => switchMode(k)} />)}
         </span>
         <span className="seg">
-          <button className={tool === 'cut' ? 'primary' : ''} onClick={() => { setTool('cut'); setCutA(null); }}>split plane (C)</button>
+          <IconBtn icon="cut" label="Draw a splitting plane" keyHint="C" size={24} active={tool === 'cut'} onClick={() => { setTool('cut'); setCutA(null); }} />
         </span>
         <span className="snapnote">{count ? `${count} selected` : 'nothing selected'}</span>
         {note && <span className="snapnote">{note}</span>}
       </div>
       <div className="facebar sculptbar">
-        <b>Edit</b>
-        <label className="inline">amount <input type="number" step="0.05" min="0.05" value={amt} onChange={(e) => setAmt(Math.max(0.05, e.target.valueAsNumber || 0.05))} style={{ width: 64 }} /> m</label>
-        <button className="mini" disabled={!sel.ts.length} onClick={doExtrude}>extrude</button>
-        <button className="mini" disabled={!sel.ts.length} onClick={doInset}>inset</button>
-        <button className="mini" disabled={vertsOf(mesh, sel).length < 2} onClick={doWeld}>weld</button>
-        <button className="mini" disabled={!sel.es.length} onClick={doSplitEdge}>split edge</button>
+        <label className="inline" data-tip="Amount for extrude and inset"><Icon name="ruler" size={20} /> <input type="number" step="0.05" min="0.05" value={amt} onChange={(e) => setAmt(Math.max(0.05, e.target.valueAsNumber || 0.05))} style={{ width: 64 }} /> m</label>
+        <IconBtn icon="extrude" label="Extrude the selected polygons" size={22} disabled={!sel.ts.length} onClick={doExtrude} />
+        <IconBtn icon="inset" label="Inset the selected polygons" size={22} disabled={!sel.ts.length} onClick={doInset} />
+        <IconBtn icon="weld" label="Weld the selected vertices into one" size={22} disabled={vertsOf(mesh, sel).length < 2} onClick={doWeld} />
+        <IconBtn icon="splitEdge" label="Split the selected edge" size={22} disabled={!sel.es.length} onClick={doSplitEdge} />
         <IconBtn icon="remove" label="Delete the selected faces or vertices (Del)" disabled={!sel.ts.length && !sel.vs.length} onClick={doRemove} />
-        <button className="mini ghost" onClick={doSelectAll}>select all (Ctrl A)</button>
+        <IconBtn icon="selectAll" label="Select all" keyHint="Ctrl A" size={22} onClick={doSelectAll} />
         <IconBtn icon="undo" label="Undo (Ctrl+Z)" onClick={doUndo} />
         <IconBtn icon="redo" label="Redo (Ctrl+Y)" onClick={doRedo} />
-        <button className="mini ghost" onClick={doReset}>back to automatic roof</button>
+        <IconBtn icon="reset" label="Back to the automatic roof" size={22} onClick={doReset} />
       </div>
       <div className="facebar sculptbar">
-        <b>Gumball</b>
         <span className="seg">
-          {Object.keys(AXIS_LABEL).map((a) => <button key={a} className={axis === a ? 'primary' : ''} onClick={() => setAxis(a)}>{AXIS_LABEL[a]}</button>)}
+          {Object.keys(AXIS_LABEL).map((a) => <IconBtn key={a} icon={{ x: 'axisX', y: 'axisY', z: 'axisZ', free: 'free' }[a]} label={AXIS_LABEL[a]} keyHint={{ x: 'X', y: 'Y', z: 'Z', free: 'F' }[a]} size={22} active={axis === a} onClick={() => setAxis(a)} />)}
         </span>
         <span className="snapmenu">
           <IconBtn icon="magnet" label="Snapping on or off (Shift+Tab). Hold Ctrl while dragging to flip it" active={snapCfg.on} onClick={() => setSnapCfg((c) => ({ ...c, on: !c.on }))} />
@@ -656,7 +653,7 @@ export default function RoofSculptor({ onClose }) {
         <div ref={mount} className="scene3d" style={{ background: '#fff' }} />
         <div ref={tipRef} className="dragtip" style={{ display: 'none' }} />
       </div>
-      <p className="hint">Heights count for the usable area only where the roof is 1 m or higher (half) and 2 m or higher (full). The numbers on the right follow the sculpted roof. The walk-through still builds the automatic roof.</p>
+      <p className="hint">The numbers on the right follow this roof. The walk-through still builds the automatic one.</p>
     </div>
   );
 }

@@ -257,3 +257,24 @@ table.params tr.own .layer { color: var(--accent); }
 .aiassist .aitext { flex: 1 1 320px; min-width: 200px; padding: 8px 10px; border: 1px solid var(--line); background: var(--paper); }
 .aipill { font-size: 12px; padding: 3px 9px; border: 1px solid var(--line); color: var(--muted); } .aipill.on { color: #fff; background: var(--moss, #2f7d4f); border-color: transparent; }
 .aimsg { flex: 1 0 100%; margin: 0; }
+
+/* icon-first controls: instant tooltips, icon tabs that name only the active one, keycaps */
+[data-tip] { position: relative; }
+[data-tip]:hover::after, button[data-tip]:focus-visible::after { content: attr(data-tip); position: absolute; top: calc(100% + 8px); left: 50%; transform: translateX(-50%); z-index: 60; white-space: nowrap; max-width: 380px; background: #14161c; color: #fff; font: 600 12px var(--body); letter-spacing: 0; text-transform: none; padding: 5px 10px; pointer-events: none; box-shadow: 3px 3px 0 var(--hot); }
+.walkhud [data-tip]:hover::after { top: auto; bottom: calc(100% + 8px); }
+.icontabs { align-items: stretch; }
+.icontabs .ib { padding: 8px 12px; gap: 8px; }
+.icontabs .ib .cap { display: none; font-weight: 700; font-size: 13px; }
+.icontabs .ib.on .cap { display: inline; }
+.ib.ghost { background: transparent; border-color: transparent; }
+.ib.primary:not(.on) { background: var(--ink); color: #fff; border-color: var(--ink); }
+.row .rl { display: inline-flex; align-items: center; gap: 6px; }
+.row { grid-template-columns: 112px 1fr 58px; }
+.panel h3 { align-items: center; }
+.h3t { display: inline-flex; align-items: center; gap: 8px; }
+.rooflbl { display: inline-flex; align-items: center; gap: 6px; }
+.walkhud { gap: 6px; }
+.walkhud .keys { display: flex; flex-wrap: wrap; gap: 6px; }
+.walkhud[data-mode='out'] .keys.in, .walkhud[data-mode='in'] .keys.out { display: none; }
+.kc { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border: 2px solid #cfd3da; border-bottom-width: 4px; border-radius: 5px; font: 700 12px var(--body); color: #fff; background: rgba(255, 255, 255, 0.08); pointer-events: auto; }
+.facehint { display: flex; align-items: center; gap: 8px; }
