@@ -238,3 +238,9 @@ table.params tr.own .layer { color: var(--accent); }
 .reading { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
 .reading b { color: var(--ink); font-size: 15px; } .reading em { font-style: normal; color: var(--hot); }
 .ib { display: inline-flex; align-items: center; gap: 6px; padding: 6px 9px; } .ib .cap { font-size: 12px; font-weight: 600; }
+
+.snapmenu { position: relative; display: inline-flex; align-items: center; gap: 2px; }
+.snapmenu summary { cursor: pointer; list-style: none; padding: 4px 6px; border: 1px solid var(--line); }
+.snapmenu summary::-webkit-details-marker { display: none; }
+.snappop { position: absolute; top: calc(100% + 6px); left: 0; z-index: 20; display: grid; gap: 6px; min-width: 190px; padding: 10px 12px; background: #fff; border: 3px solid var(--ink); box-shadow: 6px 6px 0 var(--ink); }
+.snappop b { font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }

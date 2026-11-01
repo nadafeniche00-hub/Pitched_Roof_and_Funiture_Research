@@ -5,7 +5,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { autoMesh, cutMesh, splitEdge } from '@shared/roofMesh.js';
 import { roomActions } from '../store/roomSlice.js';
 import { heatColor } from './PlanView.jsx';
-import { Icon } from './Icon.jsx';
+import { Icon, IconBtn } from './Icon.jsx';
 import { PATTERNS, patternMesh, recognizeRoof } from '@shared/roofLibrary.js';
 import { nationalShare, coverage, pitchPercentile, TOTAL, SURVEYED } from '../lib/roofStats.js';
 
@@ -119,12 +119,13 @@ export default function RoofSculptor({ onClose }) {
   const [sel, setSel] = useState(EMPTY);
   const [tool, setTool] = useState('move');
   const [axis, setAxis] = useState('y');
-  const [snap, setSnap] = useState(true);
+  // snapping, after Blender: what to snap to (vertex, edge, edge middle, face, increment), which point of the selection snaps (closest or centre)
+  const [snapCfg, setSnapCfg] = useState({ on: true, vertex: true, edge: true, mid: true, face: false, incr: true, step: 0.05, source: 'closest' });
   const [cutA, setCutA] = useState(null);
   const [note, setNote] = useState('');
   const [amt, setAmt] = useState(0.4);
   const S = useRef({});
-  S.current = { mesh, sel, mode, tool, axis, snap, cutA, room };
+  S.current = { mesh, sel, mode, tool, axis, snapCfg, cutA, room };
 
   const commit = (m) => dispatch(roomActions.setParam({ key: 'roof', value: m }));
   const push = () => { undo.current.push(clone(S.current.mesh)); if (undo.current.length > 60) undo.current.shift(); };
@@ -181,7 +182,8 @@ export default function RoofSculptor({ onClose }) {
       let best = null, bd = SNAP_V;
       for (const [p] of others(skip)) { const d = Math.abs(p[c] - val); if (d < bd) { bd = d; best = p[c]; } }
       if (best !== null) return [best, 'vertex'];
-      return S.current.snap ? [Math.round(val / GRID) * GRID, 'grid'] : [val, ''];
+      const sc = S.current.snapCfg;
+      return sc.on && sc.incr ? [Math.round(val / sc.step) * sc.step, 'increment'] : [val, ''];
     };
     const lim = (c, v) => (c === 0 ? Math.max(0, Math.min(S.current.room.width, v)) : c === 1 ? Math.max(0, Math.min(S.current.room.depth, v)) : Math.max(0, Math.min(6, v)));
 
@@ -198,9 +200,10 @@ export default function RoofSculptor({ onClose }) {
       if (!p) return null;
       let out = [p.x, p.z, p.y], how = '';
       let bd = 0.25;
-      for (const q of S.current.mesh.v) { const d = P3(q).distanceTo(p); if (d < bd) { bd = d; out = [...q]; how = 'vertex'; } }
-      if (!how) for (const [a, b] of t.edges) { const A = S.current.mesh.v[a], B = S.current.mesh.v[b], m = [(A[0] + B[0]) / 2, (A[1] + B[1]) / 2, (A[2] + B[2]) / 2]; const d = P3(m).distanceTo(p); if (d < bd) { bd = d; out = m; how = 'edge middle'; } }
-      if (!how && S.current.snap) { out = [Math.round(out[0] / GRID) * GRID, Math.round(out[1] / GRID) * GRID, out[2]]; how = 'grid'; }
+      const sc = S.current.snapCfg;
+      if (sc.on && sc.vertex) for (const q of S.current.mesh.v) { const d = P3(q).distanceTo(p); if (d < bd) { bd = d; out = [...q]; how = 'vertex'; } }
+      if (!how && sc.on && sc.mid) for (const [a, b] of t.edges) { const A = S.current.mesh.v[a], B = S.current.mesh.v[b], m = [(A[0] + B[0]) / 2, (A[1] + B[1]) / 2, (A[2] + B[2]) / 2]; const d = P3(m).distanceTo(p); if (d < bd) { bd = d; out = m; how = 'edge middle'; } }
+      if (!how && sc.on && sc.incr) { out = [Math.round(out[0] / sc.step) * sc.step, Math.round(out[1] / sc.step) * sc.step, out[2]]; how = 'increment'; }
       setNote(how ? `snapped to ${how}` : '');
       return out;
     };
@@ -208,6 +211,7 @@ export default function RoofSculptor({ onClose }) {
     const updatePreview = () => {
       while (pv.children.length) { const c = pv.children.pop(); c.geometry?.dispose(); c.material?.dispose?.(); }
       const A = S.current.cutA, B = t.hover;
+      if (t.snapMark) { const mk = new THREE.Mesh(new THREE.SphereGeometry(0.1, 14, 12), new THREE.MeshBasicMaterial({ color: 0xffc533, depthTest: false })); mk.position.copy(t.snapMark); mk.renderOrder = 35; pv.add(mk); }
       if (S.current.tool !== 'cut' || !B) { render(); return; }
       const dot = (p, col) => { const m = new THREE.Mesh(new THREE.SphereGeometry(0.07, 12, 10), new THREE.MeshBasicMaterial({ color: col, depthTest: false })); m.position.copy(P3(p)); m.renderOrder = 30; pv.add(m); };
       dot(B, 0x2f7d4f);
@@ -225,6 +229,30 @@ export default function RoofSculptor({ onClose }) {
     t.updatePreview = updatePreview;
 
     // ---------------- pointer
+    // Blender-style element snapping: the target under the cursor is the nearest vertex, edge middle, point on an edge, or point on a face
+    const toScr = (p) => { const v = p.clone().project(camera), b = renderer.domElement.getBoundingClientRect(); return [b.left + ((v.x + 1) / 2) * b.width, b.top + ((1 - v.y) / 2) * b.height]; };
+    const findTarget = (e, idx) => {
+      const cfg = S.current.snapCfg, m = S.current.mesh, skip = new Set(idx), cands = [];
+      const cur = [e.clientX, e.clientY], pd = (q) => Math.hypot(q[0] - cur[0], q[1] - cur[1]);
+      if (cfg.vertex) m.v.forEach((p, i) => { if (!skip.has(i)) { const w = P3(p); cands.push({ p: w, kind: 'vertex', score: pd(toScr(w)) - 10, d: pd(toScr(w)) }); } });
+      for (const [a, b] of t.edges) {
+        if (skip.has(a) || skip.has(b)) continue;
+        const A = P3(m.v[a]), B = P3(m.v[b]);
+        if (cfg.mid) { const w = A.clone().add(B).multiplyScalar(0.5), d = pd(toScr(w)); cands.push({ p: w, kind: 'edge middle', score: d - 6, d }); }
+        if (cfg.edge) { const w = new THREE.Vector3(); ray.ray.distanceSqToSegment(A, B, undefined, w); const d = pd(toScr(w)); cands.push({ p: w, kind: 'edge', score: d, d }); }
+      }
+      const best = cands.filter((c) => c.d <= 22).sort((x, y) => x.score - y.score)[0];
+      if (best) return best;
+      if (cfg.face) { // the face under the cursor (the faces being moved are ignored)
+        let hit = null, hd = Infinity; const w = new THREE.Vector3();
+        for (const tri of m.t) {
+          if (tri.some((i) => skip.has(i))) continue;
+          if (ray.ray.intersectTriangle(P3(m.v[tri[0]]), P3(m.v[tri[1]]), P3(m.v[tri[2]]), false, w)) { const dd = w.distanceTo(ray.ray.origin); if (dd < hd) { hd = dd; hit = w.clone(); } }
+        }
+        if (hit) return { p: hit, kind: 'face', score: 12, d: 0 };
+      }
+      return null;
+    };
     let downAt = null;
     const axisParam = (rr, c, a) => { // where on the axis line through c the pointer ray comes closest
       const d = rr.direction, w = rr.origin.clone().sub(c), b = d.dot(a), den = 1 - b * b;
@@ -272,10 +300,24 @@ export default function RoofSculptor({ onClose }) {
         if (s === null) return;
         delta = AXES[d.ax].clone().multiplyScalar(s - d.anchor);
       }
-      const dp = [delta.x, delta.z, delta.y]; // plan x, plan y, height
-      const first = d.orig[0], skip = d.idx, comps = [0, 1, 2].filter((c) => Math.abs(dp[c]) > 1e-9);
-      const adj = [0, 0, 0]; let how = '';
-      for (const c of comps) { const [sv, h] = snapComp(c, first[c] + dp[c], skip); const v = lim(c, sv); adj[c] = v - first[c]; if (h) how = h; }
+      const cfg = S.current.snapCfg, active = cfg.on !== (e.ctrlKey || e.metaKey); // Ctrl flips snapping while dragging, as in Blender
+      const first = d.orig[0], adj = [0, 0, 0]; let how = '';
+      const target = active && (cfg.vertex || cfg.edge || cfg.mid || cfg.face) ? findTarget(e, d.idx) : null;
+      t.snapMark = null;
+      if (target) {
+        const srcs = d.orig.map((p) => P3(p));
+        const src = cfg.source === 'center' ? d.c3 : srcs.reduce((b, p) => (p.distanceTo(target.p) < b.distanceTo(target.p) ? p : b), srcs[0]);
+        let dl = target.p.clone().sub(src);
+        if (d.ax === 'x' || d.ax === 'y' || d.ax === 'z') dl = AXES[d.ax].clone().multiplyScalar(dl.dot(AXES[d.ax])); // an arrow keeps its axis
+        else if (d.ax === 'plane') dl.addScaledVector(d.camDir, -dl.dot(d.camDir));
+        const dq = [dl.x, dl.z, dl.y];
+        for (let c = 0; c < 3; c++) adj[c] = lim(c, first[c] + dq[c]) - first[c];
+        how = target.kind; t.snapMark = target.p;
+      } else {
+        const dp = [delta.x, delta.z, delta.y]; // plan x, plan y, height
+        const comps = [0, 1, 2].filter((c) => Math.abs(dp[c]) > 1e-9);
+        for (const c of comps) { const [sv, h] = snapComp(c, first[c] + dp[c], d.idx); const v = lim(c, active ? sv : first[c] + dp[c]); adj[c] = v - first[c]; if (h && active) how = h; }
+      }
       setNote(how ? `snapped to ${how}` : '');
       const m = clone(S.current.mesh);
       d.idx.forEach((i, k) => { for (let c = 0; c < 3; c++) m.v[i][c] = d.orig[k][c] + adj[c]; });
@@ -285,7 +327,7 @@ export default function RoofSculptor({ onClose }) {
     const onUp = (e) => {
       const d = t.drag;
       if (d) {
-        t.drag = null; controls.enabled = true;
+        t.drag = null; controls.enabled = true; t.snapMark = null; t.updatePreview();
         if (d.moved) commit(S.current.mesh); else undo.current.pop();
         downAt = null;
         return;
@@ -431,6 +473,7 @@ export default function RoofSculptor({ onClose }) {
     const onKey = (e) => {
       if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return;
       const k = e.key.toLowerCase();
+      if (k === 'tab' && e.shiftKey) { e.preventDefault(); setSnapCfg((c) => ({ ...c, on: !c.on })); return; } // Shift+Tab toggles snapping
       if ((e.ctrlKey || e.metaKey) && k === 'z') { e.preventDefault(); doUndo(); return; }
       if ((e.ctrlKey || e.metaKey) && k === 'a') { e.preventDefault(); doSelectAll(); return; }
       if (k === '1') switchMode('v'); else if (k === '2') switchMode('e'); else if (k === '4') switchMode('p'); else if (k === '5') switchMode('el');
@@ -497,7 +540,21 @@ export default function RoofSculptor({ onClose }) {
         <span className="seg">
           {Object.keys(AXIS_LABEL).map((a) => <button key={a} className={axis === a ? 'primary' : ''} onClick={() => setAxis(a)}>{AXIS_LABEL[a]}</button>)}
         </span>
-        <label className="inline"><input type="checkbox" checked={snap} onChange={(e) => setSnap(e.target.checked)} /> snap to grid {GRID * 100} cm and to vertices</label>
+        <span className="snapmenu">
+          <IconBtn icon="magnet" label="Snapping on or off (Shift+Tab). Hold Ctrl while dragging to flip it" active={snapCfg.on} onClick={() => setSnapCfg((c) => ({ ...c, on: !c.on }))} />
+          <details>
+            <summary title="Snap settings" aria-label="Snap settings">▾</summary>
+            <div className="snappop">
+              <b>Snap to</b>
+              {[['vertex', 'Vertex'], ['edge', 'Edge'], ['mid', 'Edge middle'], ['face', 'Face'], ['incr', 'Increment']].map(([k, label]) => (
+                <label key={k} className="inline"><input type="checkbox" checked={snapCfg[k]} onChange={(e) => setSnapCfg((c) => ({ ...c, [k]: e.target.checked }))} /> {label}</label>
+              ))}
+              <label className="inline">step <select value={snapCfg.step} onChange={(e) => setSnapCfg((c) => ({ ...c, step: +e.target.value }))}>{[0.01, 0.05, 0.1, 0.25, 0.5, 1].map((s) => <option key={s} value={s}>{s * 100} cm</option>)}</select></label>
+              <b>Snap with</b>
+              <label className="inline"><select value={snapCfg.source} onChange={(e) => setSnapCfg((c) => ({ ...c, source: e.target.value }))}><option value="closest">Closest point</option><option value="center">Centre of selection</option></select></label>
+            </div>
+          </details>
+        </span>
         {oneVertex && [['x', 0], ['y', 1], ['height', 2]].map(([label, c]) => (
           <label key={c} className="inline">{label}
             <input type="number" step="0.05" value={+oneVertex[c].toFixed(2)} onChange={(e) => setCoord(c, e.target.valueAsNumber)} style={{ width: 70 }} /> m
