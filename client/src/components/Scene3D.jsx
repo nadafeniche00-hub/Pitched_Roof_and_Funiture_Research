@@ -340,9 +340,21 @@ export default function Scene3D() {
     const [x0, z0, x1, z1] = c.rect, W = room.width, D = room.depth;
     return F === 'top' ? [0.5, room.maxHeight] : F === 'px' ? [x0 + 0.5, W] : F === 'nx' ? [0, x1 - 0.5] : F === 'pz' ? [z0 + 0.5, D] : [0, z1 - 0.5];
   };
+  const [snapMsg, setSnapMsg] = useState('');
+  const snapValue = (c, F, v) => { // lock onto the plan's outline, a neighbour's edge or a roof height before falling back to 5 cm
+    const pick = (cand, tol, label) => { let best = null, bd = tol; for (const x of cand) { const d = Math.abs(x - v); if (d < bd) { bd = d; best = x; } } return best === null ? null : [best, label]; };
+    let hit;
+    if (F === 'top') hit = pick([room.kneeWall, 1, 2, room.maxHeight, roofHeight(room, room.width / 2, room.depth / 2)], 0.12, 'roof height');
+    else {
+      const horiz = F === 'px' || F === 'nx', lim = horiz ? room.width : room.depth;
+      hit = pick([0, lim], 0.3, 'plan outline') || pick(cells.filter((o) => o.id !== c.id).flatMap((o) => (horiz ? [o.rect[0], o.rect[2]] : [o.rect[1], o.rect[3]])), 0.2, 'neighbour edge');
+    }
+    setSnapMsg(hit ? `snapped to ${hit[1]}` : '');
+    return hit ? hit[0] : Math.round(v / 0.05) * 0.05;
+  };
   const push = (v) => { setEdited(true); setCells((cs) => cs.map((c) => {
     if (c.id !== sel.id) return c;
-    const [lo, hi] = range(c, sel.face), x = Math.max(lo, Math.min(hi, v)), r = [...c.rect];
+    const [lo, hi] = range(c, sel.face), x = Math.max(lo, Math.min(hi, snapValue(c, sel.face, v))), r = [...c.rect];
     if (sel.face === 'top') return { ...c, h: x };
     if (sel.face === 'px') r[2] = x; else if (sel.face === 'nx') r[0] = x; else if (sel.face === 'pz') r[3] = x; else r[1] = x;
     return { ...c, rect: r };
@@ -376,6 +388,7 @@ export default function Scene3D() {
             <input type="range" min={range(cur, sel.face)[0]} max={range(cur, sel.face)[1]} step="0.05" value={val(cur, sel.face)} onChange={(e) => push(+e.target.value)} />
             <output>{val(cur, sel.face).toFixed(2)} m</output>
           </label>
+          {snapMsg && <span className="snapnote">{snapMsg}</span>}
           <button className="mini" onClick={() => split('x')}>split left | right</button>
           <button className="mini" onClick={() => split('z')}>split front / back</button>
           <button className="mini ghost" onClick={remove}>delete</button>

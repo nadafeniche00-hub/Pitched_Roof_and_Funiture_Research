@@ -169,7 +169,9 @@ export default function RoofSculptor({ onClose }) {
 
     const setRay = (e) => { const b = renderer.domElement.getBoundingClientRect(); ndc.set(((e.clientX - b.left) / b.width) * 2 - 1, -((e.clientY - b.top) / b.height) * 2 + 1); ray.setFromCamera(ndc, camera); };
     const others = (skip) => S.current.mesh.v.map((p, i) => [p, i]).filter(([, i]) => !skip.includes(i));
-    const snapComp = (c, val, skip) => { // snap one coordinate to a nearby vertex, else to the grid
+    const snapComp = (c, val, skip) => { // snap one coordinate to the plan outline (or a wall height), a nearby vertex, else to the grid
+      const rm = S.current.room, fixed = c === 0 ? [0, rm.width] : c === 1 ? [0, rm.depth] : [rm.kneeWall, 1, 2, rm.maxHeight];
+      for (const f of fixed) if (Math.abs(f - val) < (c === 2 ? 0.1 : 0.2)) return [f, c === 2 ? 'wall height' : 'plan outline'];
       let best = null, bd = SNAP_V;
       for (const [p] of others(skip)) { const d = Math.abs(p[c] - val); if (d < bd) { bd = d; best = p[c]; } }
       if (best !== null) return [best, 'vertex'];
