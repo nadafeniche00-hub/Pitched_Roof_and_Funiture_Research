@@ -218,7 +218,7 @@ export default function WalkView() {
     const down = () => { S.drag = true; canvas.focus(); try { if (!S.outside) canvas.requestPointerLock?.()?.catch?.(() => {}); } catch { /* the drag still looks around */ } };
     const up = () => { S.drag = false; };
     const key = (down) => (e) => {
-      if (!['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName) && /^(w|a|s|d|arrowup|arrowdown|arrowleft|arrowright|shift)$/i.test(e.key)) { S.keys[e.key.toLowerCase()] = down; if (down && e.key.startsWith('Arrow')) e.preventDefault(); }
+      if (!['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName) && /^(w|a|s|d|arrowup|arrowdown|arrowleft|arrowright|shift|control|c| )$/i.test(e.key)) { S.keys[e.key.toLowerCase()] = down; if (down && (e.key.startsWith('Arrow') || e.key === ' ')) e.preventDefault(); }
       if (down && (e.key.toLowerCase() === 'v' || e.key === 'Enter') && e.target === canvas) { if (S.outside) T.current.enter(); else { S.outside = true; document.exitPointerLock?.(); } }
     };
     const kd = key(true), ku = key(false);
@@ -301,15 +301,19 @@ export default function WalkView() {
         const sd = (S.keys.d ? 1 : 0) - (S.keys.a ? 1 : 0);
         if (S.keys.arrowleft) S.yaw += dt * 1.8;
         if (S.keys.arrowright) S.yaw -= dt * 1.8;
-        const speed = (S.keys.shift ? 3.4 : 1.7) * dt;
+        const crouch = !!(S.keys.control || S.keys.c);
+        const speed = (S.keys.shift ? 1.1 : crouch ? 1.0 : 2.9) * dt; // like Counter-Strike: run by default, Shift walks quietly, Ctrl or C crouches
         const fx = -Math.sin(S.yaw), fz = -Math.cos(S.yaw), rx = Math.cos(S.yaw), rz = -Math.sin(S.yaw);
         const dx = (fx * f + rx * sd) * speed, dz = (fz * f + rz * sd) * speed;
         if (dx && free(S.x + dx, S.z)) S.x += dx;
         if (dz && free(S.x, S.z + dz)) S.z += dz;
         const rm = t.room;
-        const target = Math.min(EYE, (rm ? roofHeight(rm, S.x, S.z) : 3) - 0.18);
-        S.eye += (target - S.eye) * Math.min(1, dt * 8);
-        camera.position.set(S.x, S.eye, S.z);
+        const ceil = (rm ? roofHeight(rm, S.x, S.z) : 3) - 0.18;
+        const target = Math.min(crouch ? EYE - 0.6 : EYE, ceil);
+        S.eye += (target - S.eye) * Math.min(1, dt * 12);
+        if (S.keys[' '] && !S.air) { S.vy = 3.4; S.air = true; } // Space jumps
+        if (S.air) { S.jh = (S.jh || 0) + S.vy * dt; S.vy -= 9.8 * dt; if (S.jh <= 0) { S.jh = 0; S.air = false; S.vy = 0; } }
+        camera.position.set(S.x, Math.min(S.eye + (S.jh || 0), ceil + 0.08), S.z);
         camera.rotation.set(S.pitch, S.yaw, 0);
       }
       if (++S.tick % 12 === 0 && hud.current) {
@@ -503,7 +507,7 @@ export default function WalkView() {
       </div>
       <div className="walkstage">
         <div ref={mount} className="walk" />
-        <div ref={tipRef} className="walktip" style={{ display: "none" }} /><button ref={enterBtn} className="walkenter" onClick={() => T.current?.enter?.()}>Enter the house</button><div className="walkhud"><span ref={hud}>exterior</span><i>outside: drag to orbit · wheel to zoom · double-click or Enter to go in · inside: drag to look · W A S D move · Shift run · V back outside</i></div>
+        <div ref={tipRef} className="walktip" style={{ display: "none" }} /><button ref={enterBtn} className="walkenter" onClick={() => T.current?.enter?.()}>Enter the house</button><div className="walkhud"><span ref={hud}>exterior</span><i>outside: drag to orbit · wheel to zoom · double-click or Enter to go in · inside: click to capture the mouse, mouse looks · W A S D move · Shift walk · Ctrl crouch · Space jump · Esc release · V outside</i></div>
         <div className="walkcross" aria-hidden="true" />
       </div>
     </div>

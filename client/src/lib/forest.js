@@ -93,7 +93,7 @@ export function buildForest(cx, cz, y0, { seed = 3, clear = 9, outer = 46, trees
   }
 
   for (let i = 0; i < 160; i++) { // ferns and bushes
-    const rad = Math.sqrt(clear * clear * 0.4 + R() * (outer * outer * 0.7)), ang = R() * Math.PI * 2, rr = 0.35 + R() * 0.5;
+    const rad = Math.sqrt(clear * clear * 0.8 + R() * (outer * outer * 0.7)), ang = R() * Math.PI * 2, rr = 0.35 + R() * 0.5;
     const b = new THREE.Mesh(paint(rough(new THREE.IcosahedronGeometry(rr, 2), 0.7, R), -rr, rr, 90 + R() * 40, 0.5, 0.05, 0.22, R), white());
     b.position.set(cx + Math.cos(ang) * rad, y0 + rr * 0.35, cz + Math.sin(ang) * rad);
     b.scale.y = 0.6;
@@ -104,7 +104,7 @@ export function buildForest(cx, cz, y0, { seed = 3, clear = 9, outer = 46, trees
   // grass: tufts of thin blades, dark at the root, light at the tip; thick near the house, thinner further out
   const tufts = 4200, pos = [], colr = [], c = new THREE.Color();
   for (let i = 0; i < tufts; i++) {
-    const near = R() < 0.6, rad = near ? clear * 0.35 + R() * clear * 1.6 : clear + R() * (outer - clear), ang = R() * Math.PI * 2;
+    const near = R() < 0.6, rad = near ? clear * 0.85 + R() * clear * 1.4 : clear + R() * (outer - clear), ang = R() * Math.PI * 2;
     const tx = cx + Math.cos(ang) * rad, tz = cz + Math.sin(ang) * rad, hue = 70 + R() * 35, hgt = 0.18 + R() * 0.4;
     for (let b = 0; b < 6; b++) {
       const a = R() * 6.28, lean = (R() - 0.3) * 0.25, w = 0.022 + R() * 0.02, ox = (R() - 0.5) * 0.18, oz = (R() - 0.5) * 0.18, hh = hgt * (0.6 + R() * 0.6);
