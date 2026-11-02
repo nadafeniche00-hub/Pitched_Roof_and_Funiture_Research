@@ -59,6 +59,8 @@ What was learned on the way (each of these cost a run):
 * Assets deleted and made again in one editor session cannot be saved ("illegal reference to private object"), and a level cannot be replaced while it is the open one: `run.ps1` empties
   `Content/UsableSpace` first and `DefaultEngine.ini` sets no startup map. `.uproject` and script paths must be absolute.
 * Neither `print()` nor `unreal.log` reach the editor's log in this mode: both scripts also write to `script.log`, which `run.ps1` prints.
+* Every start of the editor appends an `AndroidFileServer` section with a random security token to `Config/DefaultEngine.ini`. It is not source: delete it from the file before a commit
+  (the committed file holds only the renderer and RHI settings).
 
 **Not the same as the Blender pictures:** the vegetation of `vegetation.py` is not rebuilt (trees are the app's low-poly crowns with their vertex colours, the lawn is the ground texture), the window
 openings are not cut (the panes are dark flat panels in the wall), no light portals, no moss. The Blender pictures are the ones to judge realism by; the Unreal ones show that the same file
