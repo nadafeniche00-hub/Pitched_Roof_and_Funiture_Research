@@ -66,6 +66,9 @@ What was learned on the way (each of these cost a run):
 openings are not cut (the panes are dark flat panels in the wall), no light portals, no moss. The Blender pictures are the ones to judge realism by; the Unreal ones show that the same file
 goes into a game engine with real thick walls and furniture.
 
+**In a web browser:** the same level can be streamed live with Unreal's Pixel Streaming 2 (the viewer flies around the house with W A S D and the mouse). `run.ps1 -BuildOnly` builds the level with a
+start place outside the house; `pixelstreaming\` has the scripts and `pixelstreaming\README.md` the steps, the limits (same network only, one viewer, not tried yet on Epic's Electric Dreams sample) and the status.
+
 ## Credits
 
 Textures and sky: Poly Haven, CC0 (`textures/CREDITS.md`). The furniture models come with the app.

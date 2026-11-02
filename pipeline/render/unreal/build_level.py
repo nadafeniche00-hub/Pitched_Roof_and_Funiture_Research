@@ -319,6 +319,16 @@ fog = eas.spawn_actor_from_class(unreal.ExponentialHeightFog, unreal.Vector(0, 0
 fog.set_actor_label("Fog")
 fog.get_component_by_class(unreal.ExponentialHeightFogComponent).set_editor_property("fog_density", 0.004)
 
+# ---- where a viewer starts (the Pixel Streaming page, pixelstreaming/): outside, near the south-west corner, looking at the house. The default pawn flies from there (W A S D, mouse).
+if house:
+    import math
+    cx, cy, cz = (lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, lo[2] + (hi[2] - lo[2]) * 0.5
+    span = max(hi[0] - lo[0], hi[1] - lo[1])
+    px, py, pz = lo[0] - span * 0.45, lo[1] - span * 0.8, ground_top + 170
+    start = eas.spawn_actor_from_class(unreal.PlayerStart, unreal.Vector(px, py, pz), unreal.Rotator(0, math.degrees(math.atan2(cz - pz, math.hypot(cx - px, cy - py))), math.degrees(math.atan2(cy - py, cx - px))))
+    start.set_actor_label("PlayerStart")
+    say(P, "player start (cm):", round(px), round(py), round(pz), "looking at", round(cx), round(cy), round(cz))
+
 say(P, "saved the level:", les.save_current_level())
 # import_scene creates the meshes and materials in memory: without this the saved level points at assets that do not exist on disk
 say(P, "saved the imported assets:", unreal.EditorLoadingAndSavingUtils.save_dirty_packages(True, True))

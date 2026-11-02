@@ -1,0 +1,65 @@
+# Streams an Unreal level into a web browser with Pixel Streaming 2: the signalling server (Epic's Wilbur, built by setup.ps1) serves the page, Unreal sends the picture and takes
+# the keys and the mouse back. Needs setup.ps1 once.
+#   powershell -ExecutionPolicy Bypass -File pipeline\render\unreal\pixelstreaming\run_stream.ps1 [-Project UsableSpace|ElectricDreams] [-Map /Game/...] [-Resolution 1920x1080]
+# Then open http://localhost:8080 on this computer. On the same network: http://<address of this computer>:8080 (Windows asks once whether node may listen: your decision).
+# Stop with Ctrl+C or by closing Unreal: the signalling server stops with it.
+#   UsableSpace     the walk-view house in its forest (pipeline\render\unreal, built by run.ps1), starts outside the house; W A S D and the mouse fly
+#   ElectricDreams  Epic's sample project in Documents\Unreal Projects (43 GB, Lumen, Nanite, ray tracing): needs more than the 8 GB of this laptop's GPU at full quality, see README.md
+param(
+    [ValidateSet('UsableSpace', 'ElectricDreams')][string]$Project = 'UsableSpace',
+    [string]$Map = '',
+    [string]$Resolution = '1920x1080',
+    [int]$HttpPort = 8080,
+    [int]$StreamerPort = 8888,
+    [ValidateSet('', 'H264', 'VP8', 'VP9', 'AV1')][string]$Codec = '',
+    [string]$Bin = 'C:\Program Files\Epic Games\UE_5.8\Engine\Binaries\Win64'
+)
+$ErrorActionPreference = 'Stop'
+$here = Split-Path -Parent $MyInvocation.MyCommand.Path
+$projects = @{
+    UsableSpace    = @{ File = (Join-Path $here '..\UsableSpace\UsableSpace.uproject'); Map = '/Game/UsableSpace/Scene' }
+    ElectricDreams = @{ File = (Join-Path $env:USERPROFILE 'Documents\Unreal Projects\ElectricDreamsEnv\ElectricDreamsEnv.uproject'); Map = '/Game/Levels/ElectricDreams_Env' }
+}
+$cfg = $projects[$Project]
+$uproject = (Resolve-Path $cfg.File).Path
+$map = if ($Map) { $Map } else { $cfg.Map }
+
+# the plugin must be on in the project (the .uproject gets one line and a .bak copy of the old file)
+$text = Get-Content $uproject -Raw
+if ($text -notmatch 'PixelStreaming2') {
+    Copy-Item $uproject "$uproject.bak" -Force
+    $text = [regex]::Replace($text, '"Plugins"\s*:\s*\[', '"Plugins": [' + "`r`n`t`t{ `"Name`": `"PixelStreaming2`", `"Enabled`": true },", 1)
+    Set-Content $uproject $text -NoNewline
+    "enabled the Pixel Streaming 2 plugin in $uproject (the old file is next to it as .bak)"
+}
+
+# 1 the signalling server and the page
+$sw = Join-Path $here 'infra\SignallingWebServer'
+if (-not ((Test-Path (Join-Path $sw 'dist\index.js')) -and (Test-Path (Join-Path $sw 'www\player.html')))) { throw 'the web part is not built yet: run setup.ps1 first' }
+$logs = Join-Path $here 'logs'
+New-Item -ItemType Directory -Force -Path $logs | Out-Null
+$sigArgs = @('dist\index.js', '--serve', '--player_port', $HttpPort, '--streamer_port', $StreamerPort, '--http_root', "`"$(Join-Path $sw 'www')`"", '--homepage', 'player.html', '--console_messages', 'verbose', '--log_config')
+$sig = Start-Process -FilePath node -ArgumentList $sigArgs -WorkingDirectory $sw -PassThru -WindowStyle Minimized -RedirectStandardOutput (Join-Path $logs 'signalling.log') -RedirectStandardError (Join-Path $logs 'signalling.err.log')
+try {
+    $up = $false
+    for ($i = 0; $i -lt 60 -and -not $up; $i++) {
+        Start-Sleep -Milliseconds 500
+        if ($sig.HasExited) { throw 'the signalling server stopped at once: read logs\signalling.err.log (is port ' + $HttpPort + ' taken?)' }
+        try { $c = New-Object Net.Sockets.TcpClient; $c.Connect('127.0.0.1', $HttpPort); $c.Close(); $up = $true } catch { }
+    }
+    if (-not $up) { throw "the signalling server did not open port $HttpPort" }
+    "signalling server up: http://localhost:$HttpPort  (streamer port $StreamerPort, log: $logs)"
+
+    # 2 Unreal: the level as a game without a window, streaming to the server
+    $w, $h = $Resolution -split 'x'
+    $ue = @("`"$uproject`"", $map, '-game', "-PixelStreamingConnectionURL=ws://127.0.0.1:$StreamerPort", '-RenderOffScreen', '-ForceRes', "-ResX=$w", "-ResY=$h", '-Windowed',
+        '-AudioMixer', '-nosplash', '-nopause', '-unattended', '-stdout', '-FullStdOutLogOutput')
+    if ($Codec) { $ue += "-PixelStreamingEncoderCodec=$Codec" }
+    "starting Unreal: $map  ($Resolution). The first start of a big level takes minutes; the page shows the picture when Unreal says it is streaming."
+    $unreal = Start-Process -FilePath (Join-Path $Bin 'UnrealEditor.exe') -ArgumentList $ue -PassThru -RedirectStandardOutput (Join-Path $logs "unreal_$Project.log")
+    Start-Process "http://localhost:$HttpPort" | Out-Null
+    $unreal.WaitForExit()
+    "Unreal ended (exit code $($unreal.ExitCode)); log: $(Join-Path $logs "unreal_$Project.log")"
+} finally {
+    if (-not $sig.HasExited) { Stop-Process -Id $sig.Id -Force }
+}

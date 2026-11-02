@@ -1,5 +1,5 @@
 # Unreal Engine 5.8: the scene of pipeline\render\in\scene.glb as a level, and pictures of it (pipeline\render\out\unreal_<shot>.png).
-#   powershell -ExecutionPolicy Bypass -File pipeline\render\unreal\run.ps1 [-Warmup 60] [-Diag 1|each] [-SkipBuild]
+#   powershell -ExecutionPolicy Bypass -File pipeline\render\unreal\run.ps1 [-Warmup 60] [-Diag 1|each] [-SkipBuild] [-BuildOnly]
 # 1  build_level.py in a headless editor (-nullrhi): import the glb as a scene, own materials, sun, sky, fog; saves the level
 # 2  render_shots.py in a rendering editor without a window (-RenderOffscreen): scene-capture cameras write the pictures, the editor quits
 # The first run compiles shaders (minutes); the cache in UsableSpace\DerivedDataCache keeps them. Logs: build_level.log, render_shots.log (next to this file).
@@ -7,7 +7,8 @@ param(
     [string]$Bin = "C:\Program Files\Epic Games\UE_5.8\Engine\Binaries\Win64",
     [int]$Warmup = 60,       # seconds the shot script waits after its setup before the first picture
     [string]$Diag = "",      # "1" or "each": the diagnostic shots of render_shots.py instead of the three pictures
-    [switch]$SkipBuild       # take the level of the last run, only render
+    [switch]$SkipBuild,      # take the level of the last run, only render
+    [switch]$BuildOnly       # only build the level (for the Pixel Streaming viewer, folder pixelstreaming), no pictures
 )
 $ErrorActionPreference = "Stop"
 $here = $PSScriptRoot
@@ -25,6 +26,7 @@ if (-not (Test-Path $level) -or (Get-Item $level).Length -lt 100000) {
     throw "the level was not built (no Scene.umap, or an empty one): read build_level.log"
 }
 Write-Host "level: $((Get-Item $level).Length) bytes"
+if ($BuildOnly) { if (Test-Path (Join-Path $here "script.log")) { Get-Content (Join-Path $here "script.log") | Select-Object -Last 8 }; return }
 
 $env:US_SHOTS = "1"
 $env:US_WARMUP = "$Warmup"
