@@ -20,16 +20,23 @@ export const overlaps = (a, b) => a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b
 export const rectGap = (a, b) => Math.hypot(Math.max(0, a[0] - b[2], b[0] - a[2]), Math.max(0, a[1] - b[3], b[1] - a[3]));
 const grow = (r, m) => [r[0] - m, r[1] - m, r[2] + m, r[3] + m];
 
-/** Distance from the back of a piece (the side opposite its front) to the wall behind it. */
-export function backGap(room, b, rot) {
+/**
+ * Distance from the back of a piece (the side opposite its front) to the wall behind it. `within` = the rectangle of the room the piece stands in (a plan from the
+ * plan builder): its partition walls are walls too. Without it the walls are the outline of the attic.
+ */
+export function backGap(room, b, rot, within) {
+  const r = within || [0, 0, room.width, room.depth];
   switch (rot) {
-    case 0: return b[1];
-    case 1: return room.width - b[2];
-    case 2: return room.depth - b[3];
-    default: return b[0];
+    case 0: return b[1] - r[1];
+    case 1: return r[2] - b[2];
+    case 2: return r[3] - b[3];
+    default: return b[0] - r[0];
   }
 }
-export const wallGap = (room, b) => Math.min(b[0], b[1], room.width - b[2], room.depth - b[3]);
+export const wallGap = (room, b, within) => {
+  const r = within || [0, 0, room.width, room.depth];
+  return Math.min(b[0] - r[0], b[1] - r[1], r[2] - b[2], r[3] - b[3]);
+};
 
 /**
  * Does a piece with its body `b` and rotation `rot` satisfy a pattern anchor?
@@ -37,12 +44,12 @@ export const wallGap = (room, b) => Math.min(b[0], b[1], room.width - b[2], room
  *   gable  back to a gable wall (y = 0 / D): rotation 0 or 2
  *   wall   back to any wall;   free  standing clear of every wall (>= 30 cm)
  */
-export function anchorOk(room, backTo, b, rot) {
+export function anchorOk(room, backTo, b, rot, within) {
   switch (backTo) {
     case 'slope': return rot % 2 === 1 && backGap(room, b, rot) <= TOL;
     case 'gable': return rot % 2 === 0 && backGap(room, b, rot) <= TOL;
-    case 'wall': return backGap(room, b, rot) <= TOL;
-    case 'free': return wallGap(room, b) >= 0.3;
+    case 'wall': return backGap(room, b, rot, within) <= TOL; // a partition of the room counts
+    case 'free': return wallGap(room, b, within) >= 0.3;
     default: return true;
   }
 }
@@ -146,13 +153,13 @@ export const RULES = [
     id: 'bed-head-wall', scope: 'item', severity: 'warn', when: isType('bed_double', 'bed_single'),
     title: 'Bed head against a wall',
     why: 'A bed head wants a wall (or the slope) behind it: stability, draught, and the room stays open on the other three sides.',
-    check: ({ room }, p) => { const g = backGap(room, p.b, p.it.rot); return g > TOL ? `${p.def.label}: head is ${cm(g)} cm from the wall behind it` : null; },
+    check: ({ room }, p) => { const g = backGap(room, p.b, p.it.rot, p.it.spec?.within); return g > TOL ? `${p.def.label}: head is ${cm(g)} cm from the wall behind it` : null; },
   },
   {
     id: 'tall-against-wall', scope: 'item', severity: 'warn', when: isType('wardrobe', 'shelf'),
     title: 'Tall pieces stand against a wall',
     why: 'Tall furniture in the open cuts the room in two and has nothing to stand against.',
-    check: ({ room }, p) => (wallGap(room, p.b) > TOL ? `${p.def.label} stands ${cm(wallGap(room, p.b))} cm off every wall` : null),
+    check: ({ room }, p) => (wallGap(room, p.b, p.it.spec?.within) > TOL ? `${p.def.label} stands ${cm(wallGap(room, p.b, p.it.spec?.within))} cm off every wall` : null),
   },
   {
     id: 'stair-landing', scope: 'item', severity: 'warn', when: () => true,
@@ -173,7 +180,7 @@ export const RULES = [
     id: 'sofa-back', scope: 'item', severity: 'info', when: isType('sofa'),
     title: 'Sofa back to a wall',
     why: 'A floating sofa works as a divider in a big room; in an attic it usually just eats floor.',
-    check: ({ room }, p) => (backGap(room, p.b, p.it.rot) > TOL && wallGap(room, p.b) > TOL ? `${p.def.label} floats in the room` : null),
+    check: ({ room }, p) => (backGap(room, p.b, p.it.rot, p.it.spec?.within) > TOL && wallGap(room, p.b, p.it.spec?.within) > TOL ? `${p.def.label} floats in the room` : null),
   },
   {
     id: 'bed-both-sides', scope: 'item', severity: 'info', when: isType('bed_double'),

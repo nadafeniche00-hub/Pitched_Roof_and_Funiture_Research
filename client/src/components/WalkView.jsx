@@ -42,16 +42,20 @@ function addUV(geo) {
   return geo;
 }
 
+// Thickness of the roof (measured across the slope) and of the outer walls in m. The typical build-ups of partInfo.js come to about 0.29 m (roof) and 0.27 m (wall).
+const ROOF_T = 0.3, WALL_T = 0.4; // wall: 36.5 cm masonry (the outer wall of the technical plan) plus plaster, in whole cells of the 10 cm grid
+
 /**
- * The roof shell from the height field with every face turned outward: tops (roof, dormer roofs and flat ceilings) in one geometry,
- * vertical faces (knee walls, gables, dormer cheeks) in another, so the outside can be tiles over plaster.
+ * The roof shell as two skins with the thickness of the building between them (so nothing is drawn twice on the same spot, which no renderer likes).
+ * The inner skin is the surface of the room as drawn: width, depth and heights are clear dimensions, and its faces turn into the room. The outer skin is that
+ * surface pushed out: the roof by ROOF_T across the slope, the walls and the cheeks of the dormers by WALL_T. Tops (roof, dormer roofs, flat ceilings) and vertical
+ * faces (knee walls, gables, dormer cheeks) are separate geometries, so the outside can be tiles over plaster.
  */
 function shellGeometries(room) {
   const { nx, ny, res, h } = getGrid(room, 0.1);
   const tan = Math.tan((room.pitch * Math.PI) / 180);
   const base = (x) => Math.min(room.maxHeight, room.kneeWall + tan * Math.min(x, room.width - x));
-  const at = (i, j) => (i < 0 || j < 0 || i >= nx || j >= ny ? 0 : h[j * nx + i]);
-  const top = [], wall = [];
+  const P = Math.max(1, Math.round(WALL_T / res)); // wall thickness in cells
   const tri = (out, a, b, c) => out.push(...a, ...b, ...c);
   const quadOut = (out, p0, p1, p2, p3, o) => {
     const u = [p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2]], v = [p2[0] - p1[0], p2[1] - p1[1], p2[2] - p1[2]];
@@ -59,27 +63,59 @@ function shellGeometries(room) {
     if (n[0] * o[0] + n[1] * o[1] + n[2] * o[2] < 0) { [p1, p3] = [p3, p1]; }
     tri(out, p0, p1, p2); tri(out, p0, p2, p3);
   };
-  // roof height at the left and right edge of a cell: sloped on the open roof, level where a dormer or a flat ceiling stands; 0 outside
-  const edges = (i, j) => {
+  /** The surface of a height field of NX x NY columns (the plan origin at column ox): tops and vertical faces, turned along `sign` (1 away from the columns, -1 into them). */
+  const skin = (NX, NY, ox, hOf, edgesOf, sign) => {
+    const top = [], wall = [];
+    const col = (I, J) => (I < 0 || J < 0 || I >= NX || J >= NY ? 0 : hOf(I, J));
+    for (let J = 0; J < NY; J++) for (let I = 0; I < NX; I++) {
+      const hc = hOf(I, J), x0 = (I - ox) * res, x1 = x0 + res, z0 = (J - ox) * res, z1 = z0 + res;
+      const [ha, hb] = edgesOf(I, J);
+      quadOut(top, [x0, ha, z0], [x0, ha, z1], [x1, hb, z1], [x1, hb, z0], [0, sign, 0]);
+      for (const [di, dj] of [[1, 0], [0, 1], [-1, 0], [0, -1]]) {
+        const hn = col(I + di, J + dj);
+        if (hn >= hc - 0.12) continue;
+        // a wall runs from the surface of the lower column up to the surface of this one, both sloped (no saw-tooth along gables, no hairline gaps along dormer cheeks)
+        const [na, nb] = edgesOf(I + di, J + dj);
+        if (di) { const x = di > 0 ? x1 : x0, t = di > 0 ? hb : ha, b = di > 0 ? na : nb; quadOut(wall, [x, b, z0], [x, b, z1], [x, t, z1], [x, t, z0], [sign * di, 0, 0]); }
+        else { const z = dj > 0 ? z1 : z0; quadOut(wall, [x0, na, z], [x1, nb, z], [x1, hb, z], [x0, ha, z], [0, 0, sign * dj]); }
+      }
+    }
+    return { top, wall };
+  };
+
+  // inner skin: the room as drawn. Height at the left and right edge of a cell: sloped on the open roof, level where a dormer or a flat ceiling stands; 0 outside
+  const edgesIn = (i, j) => {
     if (i < 0 || j < 0 || i >= nx || j >= ny) return [0, 0];
     const hc = h[j * nx + i], x0 = i * res, x1 = x0 + res;
     return hc > base((x0 + x1) / 2) + 1e-6 ? [hc, hc] : [Math.min(base(x0), hc + 0.5), base(x1)];
   };
-  for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
-    const hc = h[j * nx + i], x0 = i * res, x1 = x0 + res, z0 = j * res, z1 = z0 + res;
-    const [ha, hb] = edges(i, j);
-    quadOut(top, [x0, ha, z0], [x0, ha, z1], [x1, hb, z1], [x1, hb, z0], [0, 1, 0]);
-    for (const [di, dj] of [[1, 0], [0, 1], [-1, 0], [0, -1]]) {
-      const hn = at(i + di, j + dj);
-      if (hn >= hc - 0.12) continue;
-      // a wall runs from the roof surface of the lower cell up to the roof surface of this one, both sloped (no saw-tooth along gables, no hairline gaps along dormer cheeks)
-      const [na, nb] = edges(i + di, j + dj);
-      if (di) { const x = di > 0 ? x1 : x0, t = di > 0 ? hb : ha, b = di > 0 ? na : nb; quadOut(wall, [x, b, z0], [x, b, z1], [x, t, z1], [x, t, z0], [di, 0, 0]); }
-      else { const z = dj > 0 ? z1 : z0; quadOut(wall, [x0, na, z], [x1, nb, z], [x1, hb, z], [x0, ha, z], [0, 0, dj]); }
-    }
+  const inner = skin(nx, ny, 0, (i, j) => h[j * nx + i], edgesIn, -1);
+
+  // outer skin: the same field on a grid that is P cells wider all round. Outside the room the roof plane simply goes on; the roof is lifted by its thickness across the
+  // slope (ROOF_T / cos), a level roof (dormer, flat ceiling) by ROOF_T, and the level cells spread over P cells so that their walls stand WALL_T further out.
+  const NX = nx + 2 * P, NY = ny + 2 * P;
+  const hO = new Float32Array(NX * NY), eL = new Float32Array(NX * NY), eR = new Float32Array(NX * NY);
+  const slope = (x) => (base(x + res / 2) - base(x - res / 2)) / res;
+  const level = [];
+  for (let J = 0; J < NY; J++) for (let I = 0; I < NX; I++) {
+    const i = I - P, j = J - P, x0 = i * res, x1 = x0 + res, xc = x0 + res / 2, k = J * NX + I;
+    const inside = i >= 0 && j >= 0 && i < nx && j < ny;
+    const hc = inside ? h[j * nx + i] : Math.max(0, base(xc));
+    if (inside && hc > base(xc) + 1e-6) { hO[k] = eL[k] = eR[k] = hc + ROOF_T; level.push([I, J, hc + ROOF_T]); continue; }
+    const tv = ROOF_T * Math.hypot(1, slope(xc));
+    const a = inside ? Math.min(base(x0), hc + 0.5) : Math.max(0, base(x0)), b = inside ? base(x1) : Math.max(0, base(x1));
+    hO[k] = hc + tv; eL[k] = a + tv; eR[k] = b + tv;
   }
+  for (const [I, J, t] of level) for (let dJ = -P; dJ <= P; dJ++) for (let dI = -P; dI <= P; dI++) {
+    const II = I + dI, JJ = J + dJ;
+    if (II < 0 || JJ < 0 || II >= NX || JJ >= NY) continue;
+    const k = JJ * NX + II;
+    if (t > hO[k]) hO[k] = eL[k] = eR[k] = t;
+  }
+  const outer = skin(NX, NY, P, (I, J) => hO[J * NX + I], (I, J) => (I < 0 || J < 0 || I >= NX || J >= NY ? [0, 0] : [eL[J * NX + I], eR[J * NX + I]]), 1);
+
   const mk = (pos) => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); return addUV(g); };
-  return { roof: mk(top), walls: mk(wall) };
+  return { roof: mk(outer.top), walls: mk(outer.wall), roofIn: mk(inner.top), wallsIn: mk(inner.wall) };
 }
 
 const wallGeometry = (room, p0, p1, openings) => addUV(wallStrip(room, p0, p1, openings));
@@ -339,7 +375,7 @@ export default function WalkView() {
     const plaster = new THREE.MeshStandardMaterial({ ...wallMaps, color: coolWall, roughness: 1, side: THREE.DoubleSide });
     const fach = plain ? null : (t.fach || (t.fach = makeFachwerk()));
     const plasterOut = new THREE.MeshStandardMaterial(plain ? { color: 0xece9e2, roughness: 1, side: THREE.FrontSide } : { map: fach, roughness: 1, side: THREE.FrontSide });
-    const inside = new THREE.MeshStandardMaterial({ ...wallMaps, color: coolWall, roughness: 1, side: THREE.BackSide });
+    const inside = new THREE.MeshStandardMaterial({ ...wallMaps, color: coolWall, roughness: 1, side: THREE.FrontSide });
     const tiles = new THREE.MeshStandardMaterial({ ...roofMaps, color: plain ? new THREE.Color(0xa4503a) : new THREE.Color(0.88, 0.84, 0.82), roughness: 1, side: THREE.FrontSide });
     plaster.name = 'partition'; plasterOut.name = 'wall_outer'; inside.name = 'wall_inner'; tiles.name = 'roof';
     const tag = (mesh, u) => { Object.assign(mesh.userData, u); if (u.part) mesh.name = u.part === 'partition' ? 'partition' : u.part + (u.interior ? '_inner' : '_outer'); return mesh; }; // names carry over into the exported glTF
@@ -374,24 +410,24 @@ export default function WalkView() {
       t.forestKey = fkey; t.forestSplat = null;
       scene.add(t.forest);
     }
-    const lower = tag(new THREE.Mesh(addUV(new THREE.BoxGeometry(W, STOREY, D)), plasterOut), { part: 'wall', density: 650, size: 0.055 });
+    const lower = tag(new THREE.Mesh(addUV(new THREE.BoxGeometry(W + 2 * WALL_T, STOREY, D + 2 * WALL_T)), plasterOut), { part: 'wall', density: 650, size: 0.055 });
     lower.position.set(W / 2, -STOREY / 2, D / 2);
     lower.castShadow = true; lower.receiveShadow = true;
     content.add(lower);
     const winMat = new THREE.MeshStandardMaterial({ color: 0x1d2b3a, roughness: 0.15, metalness: 0.4 });
     winMat.name = 'glass_dark';
-    for (const [z, rot] of [[-0.01, Math.PI], [D + 0.01, 0]]) for (let i = 0; i < 2; i++) {
+    for (const [z, rot] of [[-WALL_T - 0.01, Math.PI], [D + WALL_T + 0.01, 0]]) for (let i = 0; i < 2; i++) {
       const w = tag(new THREE.Mesh(new THREE.PlaneGeometry(1.1, 1.3), winMat), { density: 500, size: 0.05 });
       w.name = 'window_lower';
       w.position.set(W * (0.28 + i * 0.44), -STOREY / 2 + 0.1, z); w.rotation.y = rot;
       content.add(w);
     }
 
-    // roof shell: faces point outward; tiles on the roof and plaster on the walls outside, plaster everywhere inside
+    // roof shell, two skins with the thickness of the building between them: tiles on the roof and plaster on the walls outside, plaster inside (faces turned into the room)
     const shell = shellGeometries(room);
     const roofOut = tag(new THREE.Mesh(shell.roof, tiles), { part: 'roof', density: 800, size: 0.065 }); roofOut.castShadow = true; content.add(roofOut);
     const wallOut = tag(new THREE.Mesh(shell.walls, plasterOut), { part: 'wall', density: 650, size: 0.055 }); wallOut.castShadow = true; content.add(wallOut);
-    content.add(tag(new THREE.Mesh(shell.roof, inside), { part: 'roof', interior: true, density: 600, size: 0.05 }), tag(new THREE.Mesh(shell.walls, inside), { part: 'wall', interior: true, density: 600, size: 0.05 }));
+    content.add(tag(new THREE.Mesh(shell.roofIn, inside), { part: 'roof', interior: true, density: 600, size: 0.05 }), tag(new THREE.Mesh(shell.wallsIn, inside), { part: 'wall', interior: true, density: 600, size: 0.05 }));
 
     // attic floor with the stair opening
     const shape = new THREE.Shape([new THREE.Vector2(0, 0), new THREE.Vector2(W, 0), new THREE.Vector2(W, -D), new THREE.Vector2(0, -D)]);
@@ -399,6 +435,7 @@ export default function WalkView() {
     if (sr) shape.holes.push(new THREE.Path([new THREE.Vector2(sr[0], -sr[1]), new THREE.Vector2(sr[0], -sr[3]), new THREE.Vector2(sr[2], -sr[3]), new THREE.Vector2(sr[2], -sr[1])]));
     const floor = tag(new THREE.Mesh(new THREE.ShapeGeometry(shape).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ ...floorMaps, color: plain ? new THREE.Color(0xcaa57a) : new THREE.Color(0.95, 0.92, 0.9), roughness: 1 })), { part: 'floor', interior: true, density: 800, size: 0.045 });
     floor.receiveShadow = true;
+    floor.position.y = 0.003; // above the top face of the storey below, not on it
     floor.material.name = 'floor';
     content.add(floor);
     const colliders = [];

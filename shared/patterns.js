@@ -159,5 +159,5 @@ export function specFilter(room, spec, hardOnly = false) {
   const w = spec.within;
   if (hardOnly && !w) return null;
   return (_cand, body, rot) => (!w || (body[0] >= w[0] - 1e-6 && body[1] >= w[1] - 1e-6 && body[2] <= w[2] + 1e-6 && body[3] <= w[3] + 1e-6))
-    && (hardOnly || ((!spec.backTo || anchorOk(room, spec.backTo, body, rot)) && (spec.near !== 'light' || lightGap(room, body) <= 1.8)));
+    && (hardOnly || ((!spec.backTo || anchorOk(room, spec.backTo, body, rot, w)) && (spec.near !== 'light' || lightGap(room, body) <= 1.8)));
 }

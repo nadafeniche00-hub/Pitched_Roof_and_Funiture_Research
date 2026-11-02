@@ -2,6 +2,7 @@
 // and solids drawn from them. Used by the plan, the 3D view and the walk-through.
 import * as THREE from 'three';
 import { roofHeight } from '@shared/engine.js';
+import { doorSwing } from '@shared/doors.js';
 
 export const DOOR_H = 2.05, WALL_MAX = 8; // walls rise all the way to the roof
 
@@ -13,6 +14,7 @@ export function wallsOf(room, layout, { autoDoors = false } = {}) {
   const W = room.width, D = room.depth, seen = new Set(), walls = [], colliders = [];
   if (!layout) return { walls, colliders };
   const doors = layout.doors || [];
+  const rectOf = Object.fromEntries((layout.rooms || []).map((r) => [r.id, r.rect]));
   const onOuter = (c, lim) => Math.abs(c) < 0.02 || Math.abs(c - lim) < 0.02;
   const add = (vertical, c, a, b) => {
     if (b - a < 0.05) return;
@@ -21,7 +23,8 @@ export function wallsOf(room, layout, { autoDoors = false } = {}) {
     seen.add(key);
     let op = doors
       .filter((d) => d.vertical === vertical && Math.abs((vertical ? d.mid[0] : d.mid[1]) - c) < 0.06)
-      .map((d) => { const m = (vertical ? d.mid[1] : d.mid[0]) - a, w = (d.width || 0.9) / 2; return [m - w, m + w]; })
+      // [start, end, side, hinge]: how the door opens (shared/doors.js): into the room behind it, hinged at the end nearer to the end of the wall
+      .map((d) => { const m = (vertical ? d.mid[1] : d.mid[0]) - a, w = (d.width || 0.9) / 2, sw = rectOf[d.a] && rectOf[d.b] ? doorSwing(d, rectOf) : null; return sw ? [m - w, m + w, sw.side, sw.hinge] : [m - w, m + w]; })
       .filter((o) => o[1] > 0 && o[0] < b - a);
     if (autoDoors && !op.length && b - a > 1.8) op = [[(b - a) / 2 - 0.45, (b - a) / 2 + 0.45]];
     const p0 = vertical ? [c, a] : [a, c], p1 = vertical ? [c, b] : [b, c];

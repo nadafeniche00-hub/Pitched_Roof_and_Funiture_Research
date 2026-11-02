@@ -39,9 +39,12 @@ export function techPrimitives(room, layout, items, meta = {}) {
     for (const o of ops) {
       const a = Math.max(0, o[0]), b = Math.min(len, o[1]);
       if (kind.type === 'window') { for (const off of [-t / 2, 0, t / 2]) line('FENSTER', at(a, off), at(b, off)); line('FENSTER', at(a, -t / 2), at(a, t / 2)); line('FENSTER', at(b, -t / 2), at(b, t / 2)); }
-      else { // door: leaf at the hinge, quarter-circle swing
-        const w = b - a, ang = (Math.atan2(dy, dx) * 180) / Math.PI;
-        line('TUEREN', at(a, 0), at(a, w)); arc('TUEREN', at(a, 0), w, ang, ang + 90);
+      else { // door: the open leaf at the hinge and the quarter-circle swing; side and hinge come from shared/doors.js (into the room behind, hinged near a wall end)
+        const w = b - a, ang = (Math.atan2(dy, dx) * 180) / Math.PI, side = o[2] ?? 1, hinge = o[3] ?? 0;
+        const c = at(hinge ? b : a, 0), closed = hinge ? ang + 180 : ang, open = ang + 90 * side, rad = (v) => (v * Math.PI) / 180;
+        line('TUEREN', c, [c[0] + Math.cos(rad(open)) * w, c[1] + Math.sin(rad(open)) * w]);
+        const turn = ((open - closed + 540) % 360) - 180; // +90 or -90: which way the leaf turns from closed to open
+        if (turn > 0) arc('TUEREN', c, w, closed, closed + 90); else arc('TUEREN', c, w, closed - 90, closed);
         line('TUEREN', at(a, -t / 2), at(a, t / 2)); line('TUEREN', at(b, -t / 2), at(b, t / 2));
       }
     }

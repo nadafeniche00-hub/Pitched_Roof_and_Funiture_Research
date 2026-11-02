@@ -64,11 +64,7 @@ bpy.ops.import_scene.gltf(filepath=args.glb)
 scene = bpy.context.scene
 log(f"imported {Path(args.glb).name} in {time.time() - t0:.1f} s: {len(bpy.data.objects)} objects")
 
-# the app draws walls and roof twice, an outer skin (front side) and the same mesh again for the inside (back side). Two coincident surfaces
-# confuse a ray tracer, so the inside copy goes and the remaining mesh gets one material that is different on its two sides.
-for dup in ("wall_inner", "roof_inner"):
-    for o in [o for o in bpy.data.objects if o.type == "MESH" and base(o.name) == dup]:
-        bpy.data.objects.remove(o, do_unlink=True)
+# the app builds roof and walls as two skins with the thickness of the building between them (wall_outer / wall_inner, roof_outer / roof_inner), each facing its own side
 
 meshes = [o for o in bpy.data.objects if o.type == "MESH"]
 by_name = {}
@@ -90,13 +86,9 @@ centre = (H_lo + H_hi) / 2
 ground_z = by_name["ground"][0].matrix_world.translation.z if "ground" in by_name else H_lo.z
 log(f"house bbox {rnd(H_lo, 2)} .. {rnd(H_hi, 2)}, ground z {ground_z:.2f}")
 
-# the attic floor lies exactly on the top face of the storey below: lift it 2 mm so the two do not fight
-for o in by_name.get("floor_inner", []):
-    o.matrix_world = Matrix.Translation((0, 0, 0.002)) @ o.matrix_world
-
 # ----------------------------------------------------------------------------------------------------------------- windows
-# the app draws a window as a flat pane in front of a closed wall. Here the wall shell gets a real opening (bisect, delete the faces inside)
-# so that the sun comes in and the exterior shows glass in a frame.
+# the app draws a window as a flat pane in front of a closed wall. Here both skins of the wall get a real opening (bisect, delete the faces inside) and a reveal
+# closes the opening between them, so that the sun comes in and the exterior shows glass in a frame.
 
 
 def cut_opening(ob, x0, x1, z0, z1, y):
@@ -139,15 +131,30 @@ def add_portal(lo, hi, gable_y):
     ob.rotation_euler = inward.to_track_quat("-Z", "Y").to_euler()
 
 
+def add_reveal(lo, hi, y0, y1):
+    """the four faces that close an opening between the inner and the outer skin of the wall (sill, jambs, head)"""
+    x0, x1, z0, z1 = lo.x, hi.x, lo.z, hi.z
+    v = [(x0, y0, z0), (x1, y0, z0), (x1, y0, z1), (x0, y0, z1), (x0, y1, z0), (x1, y1, z0), (x1, y1, z1), (x0, y1, z1)]
+    me = bpy.data.meshes.new("reveal")
+    me.from_pydata(v, [], [(0, 1, 5, 4), (1, 2, 6, 5), (2, 3, 7, 6), (3, 0, 4, 7)])
+    me.update()
+    ob = bpy.data.objects.new("window_reveal", me)
+    scene.collection.objects.link(ob)
+    by_name.setdefault("window_reveal", []).append(ob)
+
+
 panes = by_name.get("window_outer", [])
-wall_objs = [o for o in by_name.get("wall_outer", []) if bbox([o])[1].z > 0.5]  # the shell walls, not the storey below
+skins = {k: [o for o in by_name.get(k, []) if bbox([o])[1].z > 0.5] for k in ("wall_outer", "wall_inner")}  # the shell walls, not the storey below
 for p in panes:
     lo, hi = bbox([p])
     y = (lo.y + hi.y) / 2
-    gable_y = H_hi.y if abs(y - H_hi.y) < abs(y - H_lo.y) else H_lo.y  # the pane sits a little inside the wall: the wall is the nearest gable plane
-    cut = sum(cut_opening(w, lo.x, hi.x, lo.z, hi.z, gable_y) for w in wall_objs)
-    add_portal(lo, hi, gable_y)
-    log(f"window {hi.x - lo.x:.2f} x {hi.z - lo.z:.2f} m at x {lo.x:.2f}, z {lo.z:.2f}, gable y {gable_y:.2f}: {cut} faces cut, light portal added")
+    sign = 1 if y > centre.y else -1  # which gable: +1 the one at y = 0 (top of the plan), -1 the other
+    y_in = y + sign * 0.02  # the pane stands 2 cm inside the inner skin
+    y_out = H_hi.y if sign > 0 else H_lo.y  # the outer skin is the outside of the shell box
+    cut = sum(cut_opening(w, lo.x, hi.x, lo.z, hi.z, y_out) for w in skins["wall_outer"]) + sum(cut_opening(w, lo.x, hi.x, lo.z, hi.z, y_in) for w in skins["wall_inner"])
+    add_reveal(lo, hi, y_in, y_out)
+    add_portal(lo, hi, y_out)
+    log(f"window {hi.x - lo.x:.2f} x {hi.z - lo.z:.2f} m at x {lo.x:.2f}, z {lo.z:.2f}, wall from y {y_in:.2f} to {y_out:.2f}: {cut} faces cut, reveal and light portal added")
 
 
 def scale_height(ob, factor, z0):
@@ -275,19 +282,6 @@ def pbr(name, slot, **kw):
     return m
 
 
-def two_sided(name, front, back):
-    """one surface, one material per side: front faces get `front` (the outside), back faces `back` (the inside); each is (slot, kwargs)"""
-    m, nt, out = new_material(name)
-    f, k = pbr_nodes(nt, front[0], **front[1]), pbr_nodes(nt, back[0], **back[1])
-    geo = nt.nodes.new("ShaderNodeNewGeometry")
-    mix = nt.nodes.new("ShaderNodeMixShader")
-    nt.links.new(geo.outputs["Backfacing"], mix.inputs["Fac"])
-    nt.links.new(f.outputs[0], mix.inputs[1])
-    nt.links.new(k.outputs[0], mix.inputs[2])
-    nt.links.new(mix.outputs[0], out.inputs["Surface"])
-    return m
-
-
 def thin_glass(name, tint=(0.9, 0.96, 1.0)):
     """a pane that lets the light through and reflects like glass (Fresnel); no refraction because the pane has no thickness"""
     m, nt, out = new_material(name)
@@ -317,8 +311,11 @@ def plain(name, color, rough=0.5, metal=0.0):
 
 WALL_IN = (0.72, 0.70, 0.66)  # warm white paint inside
 MATS = {
-    "wall_outer": two_sided("wall", ("wall_white", dict(ao=0.3, albedo=(0.66, 0.62, 0.55))), ("wall_white", dict(ao=0.3, albedo=WALL_IN))),
-    "roof_outer": two_sided("roof", ("roof_clay", dict(ao=0.8, normal=1.2, albedo=(0.30, 0.10, 0.045))), ("wall_white", dict(ao=0.3, albedo=WALL_IN))),
+    "wall_outer": pbr("wall_outer", "wall_white", ao=0.3, albedo=(0.66, 0.62, 0.55)),
+    "wall_inner": pbr("wall_inner", "wall_white", ao=0.3, albedo=WALL_IN),
+    "roof_outer": pbr("roof_outer", "roof_clay", ao=0.8, normal=1.2, albedo=(0.30, 0.10, 0.045)),
+    "roof_inner": pbr("roof_inner", "wall_white", ao=0.3, albedo=WALL_IN),
+    "window_reveal": plain("window_reveal", WALL_IN, 0.8),
     "partition": pbr("partition", "wall_white", ao=0.3, albedo=WALL_IN),
     "floor_inner": pbr("floor", "floor_wood", ao=0.4, rough_gain=0.8, albedo=(0.30, 0.18, 0.09)),
     "ground": pbr("ground", "ground_forest", ao=0.5, albedo=(0.17, 0.15, 0.08)),
@@ -328,7 +325,7 @@ MATS = {
     "window_lower": plain("window_lower", (0.012, 0.02, 0.03), 0.04, 0.2),
     "stair_shaft": plain("stair_shaft", (0.012, 0.012, 0.014), 0.9),
 }
-TILE = {"wall_outer": 2.0, "partition": 2.0, "roof_outer": 1.6, "floor_inner": 1.4, "ground": 4.0}
+TILE = {"wall_outer": 2.0, "wall_inner": 2.0, "partition": 2.0, "roof_outer": 1.6, "roof_inner": 1.6, "floor_inner": 1.4, "ground": 4.0}
 ROLE_OF = {"window_outer": "glass"}
 n_assigned = 0
 for name, objs in by_name.items():
@@ -528,7 +525,7 @@ if "exterior" in shots:
 
 if "cutaway" in shots:
     unhide_all()
-    for o in by_name.get("roof_outer", []):
+    for o in by_name.get("roof_outer", []) + by_name.get("roof_inner", []):
         set_visible(o, False)
     aim_sun(300, 46)
     p = pos_at(262, house_r * 2.7, house_r * 3.0)
@@ -553,6 +550,20 @@ def cut_away(ob, keep):
     return len(dead)
 
 
+def clip_at_x(ob, x):
+    """cut ob at the plane x and keep the side x >= x: windows reach across the section plane, whole faces would stick out into the half that is taken away"""
+    me = ob.data.copy()
+    ob.data = me
+    bm = bmesh.new()
+    bm.from_mesh(me)
+    bmesh.ops.transform(bm, matrix=ob.matrix_world, verts=bm.verts)
+    bmesh.ops.bisect_plane(bm, geom=list(bm.verts) + list(bm.edges) + list(bm.faces), dist=1e-5, plane_co=(x, 0, 0), plane_no=(1, 0, 0), clear_inner=True)
+    bm.to_mesh(me)
+    bm.free()
+    ob.parent = None
+    ob.matrix_world = Matrix.Identity(4)
+
+
 if "detail" in shots:
     # the vegetation close up: moss on a rock and in the grass, the house in the background
     unhide_all()
@@ -572,7 +583,11 @@ if "section" in shots:
     # look into the furnished room. (A closed attic lit by two small windows is dark at a neutral exposure, and nothing is brightened here.)
     unhide_all()
     x_cut = centre.x
-    n = sum(cut_away(o, lambda c: c.x >= x_cut) for name in ("roof_outer", "wall_outer", "partition") for o in by_name.get(name, []) if bbox([o])[1].z > 0.5)
+    n = sum(cut_away(o, lambda c: c.x >= x_cut) for name in ("roof_outer", "roof_inner", "wall_outer", "wall_inner", "partition") for o in by_name.get(name, []) if bbox([o])[1].z > 0.5)
+    for name in ("window_reveal", "window_frame", "window_outer"):  # the gable windows of the shell; the ones of the storey below stay whole
+        for o in by_name.get(name, []):
+            if bbox([o])[1].z > 0.5:
+                clip_at_x(o, x_cut)
     floor_z = bbox(by_name["floor_inner"])[1].z if by_name.get("floor_inner") else H_lo.z
     aim_sun(300, 45)
     p = (x_cut - house_r * 1.9, centre.y + 0.8, floor_z + 3.8)

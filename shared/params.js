@@ -30,7 +30,7 @@ export const LAYER = { category: 'Category', product: 'Product', instance: 'This
 export function itemLayers(item) {
   const base = CATALOG[item.type] || {};
   const c = base.clear || {};
-  const category = { w: base.w, d: base.d, h: base.h, bodyH: base.bodyH, useH: base.useH, front: c.front, back: c.back, side: c.side };
+  const category = { w: base.w, d: base.d, h: base.h, bodyH: base.bodyH, useH: base.useH, headH: base.headH, headLen: base.headLen, front: c.front, back: c.back, side: c.side };
   const product = {};
   const p = item.product;
   if (p) {
@@ -54,7 +54,7 @@ export function resolveItem(item) {
     labelDe: item.product?.name_de || item.product?.name || base.de || base.label || item.type,
     group: base.group,
     color: base.color,
-    w: v.w, d: v.d, h: v.h, bodyH: v.bodyH, useH: v.useH,
+    w: v.w, d: v.d, h: v.h, bodyH: v.bodyH, useH: v.useH, headH: v.headH || 0, headLen: v.headLen || 0,
     clear: { front: v.front || 0, back: v.back || 0, side: v.side || 0, sideRule: base.clear?.sideRule },
   };
   return { def, source };

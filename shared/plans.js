@@ -8,6 +8,8 @@
 //
 // Pure functions of plain data (browser, Node, tests). Thresholds are planning rules of thumb for exploration, not code requirements.
 import { getGrid, mulberry32, stairRect, dormerRect, DEFAULT_RULES } from './engine.js';
+import { ADJACENCY, LBO } from './knowledge.js';
+import { DOOR_WIDTH, placeDoor, swingConflicts } from './doors.js';
 
 const EPS = 1e-6;
 const RES = 0.1;
@@ -75,6 +77,16 @@ export function sharedEdge(a, b) {
     if (len > tol) { const y = Math.abs(a[3] - b[1]) < tol ? a[3] : a[1]; return { len, vertical: false, mid: [Math.max(a[0], b[0]) + len / 2, y] }; }
   }
   return null;
+}
+
+/** The share of a rectangle (0..1) where the roof is at least `h` high. */
+export function shareAbove(room, r, h) {
+  const g = getGrid(room, RES);
+  const i0 = Math.max(0, Math.floor(r[0] / RES + EPS)), i1 = Math.min(g.nx, Math.ceil(r[2] / RES - EPS));
+  const j0 = Math.max(0, Math.floor(r[1] / RES + EPS)), j1 = Math.min(g.ny, Math.ceil(r[3] / RES - EPS));
+  let n = 0, hit = 0;
+  for (let j = j0; j < j1; j++) for (let i = i0; i < i1; i++) { n += 1; if (g.h[j * g.nx + i] >= h - EPS) hit += 1; }
+  return n ? hit / n : 0;
 }
 
 /** Counted and gross area of a rectangle, by roof height (same rule as the furniture engine). */
@@ -197,7 +209,12 @@ export function scorePlan(room, brief, rects, opts = {}) {
   }
   let accessS = 0;
   const routes = {};
-  const doors = Object.keys(parent).map((id) => { const e = edge(parent[id], id); return { a: parent[id], b: id, mid: e.mid, vertical: e.vertical, width: Math.min(0.9, e.len) }; });
+  // a door sits close to the end of its wall, away from the stair, so the open leaf lies against the wall (shared/doors.js)
+  const sr = stairRect(room), away = sr ? [(sr[0] + sr[2]) / 2, (sr[1] + sr[3]) / 2] : null;
+  const doors = Object.keys(parent).map((id) => {
+    const e = edge(parent[id], id), width = Math.min(DOOR_WIDTH, e.len);
+    return { a: parent[id], b: id, mid: placeDoor(e, rects[parent[id]], rects[id], width, away), vertical: e.vertical, width };
+  });
   for (const r of rooms) {
     if (r.id === 'hall') continue;
     if (dist[r.id] === undefined) { findings.push({ room: r.id, severity: 'warn', msg: `${label(r.id)} cannot be reached from the stair.` }); continue; }
@@ -239,6 +256,21 @@ export function scorePlan(room, brief, rects, opts = {}) {
     if (!ok) findings.push({ room: r.id, severity: 'warn', msg: `${label(r.id)} has no gable wall or dormer for daylight.` });
   }
   lightS = lightN ? lightS / lightN : 1;
+
+  // 7 building code and layout graph (shared/knowledge.js): the height rule of a habitable attic room, wanted and unwelcome neighbours, doors that fight over a corner
+  for (const r of rooms) {
+    if (!typeOf(r.type).light) continue; // bedroom, child room, living room, kitchen, study
+    const sh = shareAbove(room, r.rect, LBO.atticHeight);
+    if (sh < LBO.atticShare) findings.push({ room: r.id, severity: 'warn', rule: 'lbo-height', msg: `${label(r.id)}: only ${Math.round(sh * 100)} % of the floor is ${LBO.atticHeight.toFixed(2)} m or higher (typical attic rule: ${Math.round(LBO.atticShare * 100)} %; check the Landesbauordnung of your state).` });
+  }
+  const typed = (t) => ids.filter((id) => kind[id] === t);
+  for (const rule of ADJACENCY) {
+    const as = typed(rule.a), bs = typed(rule.b);
+    if (!as.length || !bs.length) continue;
+    if (rule.kind === 'want' && !as.some((x) => bs.some((y) => edge(x, y)))) findings.push({ room: as[0], severity: 'info', rule: 'adjacency', msg: `${label(as[0])} shares no wall with the ${typeOf(rule.b).label.toLowerCase()}: ${rule.why}` });
+    if (rule.kind === 'avoid') for (const d of doors) if ((kind[d.a] === rule.a && kind[d.b] === rule.b) || (kind[d.a] === rule.b && kind[d.b] === rule.a)) findings.push({ room: d.b, severity: 'info', rule: 'adjacency', msg: `The door between ${label(d.a)} and ${label(d.b)}: ${rule.why}` });
+  }
+  for (const [i, j] of swingConflicts({ rooms, doors })) findings.push({ room: doors[j].b, severity: 'warn', rule: 'door-swing', msg: `The doors of ${label(doors[i].b)} and ${label(doors[j].b)} swing into the same corner.` });
 
   const parts = { area: areaS, shape: shapeS, headroom: headS, access: accessS, links: linkS, light: lightS };
   const W = { area: 0.22, shape: 0.18, headroom: 0.14, access: 0.18, links: 0.18, light: 0.1 };

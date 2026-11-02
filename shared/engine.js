@@ -246,6 +246,7 @@ export function buildGrid(room, res = 0.05) {
   const sr = stairRect(room);
   if (sr) markRect(g.stair, g, sr);
   for (const d of room.doors) markRect(g.door, g, doorRect(room, d));
+  for (const r of room.swings || []) markRect(g.door, g, r); // the swing of the doors of a layout (shared/doors.js): kept free of furniture
   for (const d of room.windows) markRect(g.win, g, windowRect(room, d));
   return g;
 }
@@ -264,6 +265,16 @@ export function getGrid(room, res = 0.05) {
 // ---------------------------------------------------------------- per-item check
 
 const pct = (a, b) => Math.round((100 * a) / Math.max(1, b));
+
+/** The part of a body rectangle [x0,y0,x1,y1] that lies at its back (the side the rotation turns away from the front), `len` metres deep. */
+export function headStrip(b, rot, len) {
+  switch (rot) {
+    case 0: return [b[0], b[1], b[2], Math.min(b[3], b[1] + len)];
+    case 1: return [Math.max(b[0], b[2] - len), b[1], b[2], b[3]];
+    case 2: return [b[0], Math.max(b[1], b[3] - len), b[2], b[3]];
+    default: return [b[0], b[1], Math.min(b[2], b[0] + len), b[3]];
+  }
+}
 
 function evalOne(g, occ, selfMarked, def, item, rules, wantAccess) {
   const rects = itemRects(def, item);
@@ -287,6 +298,12 @@ function evalOne(g, occ, selfMarked, def, item, rules, wantAccess) {
   }
   if (out) issues.push({ code: 'outside', msg: 'Sticks out of the room' });
   if (low) issues.push({ code: 'headroom', msg: `Roof too low over ${pct(low, total)}% of it (needs ${def.bodyH.toFixed(2)} m)` });
+  if (def.headH > 0 && def.headLen > 0) { // a person sits up at the head end of a bed (the back of the piece): the whole width of it needs the height, not just most of it
+    const [hi0, hi1, hj0, hj1] = cellRange(headStrip(rects.body, item.rot || 0, def.headLen), res);
+    let tooLow = 0;
+    for (let j = hj0; j <= hj1; j++) for (let i = hi0; i <= hi1; i++) if (i >= 0 && j >= 0 && i < nx && j < ny && h[j * nx + i] < def.headH - EPS) tooLow++;
+    if (tooLow) issues.push({ code: 'head', msg: `Too low to sit up: the head end needs ${def.headH.toFixed(2)} m over its first ${def.headLen.toFixed(1)} m` });
+  }
   if (st) issues.push({ code: 'stair', msg: 'Blocks the stair opening' });
   if (dr) issues.push({ code: 'door', msg: 'Blocks a door swing' });
   if (wn) issues.push({ code: 'window', msg: 'Blocks a window' });

@@ -2,6 +2,7 @@
 // (spec.within is a hard limit) and to a wall rule, then the fold loop places them hardest-first.
 // Pure functions of plain data (browser, Node, tests). The programmes are rules of thumb for exploration.
 import { runLoop } from './iterate.js';
+import { swingRects } from './doors.js';
 
 // [catalogue type, anchor] per room type. Kitchens have no catalogue pieces yet, so they stay empty.
 const PROGRAMME = {
@@ -34,7 +35,9 @@ export function programmeFor(plan) {
 export function furnishPlan(room, plan, opts = {}) {
   const items = programmeFor(plan);
   if (!items.length) return { items: [], placed: 0, total: 0, byRoom: {} };
-  const { frames } = runLoop(room, items, { kind: 'fold', seed: opts.seed ?? 1, rules: opts.rules, disabled: opts.disabled });
+  // the swing of every door of the plan stays free: it is part of the room for the engine (room.swings)
+  const swings = swingRects(plan);
+  const { frames } = runLoop(swings.length ? { ...room, swings } : room, items, { kind: 'fold', seed: opts.seed ?? 1, rules: opts.rules, disabled: opts.disabled });
   const out = frames.at(-1).items;
   const byRoom = {};
   for (const it of out) {

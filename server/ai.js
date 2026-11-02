@@ -3,6 +3,7 @@
 // (server/.env, git-ignored); without them the brief is read by the built-in rules (shared/briefText.js) and sketch reading says what is missing.
 import { sanitizeBrief } from '../shared/plans.js';
 import { parseBriefText } from '../shared/briefText.js';
+import { rulebook } from '../shared/knowledge.js';
 
 const cfg = () => ({
   url: (process.env.LLM_URL || '').replace(/\/+$/, ''),
@@ -52,7 +53,8 @@ export async function aiStatus() {
 const BRIEF_PROMPT = `You turn a short description of a flat into a JSON room brief for an attic. Answer with JSON only, no text around it:
 {"rooms":[{"id":"short-id","type":"bedroom|child|living|kitchen|study|bath|wc|storage","area":number}],"links":[["id-a","id-b","near"]]}
 Areas are wanted usable square metres (use 12 bedroom, 10 child, 18 living, 9 kitchen, 8 study, 5 bath, 2.5 wc, 4 storage when none is given).
-A link means two rooms should touch (for example a bath next to a bedroom). At most 8 rooms. The description can be English or German.`;
+A link means two rooms should touch (for example a bath next to a bedroom). At most 8 rooms. The description can be English or German.
+${rulebook()}`; // the planning knowledge of shared/knowledge.js: WoFlV, building code, Neufert, adjacency
 
 export async function briefFromText(text) {
   const rules = parseBriefText(text), t0 = Date.now();
