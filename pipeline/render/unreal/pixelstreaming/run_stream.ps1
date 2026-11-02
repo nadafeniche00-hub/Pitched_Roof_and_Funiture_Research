@@ -2,7 +2,7 @@
 # the keys and the mouse back. Needs setup.ps1 once.
 #   powershell -ExecutionPolicy Bypass -File pipeline\render\unreal\pixelstreaming\run_stream.ps1 [-Project UsableSpace|ElectricDreams] [-Map /Game/...] [-Resolution 1920x1080] [-Light]
 # Then open http://localhost:8080 on this computer. On the same network: http://<address of this computer>:8080 (Windows asks once whether node may listen: your decision).
-# Stop with Ctrl+C or by closing Unreal: the signalling server stops with it.
+# Stop with Ctrl+C: Unreal and the signalling server both stop. Only one stream at a time (the ports and the 8 GB GPU are taken); a second run says so and stops.
 #   UsableSpace     the walk-view house in its forest (pipeline\render\unreal, built by run.ps1), starts outside the house; W A S D and the mouse fly
 #   ElectricDreams  Epic's sample project in Documents\Unreal Projects (43 GB, Lumen, Nanite, ray tracing): needs more than the 8 GB of this laptop's GPU at full quality, see README.md
 param(
@@ -34,6 +34,11 @@ if ($text -notmatch 'PixelStreaming2') {
     "enabled the Pixel Streaming 2 plugin in $uproject (the old file is next to it as .bak)"
 }
 
+# 0 a stream that is still running owns the ports (the house and the jungle do not fit on the GPU together either): say so instead of talking to its server
+foreach ($port in $HttpPort, $StreamerPort) {
+    if (Get-NetTCPConnection -State Listen -LocalPort $port -ErrorAction SilentlyContinue) { throw "port $port is already in use: another stream is still running. Press Ctrl+C in its terminal first (Get-Process UnrealEditor shows what is left)." }
+}
+
 # 1 the signalling server and the page
 $sw = Join-Path $here 'infra\SignallingWebServer'
 if (-not ((Test-Path (Join-Path $sw 'dist\index.js')) -and (Test-Path (Join-Path $sw 'www\player.html')))) { throw 'the web part is not built yet: run setup.ps1 first' }
@@ -48,6 +53,8 @@ try {
         if ($sig.HasExited) { throw 'the signalling server stopped at once: read logs\signalling.err.log (is port ' + $HttpPort + ' taken?)' }
         try { $c = New-Object Net.Sockets.TcpClient; $c.Connect('127.0.0.1', $HttpPort); $c.Close(); $up = $true } catch { }
     }
+    Start-Sleep -Milliseconds 700
+    if ($sig.HasExited) { throw "the signalling server stopped right after it opened port ${HttpPort}: read logssignalling.err.log" }
     if (-not $up) { throw "the signalling server did not open port $HttpPort" }
     "signalling server up: http://localhost:$HttpPort  (streamer port $StreamerPort, log: $logs)"
 
@@ -70,5 +77,6 @@ try {
     $unreal.WaitForExit()
     "Unreal ended (exit code $($unreal.ExitCode)); log: $(Join-Path $logs "unreal_$Project.log")"
 } finally {
+    if ($unreal -and -not $unreal.HasExited) { Stop-Process -Id $unreal.Id -Force }
     if (-not $sig.HasExited) { Stop-Process -Id $sig.Id -Force }
 }

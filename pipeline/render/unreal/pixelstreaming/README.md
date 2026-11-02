@@ -18,8 +18,8 @@ browser  <------------------ video, audio, input (WebRTC, direct) --------------
    then open http://localhost:8080  (the script opens it)
 ```
 
-In the page: click the picture, the mouse looks around (Esc lets go); W A S D fly, up and down as in Unreal's default pawn. The gear opens the settings (codec, resolution, statistics). Close Unreal or press
-Ctrl+C in the console: the server stops with it. Logs are in `logs\` (git ignores them).
+In the page: click the picture, the mouse looks around (Esc lets go); W A S D fly, up and down as in Unreal's default pawn. The gear opens the settings (codec, resolution, statistics). Press
+Ctrl+C in the console: Unreal and the server both stop. One stream at a time: a second run stops with a message about the ports (the house and the jungle do not share the GPU either). Logs are in `logs\` (git ignores them).
 
 **Step 2 needs you at the keyboard**: it downloads one 0.6 MB archive from GitHub (checked against a SHA-256), about 1,200 npm packages (400 MB, install scripts off) and runs their build
 tools. It does not use Epic's own `start.bat`, which also downloads a second Node and a TURN server and asks `api.ipify.org` for your public IP.
