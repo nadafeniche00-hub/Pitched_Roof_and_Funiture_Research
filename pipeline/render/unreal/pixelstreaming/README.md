@@ -33,9 +33,16 @@ tools. It does not use Epic's own `start.bat`, which also downloads a second Nod
 | level | `/Game/UsableSpace/Scene` | `/Game/Levels/ElectricDreams_Env` (also `/Game/Levels/PCG/ElectricDreams_PCGCloseRange`, the project's start level) |
 | weight | light, its shaders are cached by the render runs | demanding: Lumen with hardware ray tracing, Nanite, virtual shadow maps, Substrate, DX12. This laptop has an RTX 5070 with 8 GB of video memory and 31 GB of RAM |
 
-`run_stream.ps1` adds the plugin line to a project's `.uproject` when it is missing (and keeps the old file as `.bak`). Streaming the Electric Dreams level has **not been tried** on this laptop: expect a
-long first start (shaders, World Partition, PCG), a low frame rate or an out-of-memory crash at the project's own settings. Lower them with the console variables of the scalability groups
-(`sg.*`, `r.Lumen.HardwareRayTracing 0`, `r.RayTracing 0`) before blaming Pixel Streaming.
+`run_stream.ps1` adds the plugin line to a project's `.uproject` when it is missing (and keeps the old file as `.bak`).
+
+**Electric Dreams:** `run_stream.ps1 -Project ElectricDreams -Light` (stop the house stream first: the two do not fit on 8 GB). `-Light` switches hardware ray tracing off, sets the scalability groups to medium
+and streams 1280x720; it is a guess that has **not been tried**. Streaming this level has not been tried either: expect a long first start (shaders for thousands of materials, World Partition cells), and a low
+frame rate or an out-of-memory crash if it is too much. Look at `logs\unreal_ElectricDreams.log` before blaming Pixel Streaming: the page says "click to start" as soon as Unreal has joined the server, long before the
+first picture is ready.
+
+What `probe_level.py` found out about the level without opening a window (2 Nov 2026, `UnrealEditor-Cmd -nullrhi`): it loads with this engine (the project's prebuilt modules carry the build id of UE 5.8.4, so no Visual
+Studio is needed); it is a World Partition map with the game mode `GM_AnimSandbox` (a character you walk with W A S D and the mouse, not a free camera); the one `PlayerStart` is at (81188, -14778, 2444) cm, among 87
+cinematic cameras of the sample's beauty shots, so a viewer starts in the part of the jungle Epic composed.
 
 ## Online, honestly
 
@@ -43,10 +50,12 @@ long first start (shaders, World Partition, PCG), a low frame rate or an out-of-
   whether `node` may listen: that is your decision, nothing here changes the firewall.
 * Over the internet it needs more than this folder: a TURN server for the video (most networks block a direct connection), HTTPS for the page, and a login in front. Do not forward port 8080 to the
   internet as it is: anybody who finds it can fly your session. For the presentation on 4 Nov, the same network (a hotspot) or this laptop's own browser is the safe way.
-* One Unreal process serves one viewer at a time with this setup (no SFU).
+* Several browsers can watch one session (a second one joined while the first was connected), but they all steer the same camera, and every viewer costs the GPU one more video encode (Epic's SFU, not set up
+  here, avoids that).
 
 ## Status (2 Nov 2026)
 
-Done and checked: the plugin exists in this engine, `UsableSpace.uproject` has it, the level script adds a `PlayerStart`, both scripts parse, the sources are downloaded and `npm ci --ignore-scripts` installed them
-(1,225 packages), the *Common* library built (`tsc`). Not run by the author: the other build steps, the signalling server, the stream itself. The sandbox this was written in refused to run Epic's build
-tools, so `setup.ps1` and `run_stream.ps1` are untested end to end: read `logs\` first when something does not start.
+Done and checked: the plugin exists in this engine, `UsableSpace.uproject` has it, the level script adds a `PlayerStart`, the sources are downloaded and `npm ci --ignore-scripts` installed them
+(1,225 packages). `setup.ps1` ran to the end on Node 26.13.0 (Epic asks for 22.14.0; only the warning appeared): all the `tsc` builds, the webpack page (`www\player.html`) and the server (`dist\index.js`).
+**The house streams** (2 Nov 2026, 21:24): the signalling server came up, Unreal registered as `DefaultStreamer` 3 seconds after it started, the browser of the user and the in-app browser both played the picture with
+video, audio and input tracks active. The sandbox this was written in refuses to run Epic's server code, so the server was started by the user: read `logs\` first when something does not start.

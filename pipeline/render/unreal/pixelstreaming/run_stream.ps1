@@ -1,6 +1,6 @@
 # Streams an Unreal level into a web browser with Pixel Streaming 2: the signalling server (Epic's Wilbur, built by setup.ps1) serves the page, Unreal sends the picture and takes
 # the keys and the mouse back. Needs setup.ps1 once.
-#   powershell -ExecutionPolicy Bypass -File pipeline\render\unreal\pixelstreaming\run_stream.ps1 [-Project UsableSpace|ElectricDreams] [-Map /Game/...] [-Resolution 1920x1080]
+#   powershell -ExecutionPolicy Bypass -File pipeline\render\unreal\pixelstreaming\run_stream.ps1 [-Project UsableSpace|ElectricDreams] [-Map /Game/...] [-Resolution 1920x1080] [-Light]
 # Then open http://localhost:8080 on this computer. On the same network: http://<address of this computer>:8080 (Windows asks once whether node may listen: your decision).
 # Stop with Ctrl+C or by closing Unreal: the signalling server stops with it.
 #   UsableSpace     the walk-view house in its forest (pipeline\render\unreal, built by run.ps1), starts outside the house; W A S D and the mouse fly
@@ -12,6 +12,7 @@ param(
     [int]$HttpPort = 8080,
     [int]$StreamerPort = 8888,
     [ValidateSet('', 'H264', 'VP8', 'VP9', 'AV1')][string]$Codec = '',
+    [switch]$Light,    # a big project on a small GPU (Epic's Electric Dreams sample on 8 GB): no hardware ray tracing, medium scalability, 1280x720 unless -Resolution says otherwise. Not tried yet.
     [string]$Bin = 'C:\Program Files\Epic Games\UE_5.8\Engine\Binaries\Win64'
 )
 $ErrorActionPreference = 'Stop'
@@ -51,10 +52,18 @@ try {
     "signalling server up: http://localhost:$HttpPort  (streamer port $StreamerPort, log: $logs)"
 
     # 2 Unreal: the level as a game without a window, streaming to the server
+    if ($Light -and -not $PSBoundParameters.ContainsKey('Resolution')) { $Resolution = '1280x720' }
     $w, $h = $Resolution -split 'x'
     $ue = @("`"$uproject`"", $map, '-game', "-PixelStreamingConnectionURL=ws://127.0.0.1:$StreamerPort", '-RenderOffScreen', '-ForceRes', "-ResX=$w", "-ResY=$h", '-Windowed',
         '-AudioMixer', '-nosplash', '-nopause', '-unattended', '-stdout', '-FullStdOutLogOutput')
     if ($Codec) { $ue += "-PixelStreamingEncoderCodec=$Codec" }
+    # the picture is sent at 60 frames a second: no point in rendering more (the house level used the whole GPU without this)
+    $cmds = @('t.MaxFPS 60')
+    if ($Light) {
+        $ue += '-ini:Engine:[/Script/Engine.RendererSettings]:r.RayTracing=False'   # the sample switches ray tracing on in its own DefaultEngine.ini
+        $cmds += 'r.Lumen.HardwareRayTracing 0', 'sg.ViewDistanceQuality 2', 'sg.ShadowQuality 2', 'sg.GlobalIlluminationQuality 2', 'sg.ReflectionQuality 2', 'sg.PostProcessQuality 2', 'sg.TextureQuality 2', 'sg.EffectsQuality 2', 'sg.FoliageQuality 2', 'sg.ShadingQuality 2'
+    }
+    $ue += ('-ExecCmds="' + ($cmds -join ',') + '"')
     "starting Unreal: $map  ($Resolution). The first start of a big level takes minutes; the page shows the picture when Unreal says it is streaming."
     $unreal = Start-Process -FilePath (Join-Path $Bin 'UnrealEditor.exe') -ArgumentList $ue -PassThru -RedirectStandardOutput (Join-Path $logs "unreal_$Project.log")
     Start-Process "http://localhost:$HttpPort" | Out-Null
