@@ -7,7 +7,9 @@ const states = { states: {} }; let total = 0, gab = 0;
 for (const [k, s] of Object.entries(sv.states)) { const p = sp[k]; if (!p) continue; states.states[k] = { name: s.name, d: s.d, n: p.n, g: p.share.gabled }; total += p.n; gab += p.counts.gabled; }
 const SUM = { total, nw: sp['DE-NW'].n, gshare: Math.round((100 * gab) / total) };
 const D = { buildings: det.buildings, hist: lod.gabled_pitch_hist };
-const img = (n) => 'data:image/jpeg;base64,' + R('./img/' + n + '.jpg').toString('base64');
+// the pictures Revit exported (pipeline/revit/DemoBuild/run_demo.ps1 + deck_images.py) do not exist until someone with a licence has run it: a marked placeholder stands in until then
+const missing = (n) => 'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 800"><rect width="1280" height="800" fill="#10151c"/><path d="M0 0L1280 800M1280 0L0 800" stroke="#26303b" stroke-width="3"/><text x="640" y="385" fill="#ffc533" font-family="Arial,sans-serif" font-weight="900" font-size="84" text-anchor="middle">NOT RUN YET</text><text x="640" y="470" fill="#aab1bb" font-family="Arial,sans-serif" font-size="46" text-anchor="middle">${n.replace('_', ' ')} - run_demo.ps1</text></svg>`);
+const img = (n) => (/^revit_/.test(n) && !fs.existsSync(new URL('./img/' + n + '.jpg', import.meta.url)) ? missing(n) : 'data:image/jpeg;base64,' + R('./img/' + n + '.jpg').toString('base64'));
 let ai = { img: null };
 if (fs.existsSync(new URL('./img/roofs_montage.jpg', import.meta.url))) ai.img = img('roofs_montage');
 const cmp = JSON.parse(R('../pipeline/data/compare_results.json')), ua = cmp.tasks.usable_area;
@@ -20,6 +22,8 @@ const keep = ['python','pytorch','huggingface','nvidia','apachespark','apacheair
 const L = Object.fromEntries(keep.filter((k) => logos[k]).map((k) => [k, logos[k]]));
 const J = (o) => JSON.stringify(o).replace(/</g, '\u003c');
 h = h.replace('{{LOGOS}}', () => J(L)).replace('{{STATES}}', () => J(states)).replace('{{DETMOLD}}', () => J(D)).replace('{{SUM}}', () => J(SUM)).replace('{{AI}}', () => J(ai)).replace('{{FW}}', () => J(FW));
+h = h.replace('{{PIPE_CSS}}', () => R('./pipe-slide.css').toString('utf8')).replace('{{PIPE_HTML}}', () => R('./pipe-slide.html').toString('utf8')).replace('{{PIPE_JS}}', () => R('./pipe-slide.js').toString('utf8'));
+h = h.replace('{{PLAN}}', () => J(JSON.parse(R('./data/plan_sample.json')))); // what presentation/data/make_plan_sample.mjs made of the app's generator and technical-plan code
 h = h.replace('{{AI_SLIDES_CSS}}', () => R('./ai-slides.css').toString('utf8')).replace('{{AI_SLIDES_HTML}}', () => R('./ai-slides.html').toString('utf8')).replace('{{AI_SLIDES_JS}}', () => R('./ai-slides.js').toString('utf8'));
 const png = (n) => 'data:image/png;base64,' + R('./img/' + n).toString('base64');
 h = h.replace(/\{\{AI_PLAN_IMG\}\}/g, () => png('ai_test_plan.png')).replace(/\{\{AI_ROOF_IMG\}\}/g, () => png('ai_test_roof.png'));

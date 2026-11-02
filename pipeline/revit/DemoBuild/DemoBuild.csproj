@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Revit 2025 add-in that builds the DEMO project from the app's plan: walls extruded from the technical plan, floors, the roof of the German template, openings, views
+       with the cut walls in black, and pictures of them. Build and run with run_demo.ps1 (it installs the add-in for the length of the run). -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>DemoBuild</AssemblyName>
+    <RevitDir>C:\Program Files\Autodesk\Revit 2025\</RevitDir>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="RevitAPI"><HintPath>$(RevitDir)RevitAPI.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="RevitAPIUI"><HintPath>$(RevitDir)RevitAPIUI.dll</HintPath><Private>false</Private></Reference>
+  </ItemGroup>
+</Project>

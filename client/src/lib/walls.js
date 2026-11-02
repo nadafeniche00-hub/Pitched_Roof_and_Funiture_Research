@@ -64,25 +64,34 @@ export function wallStrip(room, p0, p1, openings) {
   return g;
 }
 
-/** The same wall with thickness: both faces and the top (and the underside of the lintel over a door). */
-export function wallSolid(room, p0, p1, openings, t = 0.1) {
+export const T_IN = 0.115; // thickness of a partition: the inner wall of the technical plan (shared with lib/techPlan.js)
+
+/**
+ * The same wall with thickness (T_IN, as in the technical plan): both faces, the jambs of the door openings and the underside of the lintel in group 0, the cut face
+ * on top in group 1 - drawn black in the 3D view, as a wall section is in a plan. Follows the roof; DOOR_H high openings.
+ */
+export function wallSolid(room, p0, p1, openings, t = T_IN) {
   const dx = p1[0] - p0[0], dy = p1[1] - p0[1], len = Math.hypot(dx, dy), n = Math.max(1, Math.round(len / 0.1));
-  const nx = (-dy / len) * (t / 2), ny = (dx / len) * (t / 2), pos = [];
-  const quad = (a, b, c, d) => pos.push(...a, ...b, ...c, ...a, ...c, ...d);
+  const nx = (-dy / len) * (t / 2), ny = (dx / len) * (t / 2), sides = [], tops = [];
+  const quad = (out, a, b, c, d) => out.push(...a, ...b, ...c, ...a, ...c, ...d);
+  const at = (s) => [p0[0] + (dx * s) / len, p0[1] + (dy * s) / len];
+  const isDoor = (i) => { const sm = ((i + 0.5) / n) * len; return openings.some((o) => sm > o[0] && sm < o[1]); };
   for (let i = 0; i < n; i++) {
-    const s0 = (i / n) * len, s1 = ((i + 1) / n) * len, sm = (s0 + s1) / 2;
-    const door = openings.some((o) => sm > o[0] && sm < o[1]);
-    const bottom = door ? DOOR_H : 0;
-    const a = [p0[0] + (dx * s0) / len, p0[1] + (dy * s0) / len], b = [p0[0] + (dx * s1) / len, p0[1] + (dy * s1) / len];
+    const s0 = (i / n) * len, s1 = ((i + 1) / n) * len, door = isDoor(i), bottom = door ? DOOR_H : 0;
+    const a = at(s0), b = at(s1);
     const ha = Math.min(roofHeight(room, a[0], a[1]), WALL_MAX), hb = Math.min(roofHeight(room, b[0], b[1]), WALL_MAX);
+    if (door && i > 0 && !isDoor(i - 1)) quad(sides, [a[0] + nx, 0, a[1] + ny], [a[0] - nx, 0, a[1] - ny], [a[0] - nx, Math.min(DOOR_H, ha), a[1] - ny], [a[0] + nx, Math.min(DOOR_H, ha), a[1] + ny]); // jamb where the opening starts
+    if (!door && i > 0 && isDoor(i - 1)) quad(sides, [a[0] + nx, 0, a[1] + ny], [a[0] - nx, 0, a[1] - ny], [a[0] - nx, Math.min(DOOR_H, ha), a[1] - ny], [a[0] + nx, Math.min(DOOR_H, ha), a[1] + ny]); // and where it ends
     if (ha <= bottom && hb <= bottom) continue;
     const A = Math.max(ha, bottom), B = Math.max(hb, bottom);
-    for (const sgn of [1, -1]) quad([a[0] + sgn * nx, bottom, a[1] + sgn * ny], [b[0] + sgn * nx, bottom, b[1] + sgn * ny], [b[0] + sgn * nx, B, b[1] + sgn * ny], [a[0] + sgn * nx, A, a[1] + sgn * ny]);
-    quad([a[0] + nx, A, a[1] + ny], [b[0] + nx, B, b[1] + ny], [b[0] - nx, B, b[1] - ny], [a[0] - nx, A, a[1] - ny]); // top
-    if (door) quad([a[0] + nx, bottom, a[1] + ny], [b[0] + nx, bottom, b[1] + ny], [b[0] - nx, bottom, b[1] - ny], [a[0] - nx, bottom, a[1] - ny]); // lintel underside
+    for (const sgn of [1, -1]) quad(sides, [a[0] + sgn * nx, bottom, a[1] + sgn * ny], [b[0] + sgn * nx, bottom, b[1] + sgn * ny], [b[0] + sgn * nx, B, b[1] + sgn * ny], [a[0] + sgn * nx, A, a[1] + sgn * ny]);
+    quad(tops, [a[0] + nx, A, a[1] + ny], [b[0] + nx, B, b[1] + ny], [b[0] - nx, B, b[1] - ny], [a[0] - nx, A, a[1] - ny]); // the cut face
+    if (door) quad(sides, [a[0] + nx, bottom, a[1] + ny], [b[0] + nx, bottom, b[1] + ny], [b[0] - nx, bottom, b[1] - ny], [a[0] - nx, bottom, a[1] - ny]); // lintel underside
   }
   const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('position', new THREE.Float32BufferAttribute([...sides, ...tops], 3));
+  g.addGroup(0, sides.length / 3, 0);
+  g.addGroup(sides.length / 3, tops.length / 3, 1);
   g.computeVertexNormals();
   return g;
 }

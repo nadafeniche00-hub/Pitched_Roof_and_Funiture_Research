@@ -3,7 +3,7 @@
 // German layer names) for CAD and Revit, or as a printable A3 sheet at 1:50 (SVG). Plan coordinates: x right, y down, metres.
 import { defOf } from '@shared/params.js';
 import { itemRects, stairRect } from '@shared/engine.js';
-import { wallsOf } from './walls.js';
+import { wallsOf, T_IN } from './walls.js';
 
 export const LAYERS = {
   WAENDE: { color: 7, w: 0.5, name: 'Waende' },
@@ -15,7 +15,7 @@ export const LAYERS = {
   BEMASSUNG: { color: 4, w: 0.18, name: 'Bemassung' },
   RAHMEN: { color: 7, w: 0.35, name: 'Rahmen und Schriftfeld' },
 };
-const T_OUT = 0.365, T_IN = 0.115;
+export const T_OUT = 0.365;
 const DE = { bedroom: 'Schlafen', child: 'Kind', living: 'Wohnen', kitchen: 'Kueche', study: 'Arbeiten', bath: 'Bad', wc: 'WC', storage: 'Abstellraum', hall: 'Flur', room: 'Raum' };
 const num = (v, d = 2) => v.toFixed(d).replace('.', ',');
 
@@ -33,7 +33,7 @@ export function techPrimitives(room, layout, items, meta = {}) {
     const ux = dx / len, uy = dy / len, nx = -uy, ny = ux, at = (s, o) => [p0[0] + ux * s + nx * o, p0[1] + uy * s + ny * o];
     const ops = [...openings].sort((a, b) => a[0] - b[0]);
     let from = 0;
-    const solid = (a, b) => { if (b - a < 0.02) return; line('WAENDE', at(a, -t / 2), at(b, -t / 2)); line('WAENDE', at(a, t / 2), at(b, t / 2)); line('WAENDE', at(a, -t / 2), at(a, t / 2)); line('WAENDE', at(b, -t / 2), at(b, t / 2)); };
+    const solid = (a, b) => { if (b - a < 0.02) return; P.push({ k: 'poly', layer: 'WAENDE', pts: [at(a, -t / 2), at(b, -t / 2), at(b, t / 2), at(a, t / 2)] }); line('WAENDE', at(a, -t / 2), at(b, -t / 2)); line('WAENDE', at(a, t / 2), at(b, t / 2)); line('WAENDE', at(a, -t / 2), at(a, t / 2)); line('WAENDE', at(b, -t / 2), at(b, t / 2)); };
     for (const [a, b] of ops) { solid(from, Math.max(from, a)); from = Math.max(from, b); }
     solid(from, len);
     for (const o of ops) {
@@ -144,6 +144,7 @@ export function toDxf({ prims, D, extent }) {
   g(0, 'SECTION'); g(2, 'ENTITIES');
   for (const p of prims) {
     if (p.k === 'line') { g(0, 'LINE'); g(8, p.layer); g(10, X(p.a[0])); g(20, Y(p.a[1])); g(30, 0); g(11, X(p.b[0])); g(21, Y(p.b[1])); g(31, 0); }
+    else if (p.k === 'poly') { g(0, 'SOLID'); g(8, p.layer); [p.pts[0], p.pts[1], p.pts[3], p.pts[2]].forEach((q, i) => { g(10 + i, X(q[0])); g(20 + i, Y(q[1])); g(30 + i, 0); }); }
     else if (p.k === 'arc') { g(0, 'ARC'); g(8, p.layer); g(10, X(p.c[0])); g(20, Y(p.c[1])); g(30, 0); g(40, Math.round(p.r * 1000)); g(50, ((-p.a1 % 360) + 360) % 360); g(51, ((-p.a0 % 360) + 360) % 360); } // y flip reverses the sweep
     else if (p.k === 'text') {
       g(0, 'TEXT'); g(8, p.layer); g(10, X(p.p[0])); g(20, Y(p.p[1])); g(30, 0); g(40, Math.round(p.h * 1000)); g(1, p.s.replace(/[^\x20-\x7E]/g, '?'));
@@ -162,6 +163,7 @@ export function toSheetSvg({ prims, extent }) {
   const sw = (l) => LAYERS[l].w, col = (l) => (l === 'MOEBEL' ? '#7a7f88' : l === 'FENSTER' ? '#1f5fa8' : l === 'TUEREN' ? '#14161c' : l === 'TREPPE' ? '#c0392b' : l === 'BEMASSUNG' ? '#14161c' : '#14161c');
   const body = prims.map((p) => {
     if (p.k === 'line') return `<line x1="${X(p.a[0])}" y1="${Y(p.a[1])}" x2="${X(p.b[0])}" y2="${Y(p.b[1])}" stroke="${col(p.layer)}" stroke-width="${sw(p.layer)}" stroke-linecap="square"/>`;
+    if (p.k === 'poly') return `<polygon points="${p.pts.map((q) => X(q[0]) + ',' + Y(q[1])).join(' ')}" fill="#14161c" stroke="#14161c" stroke-width="0.15"/>`;
     if (p.k === 'arc') {
       const r = p.r * S, a0 = (p.a0 * Math.PI) / 180, a1 = (p.a1 * Math.PI) / 180;
       return `<path d="M${X(p.c[0] + p.r * Math.cos(a0))} ${Y(p.c[1] + p.r * Math.sin(a0))} A${r.toFixed(2)} ${r.toFixed(2)} 0 0 1 ${X(p.c[0] + p.r * Math.cos(a1))} ${Y(p.c[1] + p.r * Math.sin(a1))}" fill="none" stroke="${col(p.layer)}" stroke-width="${sw(p.layer)}"/>`;

@@ -8,8 +8,11 @@ import { makeTextures, makeFachwerk, pbr } from '../lib/textures.js';
 import { SparkRenderer } from '@sparkjsdev/spark';
 import { buildSplats } from '../lib/splat.js';
 import { buildForest } from '../lib/forest.js';
-import { wallsOf, wallStrip } from '../lib/walls.js';
-import { Icon, IconBtn } from './Icon.jsx';
+import { wallsOf, wallSolid } from '../lib/walls.js';
+import { facade } from '../lib/fachwerk.js';
+import { demoJson } from '../lib/revitExport.js';
+import { Icon } from './Icon.jsx';
+import Pop from './Pop.jsx';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
 import { partInfo, LAYERS } from '../lib/partInfo.js';
 import { fmtMm } from '@shared/roofTemplates.js';
@@ -118,7 +121,6 @@ function shellGeometries(room) {
   return { roof: mk(outer.top), walls: mk(outer.wall), roofIn: mk(inner.top), wallsIn: mk(inner.wall) };
 }
 
-const wallGeometry = (room, p0, p1, openings) => addUV(wallStrip(room, p0, p1, openings));
 
 const hitRect = (x, z, r, c) => {
   const dx = Math.max(c[0] - x, 0, x - c[2]), dz = Math.max(c[1] - z, 0, z - c[3]);
@@ -148,7 +150,21 @@ export default function WalkView() {
     if (!t?.content) { reject(new Error('the scene is not built yet')); return; }
     new GLTFExporter().parse([t.content, t.forest].filter(Boolean), (buf) => resolve(new Blob([buf], { type: 'model/gltf-binary' })), reject, { binary: true, onlyVisible: false });
   });
-  const saveGlb = async () => { const b = await exportGlb(), a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'usable-space-scene.glb'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 3000); };
+  const [xs, setXs] = useState('');
+  const saveBlob = (b, name) => { const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 3000); };
+  // two ways out of the app, the user picks: Blender is free and open (the .glb above), Revit needs an Autodesk licence (the plan as numbers; Revit builds its own model from it)
+  const saveGlb = async () => { saveBlob(await exportGlb(), 'usable-space-scene.glb'); setXs('Saved usable-space-scene.glb. Render it with pipeline/render (Blender, no licence).'); };
+  const sendRevit = async () => {
+    const body = JSON.stringify(demoJson(room, layout));
+    try {
+      const r = await fetch('/api/dev/demo', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
+      if (!r.ok) throw new Error(String(r.status));
+      setXs('Plan sent. Now run pipeline\\revit\\DemoBuild\\run_demo.ps1: Revit starts and builds DEMO.rvt ("Load Once" when it asks).');
+    } catch { // a server that is not this computer cannot start Revit here: hand over the plan as a file
+      saveBlob(new Blob([body], { type: 'application/json' }), 'demo.json');
+      setXs('Saved demo.json. Put it in pipeline\\data\\revit_demo, then run pipeline\\revit\\DemoBuild\\run_demo.ps1.');
+    }
+  };
   if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('debug')) window.__walkExport = exportGlb; // test hook
   const enterBtn = useRef(null);
   const hudBox = useRef(null);
@@ -374,7 +390,7 @@ export default function WalkView() {
     const coolWall = plain ? new THREE.Color(0xe9e6df) : new THREE.Color(0.9, 0.9, 0.92); // near-neutral: the scanned plaster is beige, so it is cooled a little
     const plaster = new THREE.MeshStandardMaterial({ ...wallMaps, color: coolWall, roughness: 1, side: THREE.DoubleSide });
     const fach = plain ? null : (t.fach || (t.fach = makeFachwerk()));
-    const plasterOut = new THREE.MeshStandardMaterial(plain ? { color: 0xece9e2, roughness: 1, side: THREE.FrontSide } : { map: fach, roughness: 1, side: THREE.FrontSide });
+    const plasterOut = new THREE.MeshStandardMaterial(plain ? { color: 0xf0e8d6, roughness: 1, side: THREE.FrontSide } : { map: fach, roughness: 1, side: THREE.FrontSide });
     const inside = new THREE.MeshStandardMaterial({ ...wallMaps, color: coolWall, roughness: 1, side: THREE.FrontSide });
     const tiles = new THREE.MeshStandardMaterial({ ...roofMaps, color: plain ? new THREE.Color(0xa4503a) : new THREE.Color(0.88, 0.84, 0.82), roughness: 1, side: THREE.FrontSide });
     plaster.name = 'partition'; plasterOut.name = 'wall_outer'; inside.name = 'wall_inner'; tiles.name = 'roof';
@@ -429,6 +445,11 @@ export default function WalkView() {
     const wallOut = tag(new THREE.Mesh(shell.walls, plasterOut), { part: 'wall', density: 650, size: 0.055 }); wallOut.castShadow = true; content.add(wallOut);
     content.add(tag(new THREE.Mesh(shell.roofIn, inside), { part: 'roof', interior: true, density: 600, size: 0.05 }), tag(new THREE.Mesh(shell.wallsIn, inside), { part: 'wall', interior: true, density: 600, size: 0.05 }));
 
+    // the classic German facade: timber frame, stone plinth, casement windows with glazing bars, stone sills, green shutters (lib/fachwerk.js)
+    const fx = facade(room, { T: WALL_T, STOREY, ROOF_T });
+    const deco = (geo, name, color, rough = 0.85) => { if (!geo) return; const m = new THREE.MeshStandardMaterial({ color, roughness: rough }); m.name = name; const mesh = new THREE.Mesh(geo, m); mesh.name = name; mesh.castShadow = true; mesh.receiveShadow = true; content.add(mesh); };
+    deco(fx.timber, 'timber', 0x3a281b); deco(fx.plinth, 'plinth', 0x8d877b, 1); deco(fx.frames, 'window_frame', 0xf3f0e8, 0.6); deco(fx.sills, 'sill', 0xcfc9b9, 0.9); deco(fx.shutters, 'shutter', 0x2e4b36, 0.8);
+
     // attic floor with the stair opening
     const shape = new THREE.Shape([new THREE.Vector2(0, 0), new THREE.Vector2(W, 0), new THREE.Vector2(W, -D), new THREE.Vector2(0, -D)]);
     const sr = stairRect(room);
@@ -450,7 +471,9 @@ export default function WalkView() {
     // partition walls from the layout
     const { walls, colliders: wc } = wallsOf(room, layout);
     colliders.push(...wc);
-    for (const w of walls) content.add(tag(new THREE.Mesh(wallGeometry(room, w.p0, w.p1, w.op), plaster), { part: 'partition', interior: true, density: 650, size: 0.05 }));
+    // the walls of the technical plan, extruded: 11.5 cm thick, door openings, the cut face on top black like a wall section in a plan
+    const cut = new THREE.MeshStandardMaterial({ color: 0x14161c, roughness: 1, side: THREE.DoubleSide }); cut.name = 'partition_cut';
+    for (const w of walls) content.add(tag(new THREE.Mesh(addUV(wallSolid(room, w.p0, w.p1, w.op)), [plaster, cut]), { part: 'partition', interior: true, density: 650, size: 0.05 }));
 
     // windows on the gables
     for (const w of room.windows) {
@@ -523,7 +546,24 @@ export default function WalkView() {
       </div>
       <div className="walkstage">
         <div ref={mount} className="walk" />
-        <div ref={tipRef} className="walktip" style={{ display: "none" }} /><IconBtn icon="download" className="walkexport" label="Export the scene as .glb for Blender and Unreal Engine" onClick={saveGlb} />
+        <div ref={tipRef} className="walktip" style={{ display: "none" }} /><div className="walkexportbox">
+          <Pop side="left" wide trigger={<button type="button" className="ib walkexport" aria-label="Take the scene out: Blender or Revit"><Icon name="download" size={20} /></button>}>
+            <p className="ptitle">Take the scene out</p>
+            <div className="xopts">
+              <button type="button" className="xopt" onClick={saveGlb}>
+                <span className="xlogo blender"><Icon name="camera" size={26} /></span>
+                <span className="xhead"><b>Blender</b><i className="xbadge free">free</i></span>
+                <small>The scene as .glb (also Unreal) for path-traced renders. Open source.</small>
+              </button>
+              <button type="button" className="xopt" onClick={sendRevit}>
+                <span className="xlogo revit"><Icon name="house" size={26} /></span>
+                <span className="xhead"><b>Revit</b><i className="xbadge lic">licence</i></span>
+                <small>The plan, built in Revit with the German template: walls, roof, DEMO.rvt.</small>
+              </button>
+            </div>
+            {xs && <p className="xstate" role="status">{xs}</p>}
+          </Pop>
+        </div>
         <button ref={enterBtn} className="walkenter" onClick={() => T.current?.enter?.()}><Icon name="enter" size={22} /> Enter</button><div className="walkhud" ref={hudBox} data-mode="out">
           <span ref={hud}>exterior</span>
           <div className="keys out">

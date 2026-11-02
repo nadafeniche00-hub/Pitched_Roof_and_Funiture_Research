@@ -7,7 +7,6 @@ html, body { height: 100%; overflow: hidden; background: #07090c; font-family: '
 .slide { position: absolute; inset: 0 0 96px 0; padding: 72px 96px 0; opacity: 0; visibility: hidden; transition: opacity .45s; }
 .slide.on { opacity: 1; visibility: visible; }
 .dark { background: var(--ink); color: #fff; }
-.slide.dark::before { content: ""; position: absolute; inset: -9999px; background: var(--ink); z-index: -1; }
 h1 { font-weight: 900; font-size: 150px; line-height: .92; letter-spacing: -.035em; text-transform: uppercase; }
 h2 { font-weight: 900; font-size: 104px; line-height: .95; letter-spacing: -.03em; text-transform: uppercase; max-width: 1500px; }
 .tag { font-weight: 800; font-size: 26px; letter-spacing: .22em; text-transform: uppercase; color: var(--hot); margin-bottom: 22px; }
@@ -82,7 +81,25 @@ img.shot { display: block; border: 4px solid #fff; box-shadow: 14px 14px 0 var(-
 .orb svg { width: 150px; height: 150px; stroke: var(--ink); fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 .orb b { font-weight: 900; font-size: 54px; line-height: 1; letter-spacing: -.01em; text-transform: uppercase; }
 .orb.hot { background: #ffe9e3; }
+.pinset { position: absolute; right: 22px; bottom: 22px; background: #f3efe6; border: 4px solid #0f1217; box-shadow: 8px 8px 0 #0f1217; }
+.ocard { background: #171b22; border: 4px solid #fff; box-shadow: 12px 12px 0 var(--c); padding: 18px 22px; }
+.ohead { display: flex; align-items: center; gap: 16px; }
+.ohead b { font-weight: 900; font-size: 58px; line-height: 1; text-transform: uppercase; margin-right: 6px; }
+.ohead s { white-space: nowrap; text-decoration: none; padding: 3px 12px; font-weight: 900; font-size: 22px; letter-spacing: .1em; border: 3px solid #fff; }
+.ohead s.free { color: #55d68a; border-color: #55d68a; } .ohead s.lic { color: #ff7a6b; border-color: #ff7a6b; }
+.ologo { display: grid; place-items: center; width: 84px; height: 84px; flex: none; }
+.ologo svg { width: 50px; height: 50px; fill: none; stroke: #fff; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.ometrics { position: absolute; left: 22px; bottom: 22px; display: grid; gap: 14px; }
+.ometrics div { display: flex; align-items: baseline; gap: 14px; padding: 8px 18px; border: 3px solid #fff; cursor: help; width: 440px; }
+.ometrics big { font-weight: 900; font-size: 52px; line-height: 1; min-width: 190px; }
+.ometrics span { font-weight: 800; font-size: 28px; color: #9aa1ab; }
+.ounreal { position: absolute; right: 24px; bottom: 28px; margin: 0; }
+.orevit { display: flex; gap: 22px; margin-top: 14px; }
+.onote { position: absolute; left: 22px; right: 22px; bottom: 18px; display: flex; gap: 12px; flex-wrap: wrap; font-weight: 800; font-size: 24px; cursor: help; }
+.onote span { padding: 3px 14px; border: 3px solid #fff; border-radius: 999px; }
+.onote .warn { color: #ffc533; border-color: #ffc533; border-style: dashed; }
 {{AI_SLIDES_CSS}}
+{{PIPE_CSS}}
 </style>
 
 <div id="stage">
@@ -199,21 +216,40 @@ img.shot { display: block; border: 4px solid #fff; box-shadow: 14px 14px 0 var(-
   </div>
 </section>
 
-<!-- 9c realistic view -->
+{{PIPE_HTML}}
+
+<!-- 9c realistic view: the walls of the technical plan, extruded, and two ways to render them -->
 <section class="slide dark" data-step="4" id="s9c">
   <div class="tag">Realistic view</div>
   <h2 class="pop" style="font-size: 88px">Walk it, then render it</h2>
-  <div class="abs" style="left: 96px; top: 300px; display: grid; grid-template-columns: 596px 596px; gap: 26px 28px">
-    <figure class="rfig pop" style="--i:2"><img class="shot" src="{{IMG_render_exterior}}" width="596"><figcaption>Outside</figcaption></figure>
-    <figure class="rfig pop" style="--i:3"><img class="shot" src="{{IMG_render_section}}" width="596"><figcaption>Cut through the ridge</figcaption></figure>
-    <figure class="rfig pop" style="--i:4"><img class="shot" src="{{IMG_render_cutaway}}" width="596"><figcaption>Roof off</figcaption></figure>
-    <figure class="rfig pop" style="--i:5"><img class="shot" src="{{IMG_render_detail}}" width="596"><figcaption>Moss and grass</figcaption></figure>
+  <div class="abs pop" style="--i:1; left: 96px; top: 212px; font-weight: 800; font-size: 32px; color: #9aa1ab">One scene, two ways out. You pick: free, or licensed.</div>
+  <figure class="rfig pop" style="--i:2; position: absolute; left: 96px; top: 272px" data-tip="Walls from the technical plan|The walls are extruded from the same wall list as the technical plan: 36.5 cm outside, 11.5 cm inside, door openings where the plan has them. Their cut faces are black, as wall sections are on a drawing. Roof off, plain daylight, half-timbered facade as real geometry.">
+    <img class="shot" src="{{IMG_render_cutaway}}" width="880"><figcaption>Walls from the plan · cuts black</figcaption>
+    <svg id="pplan" class="pinset" width="226" height="274" viewBox="0 0 226 274"></svg>
+  </figure>
+  <div class="abs" style="left: 96px; top: 856px; display: flex; gap: 24px">
+    <figure class="rfig pop" style="--i:3" data-tip="Outside|Blender, Cycles, 160 samples. Red clay tiles, a plinth, white windows with shutters, timber frame."><img class="shot" src="{{IMG_render_exterior}}" width="272" style="box-shadow: 10px 10px 0 var(--hot)"><figcaption style="font-size: 18px; left: 10px; bottom: 10px">Outside</figcaption></figure>
+    <figure class="rfig pop" style="--i:4" data-tip="Cut through the ridge|A clipping plane cuts the house open along the ridge: the timber frame and the inside of the attic."><img class="shot" src="{{IMG_render_section}}" width="272" style="box-shadow: 10px 10px 0 var(--hot)"><figcaption style="font-size: 18px; left: 10px; bottom: 10px">Cut</figcaption></figure>
+    <figure class="rfig pop" style="--i:5" data-tip="Moss and grass|Close-up of the vegetation: particle grass and moss on a rock. The vegetation is the same for every shot."><img class="shot" src="{{IMG_render_detail}}" width="272" style="box-shadow: 10px 10px 0 var(--hot)"><figcaption style="font-size: 18px; left: 10px; bottom: 10px">Detail</figcaption></figure>
   </div>
-  <div class="abs" style="left: 1352px; top: 300px; width: 472px; display: grid; gap: 16px">
-    <div class="card pop" style="--i:3; padding: 14px 22px"><div class="tag" style="font-size: 20px; margin-bottom: 6px">1 · Export</div><p style="font-size: 26px; font-weight: 800; line-height: 1.15">The walk view saves one .glb file</p></div>
-    <div class="card pop" style="--i:4; padding: 14px 22px"><div class="tag" style="font-size: 20px; margin-bottom: 6px">2 · Blender 5.2</div><p style="font-size: 26px; font-weight: 800; line-height: 1.15">Cycles on the laptop GPU, 24 to 28 s a picture</p></div>
-    <div class="card pop" style="--i:5; padding: 14px 22px"><div class="tag" style="font-size: 20px; margin-bottom: 6px">3 · Unreal Engine 5.8</div><p style="font-size: 26px; font-weight: 800; line-height: 1.15">Same file, sun and sky only</p><img class="shot" src="{{IMG_render_unreal_exterior}}" width="330" style="margin-top: 10px; border-width: 3px; box-shadow: 8px 8px 0 var(--hot)"></div>
-    <div class="card pop" style="--i:6; padding: 14px 22px"><div class="tag" style="font-size: 20px; margin-bottom: 6px">4 · Free textures</div><p style="font-size: 26px; font-weight: 800; line-height: 1.15">Poly Haven, CC0. Plain daylight, no lamps.</p></div>
+
+  <div class="abs pop ocard" style="--i:3; --c:#ea7600; left: 1040px; top: 272px; width: 784px; height: 372px">
+    <div class="ohead"><i class="ologo" style="background:#ea7600"><svg viewBox="0 0 24 24"><path d="M4 8h4l2-3h4l2 3h4v11H4zM12 17a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z"/></svg></i><b>Blender</b><s class="free">FREE</s><s>OPEN SOURCE</s></div>
+    <div class="ometrics">
+      <div data-tip="One file|The walk view saves the whole scene as one .glb file (glTF): walls, roof, facade, furniture, vegetation. The same file goes to Blender and to Unreal."><big>.glb</big><span>one file</span></div>
+      <div data-tip="Cycles on the laptop GPU|Blender 5.2, Cycles path tracing with OptiX, 160 samples, AgX colour. 24 to 28 seconds a picture at 1920 by 1200."><big>24–28 s</big><span>a picture</span></div>
+      <div data-tip="Plain daylight|Poly Haven textures (CC0), a sun and a sky, no lamps and no exposure tricks."><big>CC0</big><span>textures</span></div>
+    </div>
+    <figure class="rfig ounreal" data-tip="Unreal Engine 5.8|The same .glb file in Unreal, with sun and sky only. A second renderer that is free to use for this."><img class="shot" src="{{IMG_render_unreal_exterior}}" width="250" style="border-width: 3px; box-shadow: 8px 8px 0 var(--hot)"><figcaption style="font-size: 17px; left: 8px; bottom: 8px">Unreal 5.8</figcaption></figure>
+  </div>
+
+  <div class="abs pop ocard" style="--i:4; --c:#0696d7; left: 1040px; top: 668px; width: 784px; height: 392px">
+    <div class="ohead"><i class="ologo" style="background:#0696d7"><svg viewBox="0 0 24 24"><path d="M4 20V6l8-3 8 3v14zM9 20v-6h6v6"/></svg></i><b>Revit</b><s class="lic">LICENCE</s><s>AUTODESK</s></div>
+    <div class="orevit">
+      <figure class="rfig" data-tip="DEMO.rvt, outside|A small add-in builds DEMO.rvt in Revit 2025 from the German architecture template: walls of 36.5 and 11.5 cm, floors, the roof type of the template, doors and windows. Until it has been run on a licensed machine this is a placeholder."><img class="shot" src="{{IMG_revit_exterior}}" width="320" style="border-width: 3px; box-shadow: 8px 8px 0 #0696d7"></figure>
+      <figure class="rfig" data-tip="Floor plan with black cut walls|The add-in also makes a floor plan whose cut walls are filled black, like the technical plan. Until it has been run on a licensed machine this is a placeholder."><img class="shot" src="{{IMG_revit_plan}}" width="320" style="border-width: 3px; box-shadow: 8px 8px 0 #0696d7"></figure>
+    </div>
+    <div class="onote" data-tip="Honest status|The add-in (pipeline/revit/DemoBuild) compiles against the Revit 2025 API. It has not been run yet: that needs Revit open on a licensed machine and one click on Load Once. run_demo.ps1 does the rest and puts the pictures here."><span>German template</span><span>template roof type</span><span class="warn">not run yet</span></div>
   </div>
 </section>
 
@@ -306,8 +342,11 @@ const ease = (t) => (t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 
 /* ---------- stage scaling: fixed 1920 x 1200 canvas, scaled to fit, never scrolls */
 const stage = $('#stage');
-function fit() { const k = Math.min(innerWidth / 1920, innerHeight / 1200); stage.style.transform = `scale(${k}) translate(-50%, -50%)`; stage.style.transformOrigin = '0 0'; stage.style.left = '50%'; stage.style.top = '50%'; }
-addEventListener('resize', fit); fit();
+function fit() { const de = document.documentElement, w = de.clientWidth || innerWidth, h = de.clientHeight || innerHeight, k = Math.min(w / 1920, h / 1200); stage.style.transform = `scale(${k}) translate(-50%, -50%)`; stage.style.transformOrigin = '0 0'; stage.style.left = '50%'; stage.style.top = '50%'; }
+['resize', 'orientationchange', 'load', 'pageshow'].forEach((e) => addEventListener(e, fit));
+if (window.ResizeObserver) new ResizeObserver(fit).observe(document.documentElement);
+if (window.visualViewport) visualViewport.addEventListener('resize', fit);
+fit(); requestAnimationFrame(fit); setTimeout(fit, 300); setTimeout(fit, 1500);
 
 /* ---------- roof section (shared by slide 2 and the zoom end) */
 function roofSection(svg, { span, pitch, knee, W, H, ox = 0, oy = 0, show = true }) {
@@ -503,6 +542,8 @@ const SC = (() => {
   return { start() { cancelAnimationFrame(raf); t0 = performance.now(); raf = requestAnimationFrame(frame); }, stop() { cancelAnimationFrame(raf); } };
 })();
 
+{{PIPE_JS}}
+
 {{AI_SLIDES_JS}}
 
 /* ---------- navigation */
@@ -582,6 +623,7 @@ function go(n) {
   slides[n].querySelectorAll('.bar').forEach((b) => { b.style.width = '0'; b.style.transition = 'none'; void b.offsetWidth; b.style.transition = 'width 1.6s cubic-bezier(.2,.8,.2,1)'; setTimeout(() => (b.style.width = b.dataset.w + '%'), 300 + Math.random() * 400); });
   if (slides[n].id === 's4') zoomPlay(); else run++;
   if (slides[n].id === 's9b') SC.start(); else SC.stop();
+  if (slides[n].id === 's9d') PIPE.start(); else PIPE.stop();
   if (AIV.has(slides[n].id)) AIV.play(slides[n].id); else AIV.stop();
   if (slides[n].id === 's9') { window.explode(false); setTimeout(() => window.explode(true), 900); }
 }

@@ -311,7 +311,12 @@ def plain(name, color, rough=0.5, metal=0.0):
 
 WALL_IN = (0.72, 0.70, 0.66)  # warm white paint inside
 MATS = {
-    "wall_outer": pbr("wall_outer", "wall_white", ao=0.3, albedo=(0.66, 0.62, 0.55)),
+    "wall_outer": plain("wall_outer", (0.80, 0.74, 0.62), 0.92),  # smooth warm render (Putz); the timber frame, plinth and shutters give the facade its texture
+    "timber": pbr("timber", "timber", ao=0.6, normal=0.8, albedo=(0.10, 0.06, 0.035)),
+    "plinth": pbr("plinth", "wall_plaster", ao=0.5, albedo=(0.30, 0.28, 0.25)),
+    "sill": plain("sill", (0.55, 0.53, 0.48), 0.8),
+    "shutter": plain("shutter", (0.05, 0.11, 0.065), 0.55),
+    "partition_cut": plain("partition_cut", (0.008, 0.008, 0.01), 0.9),  # the cut face of a wall, black like a wall section in a plan
     "wall_inner": pbr("wall_inner", "wall_white", ao=0.3, albedo=WALL_IN),
     "roof_outer": pbr("roof_outer", "roof_clay", ao=0.8, normal=1.2, albedo=(0.30, 0.10, 0.045)),
     "roof_inner": pbr("roof_inner", "wall_white", ao=0.3, albedo=WALL_IN),
@@ -325,20 +330,27 @@ MATS = {
     "window_lower": plain("window_lower", (0.012, 0.02, 0.03), 0.04, 0.2),
     "stair_shaft": plain("stair_shaft", (0.012, 0.012, 0.014), 0.9),
 }
-TILE = {"wall_outer": 2.0, "wall_inner": 2.0, "partition": 2.0, "roof_outer": 1.6, "roof_inner": 1.6, "floor_inner": 1.4, "ground": 4.0}
+TILE = {"timber": 1.0, "plinth": 1.2, "wall_outer": 2.0, "wall_inner": 2.0, "partition": 2.0, "roof_outer": 1.6, "roof_inner": 1.6, "floor_inner": 1.4, "ground": 4.0}
 ROLE_OF = {"window_outer": "glass"}
 n_assigned = 0
 for name, objs in by_name.items():
-    if name.startswith("furniture_") or (name not in MATS and name not in ROLE_OF):
+    if name.startswith("furniture_") or name == "partition_cut" or (name not in MATS and name not in ROLE_OF):
         continue
     key = ROLE_OF.get(name, name)
     for ob in objs:
         if name in TILE:
             project_uvs(ob, TILE[name])
-        ob.data.materials.clear()
-        ob.data.materials.append(MATS[key])
+        if key == "partition" and len(ob.material_slots) >= 2:  # slot 0 the two faces of the wall, slot 1 its cut face (a second glTF primitive): clearing the slots would send every face to slot 0
+            ob.material_slots[0].material = MATS["partition"]
+            ob.material_slots[1].material = MATS["partition_cut"]
+        else:
+            ob.data.materials.clear()
+            ob.data.materials.append(MATS[key])
         n_assigned += 1
 log(f"materials assigned to {n_assigned} objects; furniture keeps the materials of its glTF models")
+for ob in by_name.get("partition", [])[:1]:  # the partition walls come in with two primitives: the two faces and the cut face on top
+    from collections import Counter
+    log(f"partition {ob.name}: slots {[sl.material.name for sl in ob.material_slots]}, polygons per slot {dict(Counter(p.material_index for p in ob.data.polygons))}")
 # parts that have no object name of their own but a material name (window frames come in as unnamed objects)
 for ob in meshes:
     if base(ob.name) in MATS or base(ob.name) in ROLE_OF or base(ob.name).startswith("furniture_"):

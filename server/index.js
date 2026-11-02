@@ -35,6 +35,26 @@ app.post('/api/dev/glb', express.raw({ type: '*/*', limit: '300mb' }), (req, res
   fs.writeFileSync(path.join(dir, 'scene.glb'), req.body);
   res.json({ ok: true, bytes: req.body.length });
 });
+// dev only, loopback only: the plan for the Revit demo builder (client/src/lib/revitExport.js); pipeline/revit/DemoBuild/run_demo.ps1 reads it from here.
+// Nothing here starts Revit: installing an unsigned add-in is for the person at the keyboard (see pipeline/revit/README.md).
+const demoDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../pipeline/data/revit_demo');
+const loopback = (req) => /^(::1|127\.0\.0\.1|::ffff:127\.0\.0\.1)$/.test(req.socket.remoteAddress || '');
+app.post('/api/dev/demo', express.json({ limit: '200kb' }), (req, res) => {
+  if (!loopback(req)) return res.status(403).json({ error: 'local only' });
+  const b = req.body;
+  if (!b?.room?.width || !b?.room?.depth || !Array.isArray(b.partitions)) return res.status(400).json({ error: 'not a demo plan' });
+  fs.mkdirSync(demoDir, { recursive: true });
+  fs.writeFileSync(path.join(demoDir, 'demo.json'), JSON.stringify(b, null, 1));
+  res.json({ ok: true, dir: demoDir, partitions: b.partitions.length });
+});
+// what the last run left behind: the project, the pictures, the last lines of the log
+app.get('/api/dev/demo', (req, res) => {
+  if (!loopback(req)) return res.status(403).json({ error: 'local only' });
+  const has = (f) => fs.existsSync(path.join(demoDir, f));
+  let log = [];
+  try { log = fs.readFileSync(path.join(demoDir, 'demo_log.txt'), 'utf8').split(/\r?\n/).filter(Boolean).slice(-12); } catch { /* no run yet */ }
+  res.json({ plan: has('demo.json'), project: has('DEMO.rvt'), done: has('done.txt'), failed: has('error.txt'), pictures: ['exterior', 'section', 'cutaway', 'plan'].filter((n) => has(`revit_${n}.png`)), log, dir: demoDir });
+});
 app.use(express.json({ limit: '200kb' }));
 app.get('/api/ai/status', async (_q, res) => res.json(await aiStatus()));
 app.post('/api/ai/brief', async (req, res) => {

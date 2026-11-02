@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RevitAddIns>
+  <AddIn Type="Application">
+    <Name>UsableSpaceDemoBuild</Name>
+    <Assembly>DemoBuild.dll</Assembly>
+    <AddInId>2b9f3c1a-6f0d-4b8e-8e57-0a1c4d7e9f32</AddInId>
+    <FullClassName>DemoBuild.App</FullClassName>
+    <VendorId>USPC</VendorId>
+    <VendorDescription>Usable Space (Pitched Roof and Furniture): builds the DEMO project from the app's plan</VendorDescription>
+  </AddIn>
+</RevitAddIns>

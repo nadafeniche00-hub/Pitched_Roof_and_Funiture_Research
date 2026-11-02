@@ -279,4 +279,20 @@ table.params tr.own .layer { color: var(--accent); }
 .kc { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border: 2px solid #cfd3da; border-bottom-width: 4px; border-radius: 5px; font: 700 12px var(--body); color: #fff; background: rgba(255, 255, 255, 0.08); pointer-events: auto; }
 .facehint { display: flex; align-items: center; gap: 8px; }
 
-.walkexport { position: absolute; right: 16px; top: 16px; z-index: 5; background: rgba(20, 22, 28, 0.82); color: #fff; border-color: #fff; }
+.walkexportbox { position: absolute; right: 16px; top: 16px; z-index: 5; }
+.walkexport { background: rgba(20, 22, 28, 0.82); color: #fff; border-color: #fff; }
+/* the way out of the app: one big card per tool, a badge tells whether it costs a licence */
+.xopts { display: grid; gap: 10px; margin: 8px 0 4px; }
+.xopt { display: grid; grid-template-columns: 52px 1fr; column-gap: 12px; row-gap: 2px; align-items: center; text-align: left; padding: 10px 12px; border: 3px solid var(--ink); background: #fff; color: var(--ink); font: inherit; cursor: pointer; }
+.xopt:hover, .xopt:focus-visible { background: var(--ink); color: #fff; outline: none; }
+.xlogo { grid-row: span 2; display: grid; place-items: center; width: 52px; height: 52px; border: 3px solid currentColor; }
+.xlogo.blender { background: #ea7600; color: #fff; border-color: #ea7600; }
+.xlogo.revit { background: #0696d7; color: #fff; border-color: #0696d7; }
+.xhead { display: flex; align-items: center; gap: 8px; }
+.xhead b { font: 800 17px var(--display); }
+.xbadge { font: 700 10px var(--display); font-style: normal; letter-spacing: 0.1em; text-transform: uppercase; padding: 2px 7px; border: 2px solid currentColor; }
+.xbadge.free { color: #1f8a3d; }
+.xbadge.lic { color: #b3261e; }
+.xopt:hover .xbadge, .xopt:focus-visible .xbadge { color: #fff; }
+.xopt small { font-size: 12px; line-height: 1.35; opacity: 0.8; }
+.xstate { margin: 8px 0 0; padding: 8px 10px; border-left: 4px solid var(--hot); background: #f4f1ea; font-size: 12px; line-height: 1.4; }

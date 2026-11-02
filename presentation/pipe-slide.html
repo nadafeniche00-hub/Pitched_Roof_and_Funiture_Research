@@ -1,0 +1,105 @@
+<!-- 9d how a plan is made: words, sketches and scans in; a technical plan and a 3D model out. Every drawing is data from the app's own code (presentation/data/make_plan_sample.mjs). -->
+<section class="slide dark" data-step="4" id="s9d">
+  <div class="tag">How a plan is made</div>
+  <h2 class="pop" style="font-size: 88px; max-width: 1730px">From words to a technical plan</h2>
+
+  <!-- row A: three ways in -->
+  <div class="pcard pop" id="p1" style="--c:#ff4d2e; --i:1; left:96px; top:246px; width:560px; height:346px">
+    <div class="phead" data-tip="Names. Never draws.|qwen3.8-27b on the team's Open WebUI, an OpenAI-compatible chat endpoint. Temperature 0.1, no streaming, 45 s limit. The prompt holds the JSON schema, default areas and the rulebook: WoFlV, building code, Neufert, adjacency. It must answer with JSON only. It turns words into room types, wanted areas and links between rooms. It places nothing: no coordinates, no walls."><span class="pbadge">LLM</span>Names<span class="pmono">qwen3.8-27b</span></div>
+    <div class="pbody">
+      <p class="ptxt" id="p1txt"><span id="p1a" class="u1"></span><span id="p1s1"></span><span id="p1b" class="u2"></span><span id="p1s2"></span><span id="p1c" class="u3"></span><i class="pcaret" id="p1caret"></i></p>
+      <svg id="p1svg" class="psvg" style="top:84px" width="552" height="122" viewBox="0 0 552 122"></svg>
+      <div class="mono pjson" id="p1json" style="top:208px; left:14px">{"rooms":[4 x {id,type,area}],"links":[..."near"]}</div>
+    </div>
+    <div class="pchips">
+      <span class="pchip fill" data-tip="Constrained by prompt, then by code|Asked for JSON only at temperature 0.1. The reply is cut to its first {...} block and passed to sanitizeBrief(): the room type must be on the list, the area is clamped to 2 to 40 m², at most 8 rooms, links only between rooms that exist.">T 0.1 · JSON only</span>
+      <span class="pchip" data-tip="A fallback that always answers|If the server is off, slow (45 s) or answers nonsense, the rules parser in shared/briefText.js reads the same sentence, English or German, and the app says which one answered.">45 s, else rules</span>
+    </div>
+  </div>
+
+  <div class="pcard pop" id="p2" style="--c:#ffc533; --i:2; left:680px; top:246px; width:560px; height:346px">
+    <div class="phead" data-tip="Reads. Does not segment.|The server's vision model gets the picture and one instruction: a footprint and rooms as rectangles in metres, origin top left, y down; use the numbers written on the sketch, otherwise estimate. No pixel mask is made. planImport then clips every rectangle to the footprint and checks it. 120 s limit. Tested on one drawn sketch with German labels: 4 of 4 rooms right in 9 s. Not tried on a real plan photo yet."><span class="pbadge">VLM</span>Reads<span class="pmono">same server</span></div>
+    <div class="pbody">
+      <div class="p2img" style="left:14px; top:12px; width:280px; height:218px">
+        <img src="{{AI_PLAN_IMG}}" alt="" style="width:100%; height:100%; display:block">
+        <i class="p2hl" style="left:5.56%; top:7.14%; width:44.4%; height:47.1%; --k:#ff6a47"></i>
+        <i class="p2hl" style="left:50%; top:7.14%; width:44.4%; height:35.7%; --k:#ffc533"></i>
+        <i class="p2hl" style="left:5.56%; top:54.3%; width:44.4%; height:38.6%; --k:#7fb6d9"></i>
+        <i class="p2hl" style="left:50%; top:42.9%; width:44.4%; height:50%; --k:#9bd0a8"></i>
+        <i class="p2scan" id="p2scan"></i>
+      </div>
+      <div class="mono pjson p2json" id="p2json" style="left:306px; top:10px">
+        <span>{"footprint":</span><span>  {"w":8,"d":6},</span><span> "rooms":[</span><span>  {"type":"bedroom",</span><span>   "x":0,"y":0,</span><span>   "w":4,"d":3.3},</span><span>  ...3 more]}</span>
+      </div>
+    </div>
+    <div class="pchips">
+      <span class="pchip fill" data-tip="A test, not a benchmark|One generated sketch with four rooms: all four came back with the right size, in 9 seconds. The sizes were read from the labels. A real hand-drawn photo is still to be tested.">9 s · 4 of 4 rooms</span>
+      <span class="pchip dash" data-tip="Roof photos go to CLIP|CLIP ViT-B/32 runs as a small service on the server and names a roof photo zero-shot from seven sentences of the form: a photo of a house with a gabled roof. 3 of 4 right on four generated photos: a sanity check, not a benchmark. It names the roof shape; it does not touch the plan.">CLIP ViT-B/32 → roofs</span>
+    </div>
+  </div>
+
+  <div class="pcard pop" id="p3" style="--c:#7fb6d9; --i:3; left:1264px; top:246px; width:560px; height:346px">
+    <div class="phead" data-tip="Segments. Classical CV.|Notebook 01_plan_reading on the GX10, OpenCV only. Walls are the pixels below 128. Twice the 90th percentile of cv2.distanceTransform on them is the wall thickness. cv2.dilate with a square of one door width (0.9 m) seals the door gaps. cv2.connectedComponentsWithStats (4-connected) labels the free regions: those touching the border are the outside, the others grow back by half a wall and become rectangles in metres. Regions that are not rectangles (fill under 0.75) or tiny (under 1.5 m²) are dropped and reported. A synthetic test plan: 5 of 5 rooms. Not tried on a real scan."><span class="pbadge">OPENCV</span>Segments<span class="pmono">notebook 01</span></div>
+    <div class="pbody">
+      <svg id="p3svg" class="psvg" style="left:12px; top:8px" width="252" height="196" viewBox="0 0 252 196"></svg>
+      <ol class="p3steps mono" id="p3steps" style="left:280px; top:8px">
+        <li data-tip="gray &lt; 128|walls = (gray &lt; 128): a binary mask. Walls are dark lines on a light plan."><b>1</b>gray &lt; 128</li>
+        <li data-tip="cv2.distanceTransform|DIST_L2, 3x3: the distance of every wall pixel to the nearest free pixel. Twice its 90th percentile is the wall thickness in pixels, which also gives the scale in metres per pixel."><b>2</b>distanceTransform</li>
+        <li data-tip="cv2.dilate|A square kernel of 2r+1 pixels, r = half a door width (0.9 m) plus one pixel. Door gaps close, so every room becomes one closed region."><b>3</b>dilate · 0.9 m</li>
+        <li data-tip="cv2.connectedComponentsWithStats|Connectivity 4 on the free pixels. Every label gets a bounding box and an area. Labels touching the image border are the outside."><b>4</b>connectedComponents</li>
+        <li data-tip="Rectangles in metres|The box grows back by the dilation radius plus half a wall; pixels times the scale are metres. fill = area / box area: under 0.75 is not a rectangle. The result is the room JSON the app imports (shared/planImport.js)."><b>5</b>rect → metres</li>
+      </ol>
+      <div class="p3cap" id="p3cap" style="left:14px; top:212px">dark pixels are walls</div>
+    </div>
+    <div class="pchips">
+      <span class="pchip fill" data-tip="A synthetic test plan|Five rooms drawn with 0.9 m door gaps. All five came back as rectangles of the right size. The sample plan of the app was made this way. Not a real building.">5 of 5 rooms</span>
+      <span class="pchip dash" data-tip="Tested, not used here|SAM 2.1 (hiera-tiny) and Grounding DINO (tiny) ran zero-shot on roof photos in notebooks 02 and 05 on the server. They could refine or label these regions in a next step. They are not part of the plan reading and not in the app.">SAM 2.1 · DINO: tested</span>
+    </div>
+  </div>
+
+  <!-- the check between the two rows -->
+  <div class="pmerge pop" style="--i:4; left:96px; top:618px; width:1728px; height:52px">
+    <span class="pbadge" style="--c:#fff">CHECK</span><b data-tip="Models propose. Code decides.|Whatever read the input, the result has one shape: a footprint plus rooms as rectangles in metres, or a brief with room types, areas and links. sanitizeBrief and planImport check it before anything is built. The answer of a model is data, never code.">Models propose. Code decides.</b>
+    <span class="pchip">types on a list</span><span class="pchip">areas 2 to 40 m²</span><span class="pchip">8 rooms at most</span><span class="pchip">rectangles clipped</span>
+  </div>
+
+  <!-- row B: code only -->
+  <div class="pcard pop" id="p4" style="--c:#4fbf7f; --i:5; left:96px; top:696px; width:396px; height:376px">
+    <div class="phead" data-tip="Generates. No model.|generatePlans in shared/plans.js: 300 random slicing trees, each a guillotine partition of the footprint with the rooms in random order and the stair hall pinned around the stair opening. Every tree is scored by scorePlan. The best get 40 refinements each: move one cut by up to 7 %, keep it only if the score rises. Three different plans are kept. Seeded: the same inputs give the same plans."><span class="pbadge">RULES</span>Generates</div>
+    <div class="pbody"><svg id="p4svg" class="psvg" width="388" height="262" viewBox="0 0 388 262"></svg></div>
+    <div class="pchips">
+      <span class="pchip fill" data-tip="Search, not a network|300 random trees are drawn and scored, then refined. Each score is a weighted sum of six parts (area, shape, headroom, access, links, daylight) minus 0.03 per warning.">300 trees</span>
+      <span class="pchip" data-tip="Refine|The best trees get 40 random moves each: one cut moves by up to 7 %. A move is kept only if the score rises.">40 moves</span><span class="pchip" id="p4ms">31 ms</span>
+    </div>
+  </div>
+
+  <div class="pcard pop" id="p5" style="--c:#fff; --i:6; left:540px; top:696px; width:396px; height:376px">
+    <div class="phead" data-tip="Draws.|techPrimitives (client/src/lib/techPlan.js) turns the layout into one list of primitives: line, arc, text and filled polygon. Outer walls 36.5 cm, partitions 11.5 cm, door and window openings, door swings from shared/doors.js, stair, dimension chains, title block. The list is written twice: as DXF R12 with German layer names and the wall sections as black SOLID fills, and as an A3 sheet at 1:50 (SVG)."><span class="pbadge">CODE</span>Draws<span class="pmono">techPlan.js</span></div>
+    <div class="pbody"><svg id="p5svg" class="psvg" width="388" height="262" viewBox="0 0 388 262"></svg></div>
+    <div class="pchips"><span class="pchip fill">DXF R12</span><span class="pchip" data-tip="One sheet|An A3 sheet at 1:50 with frame and title block (Schriftfeld), as SVG: the wall sections are filled polygons.">SVG A3 1:50</span></div>
+  </div>
+
+  <div class="pcard pop" id="p6" style="--c:#fff; --i:7; left:984px; top:696px; width:396px; height:376px">
+    <div class="phead" data-tip="Extrudes.|The same wall list becomes solids. wallsOf finds the partitions and their door openings; wallSolid gives both faces, the jambs, the lintel and the cut face on top as a second material, black. The outer shell follows the roof height field, and a half-timbered facade is added as real geometry. The whole scene leaves the app as one .glb file."><span class="pbadge">CODE</span>Extrudes</div>
+    <div class="pbody"><svg id="p6svg" class="psvg" width="388" height="262" viewBox="0 0 388 262"></svg></div>
+    <div class="pchips"><span class="pchip fill" data-tip="Two wall types|Outer walls 36.5 cm, partitions 11.5 cm: the thicknesses of the technical plan. The 3D shell is 40 cm thick with plaster.">36.5 / 11.5 cm</span><span class="pchip" data-tip="One file|The whole scene leaves the app as one .glb: the connector to Blender and Unreal. Revit gets the plan as numbers instead (demo.json).">.glb</span></div>
+  </div>
+
+  <div class="pcard pop" id="p7" style="--c:#ffc533; --i:8; left:1428px; top:696px; width:396px; height:376px">
+    <div class="phead" data-tip="You pick the renderer.|Blender is free and open source, Revit needs an Autodesk licence, so the app offers both and does not choose for you. The same plan feeds both."><span class="pbadge">YOU PICK</span>Renders</div>
+    <div class="pbody">
+      <i class="pghost" style="top:10px"></i><i class="pghost" style="top:122px"></i>
+      <div class="ptile" id="p7a" style="top:10px" data-tip="Blender, free|Blender 5.2, Cycles path tracing on the laptop GPU, 24 to 28 s a picture, plain daylight and CC0 textures from Poly Haven. The walk view saves the scene as one .glb file. Open source, no licence.">
+        <i class="plogo" style="background:#ea7600"><svg viewBox="0 0 24 24"><path d="M4 8h4l2-3h4l2 3h4v11H4zM12 17a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z"/></svg></i>
+        <div><b>Blender</b><s class="free">FREE</s><small>.glb · Cycles</small></div><img src="{{IMG_render_exterior}}" alt="">
+      </div>
+      <div class="ptile" id="p7b" style="top:122px" data-tip="Revit, licence|Revit 2025 with the German architecture template. A small add-in (pipeline/revit/DemoBuild) builds DEMO.rvt from the plan of the app: walls of 36.5 and 11.5 cm, floors, the roof type of the template, doors and windows, a floor plan with the cut walls filled black and three 3D views. Needs an Autodesk licence. It compiles against the Revit 2025 API; it has not been run on this machine yet, so the picture is a placeholder until it has.">
+        <i class="plogo" style="background:#0696d7"><svg viewBox="0 0 24 24"><path d="M4 20V6l8-3 8 3v14zM9 20v-6h6v6"/></svg></i>
+        <div><b>Revit</b><s class="lic">LICENCE</s><small>DEMO.rvt</small></div><img src="{{IMG_revit_exterior}}" alt="">
+      </div>
+    </div>
+    <div class="pchips"><span class="pchip fill">24 to 28 s</span><span class="pchip">German template</span></div>
+  </div>
+
+  <svg id="pconn" class="abs fade" style="--i:9; left:0; top:0; pointer-events:none" width="1920" height="1104" viewBox="0 0 1920 1104"></svg>
+</section>

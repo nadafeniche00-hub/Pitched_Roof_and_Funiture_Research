@@ -35,3 +35,5 @@ pipeline/render/unreal/*.log
 pipeline/revit/TemplateExport/bin/
 pipeline/revit/TemplateExport/obj/
 pipeline/data/revit/_rte/
+pipeline/revit/DemoBuild/bin/
+pipeline/revit/DemoBuild/obj/

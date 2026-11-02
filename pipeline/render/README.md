@@ -1,6 +1,6 @@
 # Realistic 3D view: the walk-view scene in Blender and Unreal Engine
 
-The connector is one **glTF 2.0 binary** (`.glb`). The walk view writes it with names that carry the meaning (`wall_outer`, `roof`, `floor`, `ground`,
+The connector is one **glTF 2.0 binary** (`.glb`). It is the free way: Blender is open source. The export button of the walk view offers a second way, Revit (needs a licence, see `pipeline/revit/README.md`), and the user chooses. The partition walls are solids as thick as in the technical plan (11.5 cm) with their cut faces as a second, black material (`partition_cut`); the facade is a half-timbered one made of real geometry (`timber`, `plinth`, `window_frame`, `sill`, `shutter`). The walk view writes it with names that carry the meaning (`wall_outer`, `roof`, `floor`, `ground`,
 `bark`, `foliage`, `glass`, `window_frame`, `furniture_<id>`, ...). Blender reads it with its built-in glTF importer, Unreal Engine 5.8 with its own importer
 (Interchange). No add-on, no converter in between.
 
