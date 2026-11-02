@@ -1,4 +1,4 @@
-/* ---------- the three AI helper slides: animations built from the real test results (a typed sentence, a drawn sketch, a drawn roof) */
+/* ---------- the two AI helper slides: animations built from the real test results (a typed sentence, a drawn sketch, a drawn roof) */
 const AIV = (() => {
   const NS = 'http://www.w3.org/2000/svg';
   const S = (tag, a = {}, p) => { const e = document.createElementNS(NS, tag); for (const k in a) e.setAttribute(k, a[k]); if (p) p.appendChild(e); return e; };
@@ -15,59 +15,8 @@ const AIV = (() => {
   const hide0 = (e, tf = 'scale(.2)') => { e.style.transition = 'none'; e.style.opacity = 0; e.style.transform = tf; };
   const cnt = (el, to, ms, f = (v) => Math.round(v).toString()) => { const t0 = performance.now(); (function s() { const k = Math.min(1, (performance.now() - t0) / ms), e = 1 - Math.pow(1 - k, 3); el.textContent = f(to * e); if (k < 1) setTimeout(s, 30); })(); };
 
-  /** a mascot as SVG shapes in a 220 x 220 box (Reader: glasses, Looker: monocle, Glancer: lightning) */
-  function mascot(kind) {
-    const col = { reader: '#ffc533', looker: '#5fa8e0', glancer: '#ff4d2e' }[kind];
-    const acc = {
-      reader: '<g fill="none" stroke="#14161c" stroke-width="6"><circle cx="80" cy="108" r="27"/><circle cx="140" cy="108" r="27"/><path d="M107 108h6"/></g>',
-      looker: '<g fill="none" stroke="#14161c" stroke-width="6"><circle cx="140" cy="108" r="36"/><path d="M168 132q22 30 4 62"/></g>',
-      glancer: '<path d="M122 2L88 54h24l-12 40 44-56h-26z" fill="#ffc533" stroke="#14161c" stroke-width="5" stroke-linejoin="round"/><g stroke="#14161c" stroke-width="6" stroke-linecap="round"><path d="M14 112h24M6 138h28M16 164h24"/></g>',
-    }[kind];
-    return `<ellipse cx="110" cy="206" rx="62" ry="9" fill="#000" opacity=".25"/><circle cx="110" cy="118" r="84" fill="${col}" stroke="#14161c" stroke-width="6"/><ellipse class="aieye" cx="80" cy="108" rx="17" ry="21" fill="#fff"/><ellipse class="aieye" cx="140" cy="108" rx="17" ry="21" fill="#fff"/><circle class="aipupil" cx="84" cy="112" r="8" fill="#14161c"/><circle class="aipupil" cx="144" cy="112" r="8" fill="#14161c"/><path d="M82 152q28 26 56 0" fill="none" stroke="#14161c" stroke-width="6" stroke-linecap="round"/>${acc}`;
-  }
-
   let RUN = 0;
   const PLAY = {};
-
-  // ---- 1: three helpers, each takes one kind of input and returns one kind of answer
-  PLAY.ai1 = async (w) => {
-    const svg = $('#ai1svg'); svg.innerHTML = '';
-    const cols = [{ x: 350, kind: 'reader', c: '#ffc533', inp: 'WORDS', out: 'ROOMS', name: 'Reader', sub: 'reads words' }, { x: 960, kind: 'looker', c: '#5fa8e0', inp: 'SKETCH', out: 'A PLAN', name: 'Looker', sub: 'reads sketches' }, { x: 1570, kind: 'glancer', c: '#ff4d2e', inp: 'PHOTO', out: 'ROOF TYPE', name: 'Glancer', sub: 'names roofs' }];
-    const packet = (d, color, begin) => { const c = S('circle', { r: 13, fill: color, stroke: '#14161c', 'stroke-width': 4 }, svg); S('animateMotion', { dur: '1.5s', begin: begin + 's', repeatCount: 'indefinite', path: d }, c); };
-    for (const k of cols) {
-      const x = k.x;
-      // input card
-      const inp = S('g', { class: 'aisv' }, svg); hide0(inp, 'translateY(-40px) scale(.9)');
-      S('rect', { x: x - 195, y: 18, width: 400, height: 150, fill: k.c }, inp);
-      S('rect', { x: x - 205, y: 8, width: 400, height: 150, fill: '#fff', stroke: '#14161c', 'stroke-width': 5 }, inp);
-      const t = S('text', { x: x - 180, y: 138, 'font-size': 34, 'font-weight': 900, fill: '#14161c' }, inp); t.textContent = k.inp;
-      if (k.kind === 'reader') S('path', { d: `M${x - 20} 45h170M${x - 20} 78h140M${x - 20} 111h95`, stroke: '#14161c', 'stroke-width': 11, 'stroke-linecap': 'round', opacity: .8 }, inp);
-      if (k.kind === 'looker') S('path', { d: `M${x + 15} 28h150v100h-150zM${x + 90} 28v100M${x + 15} 85h75`, fill: 'none', stroke: '#14161c', 'stroke-width': 6 }, inp);
-      if (k.kind === 'glancer') { S('rect', { x: x + 5, y: 28, width: 165, height: 100, fill: '#bcd9ee', stroke: '#14161c', 'stroke-width': 5 }, inp); S('path', { d: `M${x + 25} 118l62-62 62 62z`, fill: '#a4503a', stroke: '#14161c', 'stroke-width': 5, 'stroke-linejoin': 'round' }, inp); }
-      // helper
-      const m = S('g', { class: 'aisv' }, svg); hide0(m, 'scale(.3)');
-      const bob = S('g', { class: 'aibob', style: `animation-delay:${-cols.indexOf(k)}s` }, m);
-      const inner = S('g', { transform: `translate(${x - 125} 215) scale(1.136)` }, bob); inner.innerHTML = mascot(k.kind);
-      const nm = S('text', { x, y: 508, 'text-anchor': 'middle', 'font-size': 48, 'font-weight': 900, fill: '#fff' }, svg); nm.textContent = k.name; nm.style.opacity = 0; nm.style.transition = 'opacity .5s';
-      const sb = S('text', { x, y: 546, 'text-anchor': 'middle', 'font-size': 26, 'font-weight': 700, fill: '#9aa1ab' }, svg); sb.textContent = k.sub; sb.style.opacity = 0; sb.style.transition = 'opacity .5s';
-      // output card
-      const out = S('g', { class: 'aisv' }, svg); hide0(out, 'translateY(40px) scale(.9)');
-      S('rect', { x: x - 195, y: 628, width: 400, height: 160, fill: k.c }, out);
-      S('rect', { x: x - 205, y: 618, width: 400, height: 160, fill: '#fff', stroke: '#14161c', 'stroke-width': 5 }, out);
-      const o = S('text', { x: x - 180, y: 762, 'font-size': 30, 'font-weight': 900, fill: '#14161c' }, out); o.textContent = k.out;
-      if (k.kind === 'reader') { for (const [cx, cy, r, c] of [[x - 120, 676, 28, '#2b63a8'], [x - 55, 716, 22, '#1d7c8f'], [x + 25, 674, 30, '#2f7d4f'], [x + 110, 716, 26, '#b0743a']]) S('circle', { cx, cy, r, fill: c, stroke: '#14161c', 'stroke-width': 4 }, out); S('path', { d: `M${x - 98} 690L${x - 74} 706M${x - 36} 706L${x - 8} 690`, stroke: '#14161c', 'stroke-width': 4, 'stroke-dasharray': '6 5' }, out); }
-      if (k.kind === 'looker') for (const [rx, ry, rw, rh, c] of [[x - 30, 636, 90, 60, '#2b63a8'], [x + 60, 636, 90, 48, '#8a3d86'], [x - 30, 696, 90, 44, '#1d7c8f'], [x + 60, 684, 90, 56, '#b0743a']]) S('rect', { x: rx, y: ry, width: rw, height: rh, fill: c, stroke: '#14161c', 'stroke-width': 4 }, out);
-      if (k.kind === 'glancer') { const ic = S('path', { d: ICON.hipped, transform: `translate(${x + 20} 626) scale(5.6)`, fill: 'none', stroke: '#14161c', 'stroke-width': 1.1, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, out); const h = S('text', { x: x + 10, y: 756, 'font-size': 34, 'font-weight': 900, fill: '#ff4d2e' }, out); h.textContent = 'Hipped'; }
-      await w(250); appear(inp, 600);
-      await w(500);
-      S('path', { d: `M${x} 158V228`, stroke: '#fff', 'stroke-width': 4, 'stroke-dasharray': '3 14', 'stroke-linecap': 'round', fill: 'none' }, svg); packet(`M${x} 158V232`, k.c, 0);
-      await w(700); appear(m, 700); nm.style.opacity = 1; sb.style.opacity = 1;
-      await w(500);
-      S('path', { d: `M${x} 560V628`, stroke: '#fff', 'stroke-width': 4, 'stroke-dasharray': '3 14', 'stroke-linecap': 'round', fill: 'none' }, svg); packet(`M${x} 560V634`, '#fff', 0.6);
-      await w(700); appear(out, 600);
-      await w(500);
-    }
-  };
 
   // ---- 2: the Reader and the Looker side by side
   const READER = { sentence: 'Two bedrooms, a bathroom next to the bedrooms, a study of 6 m² and an open kitchen with the living room', rooms: [

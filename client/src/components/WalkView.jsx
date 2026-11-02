@@ -9,8 +9,10 @@ import { SparkRenderer } from '@sparkjsdev/spark';
 import { buildSplats } from '../lib/splat.js';
 import { buildForest } from '../lib/forest.js';
 import { wallsOf, wallStrip } from '../lib/walls.js';
-import { Icon } from './Icon.jsx';
+import { Icon, IconBtn } from './Icon.jsx';
+import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
 import { partInfo, LAYERS } from '../lib/partInfo.js';
+import { fmtMm } from '@shared/roofTemplates.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
@@ -57,16 +59,23 @@ function shellGeometries(room) {
     if (n[0] * o[0] + n[1] * o[1] + n[2] * o[2] < 0) { [p1, p3] = [p3, p1]; }
     tri(out, p0, p1, p2); tri(out, p0, p2, p3);
   };
+  // roof height at the left and right edge of a cell: sloped on the open roof, level where a dormer or a flat ceiling stands; 0 outside
+  const edges = (i, j) => {
+    if (i < 0 || j < 0 || i >= nx || j >= ny) return [0, 0];
+    const hc = h[j * nx + i], x0 = i * res, x1 = x0 + res;
+    return hc > base((x0 + x1) / 2) + 1e-6 ? [hc, hc] : [Math.min(base(x0), hc + 0.5), base(x1)];
+  };
   for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
     const hc = h[j * nx + i], x0 = i * res, x1 = x0 + res, z0 = j * res, z1 = z0 + res;
-    const flat = hc > base((x0 + x1) / 2) + 1e-6;
-    const ha = flat ? hc : Math.min(base(x0), hc + 0.5), hb = flat ? hc : base(x1);
+    const [ha, hb] = edges(i, j);
     quadOut(top, [x0, ha, z0], [x0, ha, z1], [x1, hb, z1], [x1, hb, z0], [0, 1, 0]);
     for (const [di, dj] of [[1, 0], [0, 1], [-1, 0], [0, -1]]) {
       const hn = at(i + di, j + dj);
       if (hn >= hc - 0.12) continue;
-      if (di) { const x = di > 0 ? x1 : x0; quadOut(wall, [x, hn, z0], [x, hn, z1], [x, hc, z1], [x, hc, z0], [di, 0, 0]); }
-      else { const z = dj > 0 ? z1 : z0; quadOut(wall, [x0, hn, z], [x1, hn, z], [x1, hc, z], [x0, hc, z], [0, 0, dj]); }
+      // a wall runs from the roof surface of the lower cell up to the roof surface of this one, both sloped (no saw-tooth along gables, no hairline gaps along dormer cheeks)
+      const [na, nb] = edges(i + di, j + dj);
+      if (di) { const x = di > 0 ? x1 : x0, t = di > 0 ? hb : ha, b = di > 0 ? na : nb; quadOut(wall, [x, b, z0], [x, b, z1], [x, t, z1], [x, t, z0], [di, 0, 0]); }
+      else { const z = dj > 0 ? z1 : z0; quadOut(wall, [x0, na, z], [x1, nb, z], [x1, hb, z], [x0, ha, z], [0, 0, dj]); }
     }
   }
   const mk = (pos) => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); return addUV(g); };
@@ -98,6 +107,13 @@ export default function WalkView() {
   const layout = useSelector((s) => s.layout.plan);
   const result = useSelector((s) => s.analysis.result);
   const tipRef = useRef(null);
+  const exportGlb = () => new Promise((resolve, reject) => { // the scene as one .glb: the connector to Blender and Unreal
+    const t = T.current;
+    if (!t?.content) { reject(new Error('the scene is not built yet')); return; }
+    new GLTFExporter().parse([t.content, t.forest].filter(Boolean), (buf) => resolve(new Blob([buf], { type: 'model/gltf-binary' })), reject, { binary: true, onlyVisible: false });
+  });
+  const saveGlb = async () => { const b = await exportGlb(), a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'usable-space-scene.glb'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 3000); };
+  if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('debug')) window.__walkExport = exportGlb; // test hook
   const enterBtn = useRef(null);
   const hudBox = useRef(null);
   const dataRef = useRef({});
@@ -213,7 +229,7 @@ export default function WalkView() {
       const info = partInfo(part, hit, d);
       tip.style.display = 'block';
       tip.style.transform = `translate(${Math.min(e.clientX - r.left + 18, r.width - 270)}px, ${Math.min(e.clientY - r.top + 16, r.height - 40 - (info.layers ? 22 * info.layers.length : 0) - 24 * info.rows.length)}px)`;
-      tip.innerHTML = `<b>${info.title}</b>${info.rows.map(([k, v]) => `<div><span>${k}</span>${v}</div>`).join('')}${info.layers ? `<p>Layers, outside to inside (typical build-up)</p>${info.layers.map((l) => `<div class="ly"><i style="background:#${l.color.toString(16).padStart(6, '0')}"></i>${l.name}<em>${l.mm < 1 ? '0.2' : l.mm} mm</em></div>`).join('')}` : ''}`;
+      tip.innerHTML = `<b>${info.title}</b>${info.rows.map(([k, v]) => `<div><span>${k}</span>${v}</div>`).join('')}${info.layers ? `<p>Layers, outside to inside (${info.layersNote || 'typical build-up'})</p>${info.layers.map((l) => `<div class="ly"><i style="background:#${l.color.toString(16).padStart(6, '0')}"></i>${l.name}<em>${fmtMm(l.mm)}</em></div>`).join('')}` : ''}`;
       const kind = info.explode;
       if (kind && hit.face) {
         const nrm = hit.face.normal.clone().transformDirection(hit.object.matrixWorld);
@@ -325,7 +341,8 @@ export default function WalkView() {
     const plasterOut = new THREE.MeshStandardMaterial(plain ? { color: 0xece9e2, roughness: 1, side: THREE.FrontSide } : { map: fach, roughness: 1, side: THREE.FrontSide });
     const inside = new THREE.MeshStandardMaterial({ ...wallMaps, color: coolWall, roughness: 1, side: THREE.BackSide });
     const tiles = new THREE.MeshStandardMaterial({ ...roofMaps, color: plain ? new THREE.Color(0xa4503a) : new THREE.Color(0.88, 0.84, 0.82), roughness: 1, side: THREE.FrontSide });
-    const tag = (mesh, u) => { Object.assign(mesh.userData, u); return mesh; };
+    plaster.name = 'partition'; plasterOut.name = 'wall_outer'; inside.name = 'wall_inner'; tiles.name = 'roof';
+    const tag = (mesh, u) => { Object.assign(mesh.userData, u); if (u.part) mesh.name = u.part === 'partition' ? 'partition' : u.part + (u.interior ? '_inner' : '_outer'); return mesh; }; // names carry over into the exported glTF
 
     // lights
     const L = (o) => { o.userData.kind = 'light'; scene.add(o); return o; };
@@ -362,8 +379,10 @@ export default function WalkView() {
     lower.castShadow = true; lower.receiveShadow = true;
     content.add(lower);
     const winMat = new THREE.MeshStandardMaterial({ color: 0x1d2b3a, roughness: 0.15, metalness: 0.4 });
+    winMat.name = 'glass_dark';
     for (const [z, rot] of [[-0.01, Math.PI], [D + 0.01, 0]]) for (let i = 0; i < 2; i++) {
       const w = tag(new THREE.Mesh(new THREE.PlaneGeometry(1.1, 1.3), winMat), { density: 500, size: 0.05 });
+      w.name = 'window_lower';
       w.position.set(W * (0.28 + i * 0.44), -STOREY / 2 + 0.1, z); w.rotation.y = rot;
       content.add(w);
     }
@@ -380,12 +399,14 @@ export default function WalkView() {
     if (sr) shape.holes.push(new THREE.Path([new THREE.Vector2(sr[0], -sr[1]), new THREE.Vector2(sr[0], -sr[3]), new THREE.Vector2(sr[2], -sr[3]), new THREE.Vector2(sr[2], -sr[1])]));
     const floor = tag(new THREE.Mesh(new THREE.ShapeGeometry(shape).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ ...floorMaps, color: plain ? new THREE.Color(0xcaa57a) : new THREE.Color(0.95, 0.92, 0.9), roughness: 1 })), { part: 'floor', interior: true, density: 800, size: 0.045 });
     floor.receiveShadow = true;
+    floor.material.name = 'floor';
     content.add(floor);
     const colliders = [];
     if (sr) {
       colliders.push([sr[0] - 0.02, sr[1] - 0.02, sr[2] + 0.02, sr[3] + 0.02]);
       const shaft = new THREE.Mesh(new THREE.BoxGeometry(sr[2] - sr[0], STOREY, sr[3] - sr[1]), new THREE.MeshBasicMaterial({ color: 0x15181d, side: THREE.BackSide }));
       shaft.position.set((sr[0] + sr[2]) / 2, -STOREY / 2, (sr[1] + sr[3]) / 2);
+      shaft.name = 'stair_shaft'; shaft.material.name = 'stair_shaft';
       content.add(shaft);
     }
 
@@ -404,6 +425,7 @@ export default function WalkView() {
       if (top - sill < 0.3) continue;
       const glassMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
       glassMat.color.setRGB(1.6, 1.85, 2.2); // brighter than 1: the bloom pass makes it glow
+      glassMat.name = 'glass';
       const glass = tag(new THREE.Mesh(new THREE.PlaneGeometry(r[2] - r[0], top - sill), glassMat), { part: 'window', density: 700, size: 0.05 });
       glass.position.set(cx, (top + sill) / 2, cz);
       glass.rotation.y = nS ? 0 : Math.PI;
@@ -414,9 +436,11 @@ export default function WalkView() {
       area.userData.kind = 'light';
       scene.add(area);
       const fm = new THREE.MeshStandardMaterial({ color: 0xf2f2f2, roughness: 0.5 });
+      fm.name = 'window_frame';
       const hw = r[2] - r[0], hh = top - sill;
       for (const [fw, fh, fx, fy] of [[hw + 0.08, 0.05, 0, hh / 2], [hw + 0.08, 0.05, 0, -hh / 2], [0.05, hh, hw / 2, 0], [0.05, hh, -hw / 2, 0], [0.03, hh, 0, 0]]) {
         const f = new THREE.Mesh(new THREE.BoxGeometry(fw, fh, 0.06), fm);
+        f.name = 'window_frame';
         f.position.set(cx + fx, (top + sill) / 2 + fy, cz + (nS ? 0.01 : -0.01));
         content.add(f);
       }
@@ -429,7 +453,7 @@ export default function WalkView() {
       const model = buildFurniture(it.type, def.w, def.d, def.h, def.color);
       model.rotation.y = FRONT_ANGLE[it.rot] ?? 0;
       model.position.set((b[0] + b[2]) / 2, 0.003, (b[1] + b[3]) / 2);
-      model.traverse((o) => { if (o.isMesh) { o.userData.interior = true; o.userData.density = 1100; o.userData.size = 0.035; o.userData.part = 'furniture'; o.userData.itemId = it.id; } });
+      model.traverse((o) => { if (o.isMesh) { o.name = 'furniture_' + it.id; o.userData.interior = true; o.userData.density = 1100; o.userData.size = 0.035; o.userData.part = 'furniture'; o.userData.itemId = it.id; } });
       content.add(model);
       colliders.push([b[0], b[1], b[2], b[3]]);
     }
@@ -462,7 +486,8 @@ export default function WalkView() {
       </div>
       <div className="walkstage">
         <div ref={mount} className="walk" />
-        <div ref={tipRef} className="walktip" style={{ display: "none" }} /><button ref={enterBtn} className="walkenter" onClick={() => T.current?.enter?.()}><Icon name="enter" size={22} /> Enter</button><div className="walkhud" ref={hudBox} data-mode="out">
+        <div ref={tipRef} className="walktip" style={{ display: "none" }} /><IconBtn icon="download" className="walkexport" label="Export the scene as .glb for Blender and Unreal Engine" onClick={saveGlb} />
+        <button ref={enterBtn} className="walkenter" onClick={() => T.current?.enter?.()}><Icon name="enter" size={22} /> Enter</button><div className="walkhud" ref={hudBox} data-mode="out">
           <span ref={hud}>exterior</span>
           <div className="keys out">
             <kbd className="kc" data-tip="Drag to orbit"><Icon name="orbit" size={18} /></kbd>

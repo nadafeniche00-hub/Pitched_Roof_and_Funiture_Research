@@ -79,14 +79,20 @@ export function sharedEdge(a, b) {
 
 /** Counted and gross area of a rectangle, by roof height (same rule as the furniture engine). */
 export function countedArea(room, r, rules = DEFAULT_RULES) {
+  // each grid cell counts by its own height, weighted by how much of the cell lies inside the rectangle: walls that are not on the 10 cm grid
+  // no longer move area from one room to its neighbour (found by comparing with Shapely, COMPAS, TopologicPy and IfcOpenShell)
   const g = getGrid(room, RES);
-  const i0 = Math.max(0, Math.round(r[0] / RES)), i1 = Math.min(g.nx, Math.round(r[2] / RES));
-  const j0 = Math.max(0, Math.round(r[1] / RES)), j1 = Math.min(g.ny, Math.round(r[3] / RES));
+  const i0 = Math.max(0, Math.floor(r[0] / RES + EPS)), i1 = Math.min(g.nx, Math.ceil(r[2] / RES - EPS));
+  const j0 = Math.max(0, Math.floor(r[1] / RES + EPS)), j1 = Math.min(g.ny, Math.ceil(r[3] / RES - EPS));
+  const cover = (k, lo, hi) => Math.max(0, Math.min((k + 1) * RES, hi) - Math.max(k * RES, lo)) / RES;
   let counted = 0, gross = 0;
-  for (let j = j0; j < j1; j++) for (let i = i0; i < i1; i++) {
-    const h = g.h[j * g.nx + i];
-    gross += 1;
-    counted += h >= rules.fullH - EPS ? 1 : h >= rules.halfH - EPS ? rules.halfFactor : 0;
+  for (let j = j0; j < j1; j++) {
+    const wy = cover(j, r[1], r[3]);
+    for (let i = i0; i < i1; i++) {
+      const w = cover(i, r[0], r[2]) * wy, h = g.h[j * g.nx + i];
+      gross += w;
+      counted += w * (h >= rules.fullH - EPS ? 1 : h >= rules.halfH - EPS ? rules.halfFactor : 0);
+    }
   }
   const cell = RES * RES;
   return { counted: counted * cell, gross: gross * cell };

@@ -30,6 +30,7 @@ export function buildForest(cx, cz, y0, { seed = 3, clear = 9, outer = 46, trees
   ground.position.set(cx, y0 - 0.02, cz);
   ground.receiveShadow = true;
   ground.userData = { density: 90, size: 0.3, flat: true };
+  ground.name = 'ground'; ground.material.name = 'ground';
   g.add(ground);
 
   // foliage: irregular crowns (noisy surfaces) with vertex colours, dark inside and sunlit at the top, drawn as leaf-sized splats
@@ -62,6 +63,7 @@ export function buildForest(cx, cz, y0, { seed = 3, clear = 9, outer = 46, trees
     const trunk = new THREE.Mesh(paint(new THREE.CylinderGeometry(0.1, 0.26, h, 9, 4), 0, h, 28, 0.25, 0.05, 0.14, R), white());
     trunk.position.y = h / 2;
     trunk.userData = { density: 700, size: 0.045, flat: true };
+    trunk.name = 'bark';
     tree.add(trunk);
     if (pine) { // spruce: drooping, ragged tiers
       const tiers = 6 + Math.floor(R() * 3), hue = 140 + R() * 20, top = h + 1.2;
@@ -72,6 +74,7 @@ export function buildForest(cx, cz, y0, { seed = 3, clear = 9, outer = 46, trees
         cone.position.y = h * 0.32 + f * (top - h * 0.32);
         cone.rotation.y = R() * 6;
         cone.userData = { density: 150, size: 0.15, flat: true };
+        cone.name = 'foliage';
         tree.add(cone);
       }
     } else { // broad-leaved: several lumpy crowns on a bare trunk
@@ -83,6 +86,7 @@ export function buildForest(cx, cz, y0, { seed = 3, clear = 9, outer = 46, trees
         b.position.set((R() - 0.5) * 2.4, h + 0.2 + R() * 1.8, (R() - 0.5) * 2.4);
         b.scale.set(1.15, 0.85, 1.15);
         b.userData = { density: 130, size: 0.17, flat: true };
+        b.name = 'foliage';
         tree.add(b);
       }
     }
@@ -98,6 +102,7 @@ export function buildForest(cx, cz, y0, { seed = 3, clear = 9, outer = 46, trees
     b.position.set(cx + Math.cos(ang) * rad, y0 + rr * 0.35, cz + Math.sin(ang) * rad);
     b.scale.y = 0.6;
     b.userData = { density: 260, size: 0.1, flat: true };
+    b.name = 'foliage';
     g.add(b);
   }
 
@@ -120,6 +125,7 @@ export function buildForest(cx, cz, y0, { seed = 3, clear = 9, outer = 46, trees
   gg.computeVertexNormals();
   const grass = new THREE.Mesh(gg, white());
   grass.userData = { density: 2600, size: 0.05, flat: true, noRay: true };
+  grass.name = 'grass';
   g.add(grass);
   return g;
 }

@@ -278,3 +278,5 @@ table.params tr.own .layer { color: var(--accent); }
 .walkhud[data-mode='out'] .keys.in, .walkhud[data-mode='in'] .keys.out { display: none; }
 .kc { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border: 2px solid #cfd3da; border-bottom-width: 4px; border-radius: 5px; font: 700 12px var(--body); color: #fff; background: rgba(255, 255, 255, 0.08); pointer-events: auto; }
 .facehint { display: flex; align-items: center; gap: 8px; }
+
+.walkexport { position: absolute; right: 16px; top: 16px; z-index: 5; background: rgba(20, 22, 28, 0.82); color: #fff; border-color: #fff; }

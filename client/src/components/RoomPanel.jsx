@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { CATALOG, PROGRAMS } from '@shared/catalog.js';
+import { roofTemplates, selectedRoofTemplate, setRoofTemplate } from '../lib/roofTemplates.js';
 import { roomActions } from '../store/roomSlice.js';
 import { itemsActions } from '../store/itemsSlice.js';
 import { resolveDormer } from '@shared/params.js';
@@ -53,6 +55,7 @@ export default function RoomPanel() {
   const room = useSelector((s) => s.room);
   const items = useSelector((s) => s.items);
   const set = (key) => (value) => dispatch(roomActions.setParam({ key, value }));
+  const [tpl, setTpl] = useState(() => selectedRoofTemplate().id);
   const groups = Object.entries(CATALOG).reduce((a, [k, v]) => { (a[v.group] ||= []).push([k, v]); return a; }, {});
 
   return (
@@ -64,6 +67,15 @@ export default function RoomPanel() {
         <Slider label="Knee wall" icon="kneewall" unit=" m" min={0} max={2} step={0.05} value={room.kneeWall} onChange={set('kneeWall')} />
         <Slider label="Roof pitch" icon="pitch" unit="°" min={15} max={70} step={1} value={room.pitch} onChange={set('pitch')} />
         <Slider label="Max. height" icon="heightRuler" unit=" m" min={2} max={4.5} step={0.1} value={room.maxHeight} onChange={set('maxHeight')} />
+        {roofTemplates.length > 1 && ( // only once the Revit export has been converted (pipeline/revit/convert_templates.mjs)
+          <label className="row" title="The layers shown when you hover the roof in the walk view">
+            <span className="rl"><Icon name="layers" size={18} />Roof build-up</span>
+            <select value={tpl} onChange={(e) => { setTpl(e.target.value); setRoofTemplate(e.target.value); }}>
+              {roofTemplates.map((t) => <option key={t.id} value={t.id}>{t.source === 'revit' ? `${t.name} · ${t.totalMm} mm` : t.name}</option>)}
+            </select>
+            <output />
+          </label>
+        )}
       </section>
 
       <section>

@@ -26,6 +26,15 @@ app.post('/api/ai/sketch', express.json({ limit: '12mb' }), async (req, res) => 
 app.post('/api/ai/roof', express.json({ limit: '12mb' }), async (req, res) => {
   try { res.json(await roofFromPhoto(req.body?.image)); } catch (e) { res.status(e.status || 502).json({ error: e.message || 'roof reading failed' }); }
 });
+// dev only, loopback only: the walk view posts its exported .glb here so pipeline/render/blender_render.py can pick it up
+app.post('/api/dev/glb', express.raw({ type: '*/*', limit: '300mb' }), (req, res) => {
+  const ip = req.socket.remoteAddress || '';
+  if (!/^(::1|127\.0\.0\.1|::ffff:127\.0\.0\.1)$/.test(ip)) return res.status(403).json({ error: 'local only' });
+  const dir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../pipeline/render/in');
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, 'scene.glb'), req.body);
+  res.json({ ok: true, bytes: req.body.length });
+});
 app.use(express.json({ limit: '200kb' }));
 app.get('/api/ai/status', async (_q, res) => res.json(await aiStatus()));
 app.post('/api/ai/brief', async (req, res) => {

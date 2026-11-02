@@ -41,6 +41,8 @@ img.shot { display: block; border: 4px solid #fff; box-shadow: 14px 14px 0 var(-
 .row .track { height: 38px; background: rgba(255,255,255,.1); }
 .slide:not(.dark) .row .track { background: var(--line); }
 .node { position: absolute; padding: 18px 30px; font-weight: 900; font-size: 38px; text-transform: uppercase; border: 4px solid var(--ink); background: #fff; }
+.rfig { position: relative; margin: 0; }
+.rfig figcaption { position: absolute; left: 18px; bottom: 18px; padding: 5px 16px; background: rgba(15,18,23,.8); color: #fff; font-weight: 800; font-size: 22px; letter-spacing: .12em; text-transform: uppercase; }
 {{AI_SLIDES_CSS}}
 </style>
 
@@ -157,14 +159,32 @@ img.shot { display: block; border: 4px solid #fff; box-shadow: 14px 14px 0 var(-
   </div>
 </section>
 
+<!-- 9c realistic view -->
+<section class="slide dark" data-step="4" id="s9c">
+  <div class="tag">Realistic view</div>
+  <h2 class="pop" style="font-size: 88px">Walk it, then render it</h2>
+  <div class="abs" style="left: 96px; top: 300px; display: grid; grid-template-columns: 596px 596px; gap: 26px 28px">
+    <figure class="rfig pop" style="--i:2"><img class="shot" src="{{IMG_render_exterior}}" width="596"><figcaption>Outside</figcaption></figure>
+    <figure class="rfig pop" style="--i:3"><img class="shot" src="{{IMG_render_section}}" width="596"><figcaption>Cut through the ridge</figcaption></figure>
+    <figure class="rfig pop" style="--i:4"><img class="shot" src="{{IMG_render_cutaway}}" width="596"><figcaption>Roof off</figcaption></figure>
+    <figure class="rfig pop" style="--i:5"><img class="shot" src="{{IMG_render_detail}}" width="596"><figcaption>Moss and grass</figcaption></figure>
+  </div>
+  <div class="abs" style="left: 1352px; top: 300px; width: 472px; display: grid; gap: 22px">
+    <div class="card pop" style="--i:3; padding: 18px 26px"><div class="tag" style="font-size: 20px; margin-bottom: 6px">1 · Export</div><p style="font-size: 30px; font-weight: 800; line-height: 1.15">The walk view saves one .glb file</p></div>
+    <div class="card pop" style="--i:4; padding: 18px 26px"><div class="tag" style="font-size: 20px; margin-bottom: 6px">2 · Blender 5.2</div><p style="font-size: 30px; font-weight: 800; line-height: 1.15">Cycles on the laptop GPU, 22 to 31 s a picture</p></div>
+    <div class="card pop" style="--i:5; padding: 18px 26px"><div class="tag" style="font-size: 20px; margin-bottom: 6px">3 · Unreal Engine 5.8</div><p style="font-size: 30px; font-weight: 800; line-height: 1.15">Opens the same file: 728 meshes, 697 materials</p></div>
+    <div class="card pop" style="--i:6; padding: 18px 26px"><div class="tag" style="font-size: 20px; margin-bottom: 6px">4 · Free textures</div><p style="font-size: 30px; font-weight: 800; line-height: 1.15">Poly Haven, CC0. Plain daylight, no lamps.</p></div>
+  </div>
+</section>
+
 {{AI_SLIDES_HTML}}
 
-<!-- 10 AI -->
+<!-- 10 AI: what the models see -->
 <section class="slide" data-step="4" id="s10">
-  <div class="tag">AI that reads a roof</div>
-  <h2 class="pop" style="font-size: 88px">Four models, one roof photo</h2>
-  <div class="abs" id="aipipe" style="left: 96px; top: 340px; width: 1730px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 50px"></div>
-  <p class="abs big pop" style="--i:9; left: 96px; top: 900px; width: 1500px">They find the roof, cut it out, guess its depth and name its shape. We use that to inspire the plan check, never to replace it.</p>
+  <div class="tag">What the models see</div>
+  <h2 class="pop" style="font-size: 88px; max-width: 1730px">Find it. Cut it out. Measure it.</h2>
+  <div class="abs" id="aipipe" style="left: 96px; top: 300px; width: 1730px"></div>
+  <p class="abs big pop" style="--i:9; left: 96px; top: 960px; width: 1730px; font-size: 38px">Four generated roof photos, three models. CLIP then names the shape: 3 of 4 right, the gabled house was read as a mansard. We use it to inspire the plan check, never to replace it.</p>
 </section>
 
 <!-- 11 server -->
@@ -175,7 +195,16 @@ img.shot { display: block; border: 4px solid #fff; box-shadow: 14px 14px 0 var(-
     <div><p class="big">Laptop graphics memory</p><div style="height:70px;background:rgba(255,255,255,.1);margin-top:12px"><div class="bar" data-w="6.6" style="background:#ffc533;display:flex;align-items:center;justify-content:flex-end;padding-right:16px;font-weight:900;font-size:36px;color:#0f1217;white-space:nowrap">8 GB</div></div></div>
     <div><p class="big">Office server (GX10)</p><div style="height:70px;background:rgba(255,255,255,.1);margin-top:12px"><div class="bar" data-w="100" style="background:#2f7d4f;display:flex;align-items:center;justify-content:flex-end;padding-right:16px;font-weight:900;font-size:36px;white-space:nowrap">121 GB, shared with the team</div></div></div>
   </div>
-  <p class="abs big pop" style="--i:6; left: 96px; top: 800px; width: 1600px">Big AI models and 16 map files fit there. The laptop would choke. The server also keeps running overnight.</p>
+  <p class="abs big pop" style="--i:6; left: 96px; top: 800px; width: 1600px">The 27-billion-parameter language model and 16 map files live there. The laptop runs the small CLIP model itself. The server also keeps working overnight.</p>
+</section>
+
+<!-- 11b tool test -->
+<section class="slide" data-step="4" id="s11b">
+  <div class="tag">Lab test</div>
+  <h2 class="pop" style="font-size: 88px; max-width: 1730px">One roof, five tools, same answer</h2>
+  <div class="abs" id="fwrows" style="left: 96px; top: 330px; width: 1060px"></div>
+  <div class="abs" id="fwcards" style="left: 1240px; top: 330px; width: 584px; display: grid; gap: 26px"></div>
+  <p class="abs big pop" style="--i:9; left: 96px; top: 900px; width: 1060px; font-size: 36px">Time for one attic, log scale. The comparison also found a bug in our own area count, up to 0.33 m² in a room. Fixed.</p>
 </section>
 
 <!-- 12 tools -->
@@ -193,7 +222,7 @@ img.shot { display: block; border: 4px solid #fff; box-shadow: 14px 14px 0 var(-
     <div style="display:grid;gap:26px">
       <div class="card pop" style="--i:2;padding:26px 34px"><p class="big">Map volunteers tag some homes, not all.</p></div>
       <div class="card pop" style="--i:3;padding:26px 34px"><p class="big">The surveyed numbers come from one city.</p></div>
-      <div class="card pop" style="--i:4;padding:26px 34px"><p class="big">Pitch and wall height are not the whole story.</p></div>
+      <div class="card pop" style="--i:4;padding:26px 34px"><p class="big">AI names a roof shape right 3 times in 4, not always.</p></div>
     </div>
     <div style="display:grid;gap:26px">
       <div class="card pop" style="--i:5;padding:26px 34px;background:#ffe9e3"><p class="big">Next: more cities, 16 states of surveyed roofs.</p></div>
@@ -222,6 +251,7 @@ const STATES = {{STATES}};
 const DET = {{DETMOLD}};
 const SUM = {{SUM}};
 const AI = {{AI}};
+const FW = {{FW}};
 const $ = (s, r = document) => r.querySelector(s), SVGNS = 'http://www.w3.org/2000/svg';
 const el = (tag, attrs = {}, parent) => { const e = document.createElementNS(SVGNS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; };
 const ease = (t) => (t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
@@ -335,17 +365,32 @@ $('#zreplay').addEventListener('click', (e) => { e.stopPropagation(); zoomPlay()
   });
   window.explode = (on) => svg.querySelectorAll('.lay').forEach((g, i) => { g.style.transform = `translateY(${on ? 30 + i * 112 : 300 - i * 10}px)`; });
 }
-/* ---------- slide 10: AI pipeline */
+/* ---------- slide 10: what the models see: tiles cut from the montage made on the server (photo | box and cut-out | depth, four generated photos) */
 {
-  const steps = [['Find', 'Grounding DINO', 'draws a box around the roof'], ['Cut out', 'SAM 2', 'traces its exact outline'], ['Depth', 'Depth Anything', 'guesses how far each part is'], ['Name', 'CLIP', 'says: gabled, hip, flat, mansard']];
-  const box = $('#aipipe');
-  const icons = [
-    '<rect x="30" y="50" width="160" height="120" fill="none" stroke="#ff4d2e" stroke-width="10" stroke-dasharray="26 14"/><path d="M50 150 L110 80 L170 150Z" fill="#0f1217"/>',
-    '<path d="M30 160 L110 50 L190 160Z" fill="#ff4d2e" stroke="#0f1217" stroke-width="8"/>',
-    '<defs><linearGradient id="dg" x1="0" x2="1"><stop offset="0" stop-color="#0f1217"/><stop offset="1" stop-color="#7fb6d9"/></linearGradient></defs><path d="M30 160 L110 50 L190 160Z" fill="url(#dg)"/>',
-    '<path d="M30 160 L110 50 L190 160Z" fill="#2f7d4f"/><rect x="70" y="170" width="80" height="24" fill="#ffc533"/>'];
-  steps.forEach((s, i) => { const d = document.createElement('div'); d.className = 'card pop'; d.style.cssText = `--i:${2 + i};padding:26px;text-align:center`; d.innerHTML = `<svg width="220" height="210" viewBox="0 0 220 210">${icons[i]}</svg><div class="tag" style="font-size:22px;margin:10px 0 6px">${s[0]}</div><b style="font-size:34px">${s[1]}</b><p class="mute" style="font-size:24px;font-weight:700;margin-top:8px">${s[2]}</p>`; box.appendChild(d); });
-  if (AI.img) { const im = document.createElement('img'); im.src = AI.img; im.className = 'shot fade'; im.style.cssText = '--i:8;position:absolute;left:1000px;top:640px;width:820px;box-shadow:14px 14px 0 #ff4d2e'; $('#s10').appendChild(im); $('#s10 > p').style.width = '860px'; }
+  const box = $('#aipipe'), T = 270, G = 22;
+  box.style.display = 'grid'; box.style.gridTemplateColumns = `repeat(6, ${T}px)`; box.style.gap = G + 'px'; box.style.justifyContent = 'space-between';
+  ['Roof photo', 'Find + cut out', 'Depth', 'Roof photo', 'Find + cut out', 'Depth'].forEach((h, i) => { const d = document.createElement('div'); d.className = 'tag pop'; d.style.cssText = `--i:${1 + i * .15};font-size:21px;margin:0;white-space:nowrap`; d.textContent = h; box.appendChild(d); });
+  if (AI.img) {
+    let k = 0;
+    for (const pair of [[0, 1], [2, 3]]) for (const p of pair) for (const c of [0, 1, 2]) {
+      const d = document.createElement('div'); d.className = 'pop';
+      d.style.cssText = `--i:${2 + k++ * .12};width:${T}px;height:${T}px;border:4px solid #0f1217;box-shadow:8px 8px 0 #0f1217;background:url(${AI.img}) -${c * T}px -${p * T}px / ${3 * T}px ${4 * T}px`;
+      box.appendChild(d);
+    }
+  }
+}
+/* ---------- slide 11b: the same attic in five tools; numbers come from pipeline/data/compare_results.json */
+{
+  const rows = [['Our engine (JS)', 'engine', 'ink'], ['Shapely', 'shapely'], ['COMPAS', 'compas'], ['IfcOpenShell', 'ifc'], ['TopologicPy', 'topologic']];
+  const lo = Math.log10(0.3), hi = Math.log10(400), box = $('#fwrows');
+  rows.forEach(([name, key], i) => {
+    const ms = FW.ms[key], w = Math.round(((Math.log10(ms) - lo) / (hi - lo)) * 100), d = document.createElement('div');
+    d.className = 'row pop'; d.style.cssText = `--i:${2 + i * .3};height:100px;grid-template-columns:260px 1fr 250px`;
+    d.innerHTML = `<span>${name}</span><div class="track"><div class="bar" data-w="${w}" style="background:${key === 'engine' ? '#ff4d2e' : '#0f1217'}"></div></div><span style="font-size:30px"><b>${ms}</b> ms${FW.loc[key] ? ' <span class="mute" style="font-size:22px">· ' + FW.loc[key] + ' lines</span>' : ''}</span>`;
+    box.appendChild(d);
+  });
+  const cards = [[FW.total.toFixed(1) + ' m²', `the same total in all five tools (gabled roof); every room agrees to ${FW.agree.toExponential(0).replace(/e-(\d+)/, (_, d) => ' × 10⁻' + [...d].map((c) => '⁰¹²³⁴⁵⁶⁷⁸⁹'[c]).join(''))} m²`], ['I = ' + FW.pysal.I.toFixed(2), `gabled roofs cluster across the ${FW.pysal.n} states (p = ${FW.pysal.p.toFixed(3)}), a hint, not a result`], [FW.loc.networkx + ' lines', 'NetworkX counts the doors from the hall to every room; COMPAS and TopologicPy agree']];
+  cards.forEach(([big, txt], i) => { const d = document.createElement('div'); d.className = 'card pop'; d.style.cssText = `--i:${3 + i * .5};padding:22px 30px`; d.innerHTML = `<div style="font-weight:900;font-size:64px;line-height:1;color:${i === 0 ? '#2f7d4f' : '#0f1217'}">${big}</div><p style="font-size:27px;font-weight:700;line-height:1.2;margin-top:8px">${txt}</p>`; $('#fwcards').appendChild(d); });
 }
 /* ---------- slide 12: logos */
 {

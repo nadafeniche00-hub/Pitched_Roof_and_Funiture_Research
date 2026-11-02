@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RevitAddIns>
+  <AddIn Type="Application">
+    <Name>UsableSpaceTemplateExport</Name>
+    <Assembly>TemplateExport.dll</Assembly>
+    <AddInId>6d7a0c2e-3c1b-4f7a-9a61-5d0f2a7b1e44</AddInId>
+    <FullClassName>TemplateExport.App</FullClassName>
+    <VendorId>USPC</VendorId>
+    <VendorDescription>Usable Space (Pitched Roof and Furniture): reads the roof types of Revit templates</VendorDescription>
+  </AddIn>
+</RevitAddIns>

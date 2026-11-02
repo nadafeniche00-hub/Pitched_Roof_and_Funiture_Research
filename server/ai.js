@@ -26,15 +26,10 @@ const jsonIn = (text) => { const m = String(text).match(/\{[\s\S]*\}/); if (!m) 
 // CLIP, if a clip service runs (pipeline/services/clip_service.py): fast zero-shot naming of a roof photo, much quicker than asking the chat model
 const clipUrl = () => (process.env.CLIP_URL || 'http://127.0.0.1:5001').replace(/\/+$/, '');
 async function clipUp() { try { const r = await fetch(clipUrl() + '/health', { signal: AbortSignal.timeout(1200) }); return r.ok ? await r.json() : null; } catch { return null; } }
-const CLIP_LABELS = {
-  gabled: 'a photo of a house with a gabled roof, two slopes meeting at a ridge',
-  hipped: 'a photo of a house with a hipped roof, four sloping sides',
-  'half-hipped': 'a photo of a house with a half-hipped roof, a gable wall with a small hip on top',
-  mansard: 'a photo of a building with a mansard roof, a steep lower slope and a shallow upper slope',
-  pyramidal: 'a photo of a building with a pyramid roof, four slopes meeting at one point',
-  skillion: 'a photo of a house with a single sloped shed roof',
-  flat: 'a photo of a building with a flat roof',
-};
+// One sentence pattern for every label. With longer descriptions for some shapes than for others CLIP drifted to the shortest one ("flat") on busy photos:
+// on four generated facade photos the long descriptions named 1 of 4 right, this pattern 3 of 4 (a sanity check on four pictures, not a benchmark).
+const CLIP_LABELS = Object.fromEntries(Object.entries({ gabled: 'gabled', hipped: 'hipped', 'half-hipped': 'half-hipped', mansard: 'mansard', pyramidal: 'pyramid', skillion: 'single-slope shed', flat: 'flat' })
+  .map(([id, word]) => [id, `a photo of a house with a ${word} roof`]));
 async function clipRoof(dataUrl) {
   if (!(await clipUp())) return null;
   const t0 = Date.now(), ids = Object.keys(CLIP_LABELS);
