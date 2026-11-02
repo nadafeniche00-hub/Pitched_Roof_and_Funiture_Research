@@ -7,6 +7,6 @@
     "dev:client": "npm --prefix client run dev",
     "dev": "npm run dev:server & npm run dev:client",
     "test": "npm --prefix server test",
-    "build": "npm --prefix client run build"
+    "build": "npm --prefix client install --no-audit --no-fund && npm --prefix client run build"
   }
 }

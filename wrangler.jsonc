@@ -1,0 +1,16 @@
+// Cloudflare (Workers with static assets). The Git integration of the dashboard runs, in the repository root:
+//   build:   npm run build          (installs the packages of client/ and builds client/dist)
+//   deploy:  npx wrangler deploy    (this file)
+// "name" must be the name of the Worker in the dashboard. client/dist is served as it is, any other path falls back to index.html (a single-page app); only /api/* reaches worker/index.js.
+{
+  "name": "pitched-roof-and-funiture-research",
+  "main": "worker/index.js",
+  "compatibility_date": "2026-01-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "./client/dist",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+  "observability": { "enabled": true }
+}

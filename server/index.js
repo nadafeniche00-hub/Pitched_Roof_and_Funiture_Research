@@ -16,6 +16,7 @@ import { searchProducts, getProduct, facets, searchGlossary, upsertProduct, seed
 import { scrapeUrl } from './scrape.js';
 import { guessType } from '../shared/furnitureTypes.js';
 import { aiStatus, briefFromText, planFromSketch, roofFromPhoto } from './ai.js';
+import { devOnly } from './devOnly.js';
 
 const app = express();
 app.use(cors());
@@ -26,10 +27,9 @@ app.post('/api/ai/sketch', express.json({ limit: '12mb' }), async (req, res) => 
 app.post('/api/ai/roof', express.json({ limit: '12mb' }), async (req, res) => {
   try { res.json(await roofFromPhoto(req.body?.image)); } catch (e) { res.status(e.status || 502).json({ error: e.message || 'roof reading failed' }); }
 });
-// dev only, loopback only: the walk view posts its exported .glb here so pipeline/render/blender_render.py can pick it up
+// dev only: the walk view posts its exported .glb here so pipeline/render/blender_render.py can pick it up
 app.post('/api/dev/glb', express.raw({ type: '*/*', limit: '300mb' }), (req, res) => {
-  const ip = req.socket.remoteAddress || '';
-  if (!/^(::1|127\.0\.0\.1|::ffff:127\.0\.0\.1)$/.test(ip)) return res.status(403).json({ error: 'local only' });
+  if (!devOnly(req)) return res.status(403).json({ error: 'local only' });
   const dir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../pipeline/render/in');
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, 'scene.glb'), req.body);
@@ -38,7 +38,7 @@ app.post('/api/dev/glb', express.raw({ type: '*/*', limit: '300mb' }), (req, res
 // dev only, loopback only: the plan for the Revit demo builder (client/src/lib/revitExport.js); pipeline/revit/DemoBuild/run_demo.ps1 reads it from here.
 // Nothing here starts Revit: installing an unsigned add-in is for the person at the keyboard (see pipeline/revit/README.md).
 const demoDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../pipeline/data/revit_demo');
-const loopback = (req) => /^(::1|127\.0\.0\.1|::ffff:127\.0\.0\.1)$/.test(req.socket.remoteAddress || '');
+const loopback = devOnly;
 app.post('/api/dev/demo', express.json({ limit: '200kb' }), (req, res) => {
   if (!loopback(req)) return res.status(403).json({ error: 'local only' });
   const b = req.body;
