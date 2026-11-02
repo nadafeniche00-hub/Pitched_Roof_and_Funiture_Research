@@ -19,27 +19,39 @@ const NEAR = /\b(next to|near|beside|adjacent|neben|nahe|beim|bei|an|attached to
 
 const norm = (s) => s.toLowerCase().replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss').replace(/²/g, '2');
 
+/** What a piece of a clause says about its room: how many, how big, and whether it says so at all (then it defines rooms) or only points at one ("the bedroom"). */
+const read = (s) => {
+  const am = s.match(/(\d+(?:[.,]\d+)?)\s*(?:m2|qm|sqm|quadratmeter|square)/), rest = am ? s.replace(am[0], ' ') : s; // the area must not be read as a count
+  const cm = rest.match(/(\d+)\s*x?\s*(?=[a-z])/), word = rest.split(/\s+/).find((w) => WORDS[w] && w !== 'a' && w !== 'an');
+  return { n: Math.max(1, Math.min(4, cm ? +cm[1] : word ? WORDS[word] : 1)), area: am ? +am[1].replace(',', '.') : null, areaText: am ? am[1] : null, said: !!(am || cm || word) };
+};
+
 /** @returns {{ brief, understood: string[], ignored: string[] }} brief is already sanitised */
 export function parseBriefText(text) {
   const clauses = norm(String(text || '')).split(/[,;\n+]|\band\b|\bund\b|\bplus\b|\bmit\b|\bwith\b/).map((c) => c.trim()).filter(Boolean);
   const rooms = [], links = [], understood = [], ignored = [], made = {};
   const firstOf = {}; // type -> first id, for links
+  const pointedAt = new Set(); // types a link clause names without defining them
   const find = (clause) => { for (const [k, t] of KEYS) { const m = clause.match(new RegExp(`(^|[^a-z])${k.replace('-', '[- ]?')}[a-z]*`)); if (m) return { type: t, index: m.index }; } return null; };
+  const define = (type, r) => { add(type, r.n, r.area); understood.push(`${r.n} x ${type}${r.area !== null ? ` of ${r.areaText} m2` : ''}`); };
   for (const clause of clauses) {
     const hit = find(clause);
     if (!hit) { ignored.push(clause); continue; }
-    // two room words in one clause with a link word between: "bath next to the bedroom" is a link, not two rooms
+    // two room words in one clause with a link word between: "bath next to the bedroom" is a link, not two rooms. A side with a count or an area ("a bath of 3 m2") defines
+    // its room; a side without ("the bedroom") only points at one, which may be defined in a later clause ("a bedroom of 14 m2"): it is made at the end if nobody did.
     const parts = clause.split(NEAR);
     if (parts.length >= 3) {
-      const a = find(parts[0]), b = find(parts[parts.length - 1]);
-      if (a && b && a.type !== b.type) { links.push([a.type, b.type, 'near']); understood.push(`${a.type} next to ${b.type}`); if (!rooms.some((r) => r.type === a.type)) add(a.type, 1, null); if (!rooms.some((r) => r.type === b.type)) add(b.type, 1, null); continue; }
+      const last = parts[parts.length - 1], a = find(parts[0]), b = find(last);
+      if (a && b && a.type !== b.type) {
+        links.push([a.type, b.type, 'near']);
+        for (const [side, piece] of [[a, parts[0]], [b, last]]) { const r = read(piece); if (r.said) define(side.type, r); else pointedAt.add(side.type); }
+        understood.push(`${a.type} next to ${b.type}`);
+        continue;
+      }
     }
-    const am = clause.match(/(\d+(?:[.,]\d+)?)\s*(?:m2|qm|sqm|quadratmeter|square)/), rest = am ? clause.replace(am[0], ' ') : clause; // the area must not be read as a count
-    const cm = rest.match(/(\d+)\s*x?\s*(?=[a-z])/), word = rest.split(/\s+/).find((w) => WORDS[w] && w !== 'a' && w !== 'an');
-    const n = Math.max(1, Math.min(4, cm ? +cm[1] : word ? WORDS[word] : 1));
-    add(hit.type, n, am ? +am[1].replace(',', '.') : null);
-    understood.push(`${n} x ${hit.type}${am ? ` of ${am[1]} m2` : ''}`);
+    define(hit.type, read(clause));
   }
+  for (const type of pointedAt) if (!rooms.some((r) => r.type === type)) add(type, 1, null); // "next to the bedroom" with no bedroom named anywhere: one of the usual size
   function add(type, n, area) {
     for (let i = 0; i < n && rooms.length < 8; i++) {
       made[type] = (made[type] || 0) + 1;
