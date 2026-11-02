@@ -67,9 +67,10 @@ try {
     # the picture is sent at 60 frames a second: no point in rendering more (the house level used the whole GPU without this)
     $cmds = @('t.MaxFPS 60')
     if ($Light) {
-        # NOT r.RayTracing=False: it changes the keys of the derived data, so Epic's 12 GB pre-built cache (DerivedDataCache/Compressed.ddp) matches nothing and every mesh is built from
-        # source, on one core, 10 to 50 s each (seen on 2 Nov 2026). Lumen's own switch is meant to leave the keys alone.
-        $ue += '-ini:Engine:[/Script/Engine.RendererSettings]:r.Lumen.HardwareRayTracing=False'
+        # Ray tracing off: the sample switches it on in its own DefaultEngine.ini, and it does not fit 8 GB. Every setting like this changes what Unreal has to build: with these ones Epic's 12 GB
+        # pre-built cache (DerivedDataCache/Compressed.ddp, mounted) was NOT found for the meshes, so the FIRST start builds about 600 of them from source, at 8 to 10 a minute (2 Nov 2026: 162 after
+        # 21 min). They are cached then: the next starts with the same settings are fast. Change the settings and it builds again.
+        $ue += '-ini:Engine:[/Script/Engine.RendererSettings]:r.RayTracing=False'   # the sample switches ray tracing on in its own DefaultEngine.ini
         $cmds += 'r.Lumen.HardwareRayTracing 0', 'sg.ViewDistanceQuality 2', 'sg.ShadowQuality 2', 'sg.GlobalIlluminationQuality 2', 'sg.ReflectionQuality 2', 'sg.PostProcessQuality 2', 'sg.TextureQuality 2', 'sg.EffectsQuality 2', 'sg.FoliageQuality 2', 'sg.ShadingQuality 2'
     }
     $ue += ('-ExecCmds="' + ($cmds -join ',') + '"')
