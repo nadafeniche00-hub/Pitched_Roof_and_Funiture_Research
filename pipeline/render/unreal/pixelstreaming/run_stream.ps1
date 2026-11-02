@@ -1,6 +1,6 @@
 # Streams an Unreal level into a web browser with Pixel Streaming 2: the signalling server (Epic's Wilbur, built by setup.ps1) serves the page, Unreal sends the picture and takes
 # the keys and the mouse back. Needs setup.ps1 once.
-#   powershell -ExecutionPolicy Bypass -File pipeline\render\unreal\pixelstreaming\run_stream.ps1 [-Project UsableSpace|ElectricDreams] [-Map /Game/...] [-Resolution 1920x1080] [-Light]
+#   powershell -ExecutionPolicy Bypass -File pipeline\render\unreal\pixelstreaming\run_stream.ps1 [-Project UsableSpace|ElectricDreams] [-Map /Game/...] [-Resolution 1920x1080] [-Light] [-Mute]
 # Then open http://localhost:8080 on this computer. On the same network: http://<address of this computer>:8080 (Windows asks once whether node may listen: your decision).
 # Stop with Ctrl+C: Unreal and the signalling server both stop. Only one stream at a time (the ports and the 8 GB GPU are taken); a second run says so and stops.
 #   UsableSpace     the walk-view house in its forest (pipeline\render\unreal, built by run.ps1), starts outside the house; W A S D and the mouse fly
@@ -12,6 +12,7 @@ param(
     [int]$HttpPort = 8080,
     [int]$StreamerPort = 8888,
     [ValidateSet('', 'H264', 'VP8', 'VP9', 'AV1')][string]$Codec = '',
+    [switch]$Mute,     # no sound in the browser: the jungle sample brings its own ambience (birds, crickets, grasshoppers, flies, frogs, monkeys), streamed with the picture
     [switch]$Light,    # a big project on a small GPU (Epic's Electric Dreams sample on 8 GB): no hardware ray tracing, medium scalability, 1280x720 unless -Resolution says otherwise. Not tried yet.
     [string]$Bin = 'C:\Program Files\Epic Games\UE_5.8\Engine\Binaries\Win64'
 )
@@ -63,6 +64,7 @@ try {
     $w, $h = $Resolution -split 'x'
     $ue = @("`"$uproject`"", $map, '-game', "-PixelStreamingConnectionURL=ws://127.0.0.1:$StreamerPort", '-RenderOffScreen', '-ForceRes', "-ResX=$w", "-ResY=$h", '-Windowed',
         '-AudioMixer', '-nosplash', '-nopause', '-unattended', '-stdout', '-FullStdOutLogOutput')
+    if ($Mute) { $ue = @($ue | Where-Object { $_ -ne '-AudioMixer' }) + '-nosound' }
     if ($Codec) { $ue += "-PixelStreamingEncoderCodec=$Codec" }
     # the picture is sent at 60 frames a second: no point in rendering more (the house level used the whole GPU without this)
     $cmds = @('t.MaxFPS 60')
