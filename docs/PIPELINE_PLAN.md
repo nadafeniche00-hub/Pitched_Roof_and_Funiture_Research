@@ -131,3 +131,20 @@ Each step ends in something you can show. Steps 1 to 4 are for 4 Nov.
 - **Local GPU.** RTX 5070 Laptop (8 GiB VRAM, 31 GB RAM, Ryzen 9 8945HX). Good for the AI part: SAM, Grounding DINO, Depth Anything, CLIP inference and small diffusion models. The mining itself (XML parsing, counting, tree models on tables) is CPU work. Spark runs on the CPU on Windows; Spark on the GPU (NVIDIA RAPIDS) needs Linux: possible later inside WSL2, which does pass CUDA through.
 - **Airflow locally.** WSL2 core enabled; restart Windows, then `wsl --install -d Ubuntu`, then Airflow inside. Windows reports a hypervisor already running, so BIOS virtualization is probably on.
 - **Germany by federal state.** `shared/stateSources.json` lists per state the OSM extract (Geofabrik) and the status of the state's LoD2 source; nationwide LoD2-DE from BKG is the one-stop route (about 92 GB as a zip, per-state delivery possible). Plan: DuckDB/Parquet partitioned by state, one Airflow task per state (dynamic task mapping), only aggregates committed, derived datasets hosted on Zenodo (DOI) or Hugging Face Datasets, respecting ODbL (OSM) and the LoD2 licence terms. **Waiting for a decision:** 16 Geofabrik extracts, 5.0 GB in total (largest: NRW 916 MB, Bayern 857 MB, Baden-Württemberg 652 MB) to be downloaded and counted for roof shapes on the server (pyosmium). The public Overpass API refused bulk use ("at capacity", automated use not intended): not used for the nationwide count.
+
+## Status 2 Nov 2026 (against the ten steps)
+
+| Step | State |
+|---|---|
+| 1 Inventory of the server | done (31 Oct) |
+| 2 Airflow | not started; the server stack is written but never run |
+| 3 Plan reading | works on a drawn plan (4 rooms, right sizes, 9 s) and on a synthetic plan (5 of 5 rooms within 4 cm); not tried on a real plan photo |
+| 4 Knowledge in the loop | partly: WoFlV, building code, Neufert and adjacency are in code and prompt with sources marked "verify" (`docs/KNOWLEDGE_BASE.md`); a source on hover for every rule and German room labels are missing |
+| 5 Deck and rehearsal | deck ready (`presentation/`, with a "Where we are" slide); rehearsal and a recorded fallback still to do |
+| 6 Data audit (CubiCasa5K, 50 hand-labelled plans) | not started |
+| 7 Site and roof | done for Detmold (11 LoD2 tiles, 1,379 gable dwellings) and the roof counts of all 16 states; BauNVO and ALKIS attributes missing |
+| 8 Preference model | not started |
+| 9 Comparison with generators | not started |
+| 10 Real2Twin bridge | started: the five-tool lab test (`docs/FRAMEWORK_COMPARISON.md`) and the splat viewer; scan to engine not done |
+
+Beyond the plan: roof sculptor, Blender and Unreal pictures from one `.glb` with thick walls, AI helpers (describe a flat, read a sketch, read a roof photo), door rules, the technical plan. Waiting for the user: the Revit export (`pipeline/revit/README.md`). The assignment of steps 6 and 7 to the interim and 8 to 10 to the final presentation is a proposal, not a decision.

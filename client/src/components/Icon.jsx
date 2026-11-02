@@ -79,6 +79,10 @@ const P = {
   heatmap: 'M3 4h18v16H3zM3 9h18M3 14h18M9 4v16M15 4v16',
   clearance: 'M4 4h16v16H4zM8 8h8v8H8z',
   eye: 'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z',
+  bed: 'M3 18V7M3 14h18v4M21 18v-4a3 3 0 0 0-3-3h-7v3M7 11.5a1.6 1.6 0 1 0 0 .01',
+  wardrobe: 'M5 3h14v18H5zM12 3v18M9.5 12h.01M14.5 12h.01',
+  basin: 'M3 11h18c0 4-3 6-9 6s-9-2-9-6zM12 17v3M8 20h8M9 7V4h6',
+  desk: 'M3 8h18M5 8v12M19 8v12M8 8v6h8V8',
 };
 
 export function Icon({ name, size = 20 }) {

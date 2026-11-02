@@ -6,7 +6,20 @@ import { roomActions } from '../store/roomSlice.js';
 import { itemsActions } from '../store/itemsSlice.js';
 import { resolveDormer } from '@shared/params.js';
 import DesignPanel from './DesignPanel.jsx';
+import Pop from './Pop.jsx';
 import { Icon, IconBtn } from './Icon.jsx';
+
+/** A row of the left panel: icon, name, a count. The form behind it opens to the right on hover or focus; the + button stays on the row. */
+function Drawer({ icon, title, count, action, children }) {
+  return (
+    <section className="drawer">
+      <Pop side="right" wide block trigger={<span className="drow"><Icon name={icon} size={20} /><span className="dt">{title}</span>{count != null && <b className="dc">{count}</b>}</span>}>
+        {children}
+      </Pop>
+      {action}
+    </section>
+  );
+}
 
 function Slider({ label, icon, value, min, max, step, unit, onChange }) {
   return (
@@ -36,8 +49,8 @@ function Openings({ kind, title }) {
   const list = useSelector((s) => s.room[kind]);
   const patch = (i, p) => dispatch(roomActions.patchOpening({ kind, i, patch: p }));
   return (
-    <section>
-      <h3><span className="h3t"><Icon name={kind === 'doors' ? 'door' : 'window'} size={18} /> {title}</span><IconBtn icon="plus" size={16} className="mini" label={`Add a ${kind === 'doors' ? 'door' : 'window'}`} onClick={() => dispatch(roomActions.addOpening(kind))} /></h3>
+    <Drawer icon={kind === 'doors' ? 'door' : 'window'} title={title} count={list.length}
+      action={<IconBtn icon="plus" size={16} className="mini" label={`Add a ${kind === 'doors' ? 'door' : 'window'}`} onClick={() => dispatch(roomActions.addOpening(kind))} />}>
       {list.map((o, i) => (
         <div className="line" key={i}>
           <select value={o.wall} onChange={(e) => patch(i, { wall: e.target.value })}>{WALLS.map((w) => <option key={w}>{w}</option>)}</select>
@@ -46,7 +59,8 @@ function Openings({ kind, title }) {
           <IconBtn icon="close" size={16} className="mini" label="Remove" onClick={() => dispatch(roomActions.removeOpening({ kind, i }))} />
         </div>
       ))}
-    </section>
+      {!list.length && <p className="hint">None yet: press + on the row.</p>}
+    </Drawer>
   );
 }
 
@@ -78,8 +92,7 @@ export default function RoomPanel() {
         )}
       </section>
 
-      <section>
-        <h3><span className="h3t"><Icon name="dormer" size={18} /> Dormers</span><IconBtn icon="plus" size={16} className="mini" label="Add a dormer" onClick={() => dispatch(roomActions.addDormer())} /></h3>
+      <Drawer icon="dormer" title="Dormers" count={room.dormers.length} action={<IconBtn icon="plus" size={16} className="mini" label="Add a dormer" onClick={() => dispatch(roomActions.addDormer())} />}>
         <p className="hint" style={{ margin: '0 0 6px' }}>Defaults for every dormer:</p>
         <div className="line wrap">
           {['width', 'depth', 'height'].map((k) => (
@@ -105,25 +118,23 @@ export default function RoomPanel() {
           );
         })}
         {!room.dormers.length && <p className="hint">No dormers</p>}
-      </section>
+      </Drawer>
 
-      <section>
-        <h3><span className="h3t"><Icon name="stair" size={18} /> Stair opening</span><IconBtn icon={room.stair ? 'remove' : 'plus'} size={16} className="mini" label={room.stair ? 'Remove the stair opening' : 'Add a stair opening'} onClick={() => dispatch(roomActions.toggleStair())} /></h3>
+      <Drawer icon="stair" title="Stair" count={room.stair ? '✓' : '–'} action={<IconBtn icon={room.stair ? 'remove' : 'plus'} size={16} className="mini" label={room.stair ? 'Remove the stair opening' : 'Add a stair opening'} onClick={() => dispatch(roomActions.toggleStair())} />}>
         {room.stair && (
           <div className="line wrap">
             {['x', 'y', 'w', 'd'].map((k) => <Num key={k} label={k} value={room.stair[k]} onChange={(v) => dispatch(roomActions.patchStair({ [k]: v }))} />)}
           </div>
         )}
         {!room.stair && <p className="hint">No stair: circulation is not checked.</p>}
-      </section>
+      </Drawer>
 
       <Openings kind="windows" title="Windows" />
       <Openings kind="doors" title="Doors" />
 
-      <DesignPanel />
+      <Drawer icon="wand" title="Design loop"><DesignPanel /></Drawer>
 
-      <section>
-        <h3><span className="h3t"><Icon name="sofa" size={18} /> Furniture</span></h3>
+      <Drawer icon="sofa" title="Furniture" count={items.length}>
         <div className="chips">
           {Object.entries(PROGRAMS).map(([k, p]) => (
             <button key={k} className="mini" onClick={() => p.types.forEach((t) => dispatch(itemsActions.addItem(t)))}>+ {p.label}</button>
@@ -140,7 +151,7 @@ export default function RoomPanel() {
           </div>
         ))}
         <p className="hint">{items.length} pieces · drag on the plan, <kbd>R</kbd> rotates, <kbd>Del</kbd> removes.</p>
-      </section>
+      </Drawer>
     </div>
   );
 }

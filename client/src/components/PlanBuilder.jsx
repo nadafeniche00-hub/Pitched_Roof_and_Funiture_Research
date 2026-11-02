@@ -7,6 +7,7 @@ import { uiActions } from '../store/uiSlice.js';
 import { layoutActions } from '../store/layoutSlice.js';
 import RoomTree from './RoomTree.jsx';
 import AiAssist from './AiAssist.jsx';
+import Pop from './Pop.jsx';
 import { Icon, IconBtn } from './Icon.jsx';
 import PuzzleEditor, { initialPieces } from './PuzzleEditor.jsx';
 import { fitBrief } from '@shared/roomTree.js';
@@ -169,13 +170,18 @@ export default function PlanBuilder() {
                   </button>
                 ))}
               </div>}
-              <ul className="findings">
-                {plan.findings.length === 0 && <li className="finding info"><span className="mark">i</span><span>No findings for this layout.</span></li>}
+              <div className="fdots" aria-label="Findings">
+                {plan.findings.length === 0 && <Pop side="below" trigger={<span className="fdot ok">✓</span>}><p>No findings for this layout.</p></Pop>}
                 {plan.findings.slice(0, 8).map((f, i) => (
-                  <li key={i} className={`finding ${f.severity}`} onClick={() => setFocus(f.room)}><span className="mark">{f.severity === 'warn' ? '!' : 'i'}</span><span>{f.msg}</span></li>
+                  <Pop key={i} side="below" wide trigger={<span className={`fdot ${f.severity}`} onClick={() => setFocus(f.room)}>{f.severity === 'warn' ? '!' : 'i'}</span>}>
+                    <p>{f.msg}</p>
+                  </Pop>
                 ))}
-              </ul>
-              <p className="hint">Score = area fit 22 % · shape 18 % · headroom 14 % · access 18 % · wanted links 18 % · daylight 10 %, minus 0.03 per warning. Rule-of-thumb thresholds, for exploration.</p>
+                <Pop side="below" wide trigger={<span className="fdot score"><Icon name="clipboard" size={18} /></span>}>
+                  <p className="ptitle">Score</p>
+                  <p>Area fit 22 % · shape 18 % · headroom 14 % · access 18 % · wanted links 18 % · daylight 10 %, minus 0.03 per warning. Rule-of-thumb thresholds, for exploration.</p>
+                </Pop>
+              </div>
             </>
           )}
         </div>

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { IconBtn } from './Icon.jsx';
+import Pop from './Pop.jsx';
 
 // Describe the flat in words, or read a sketch: both go to the app server, which uses the team's language and vision model when a key is set
 // (server/.env) and the built-in rules otherwise. The engine that answered is always shown.
@@ -30,8 +31,8 @@ export default function AiAssist({ onBrief, onPlan }) {
       const j = await r.json();
       if (!r.ok) throw new Error(j.error);
       onBrief(j.brief);
-      setMsg({ ok: true, text: `${j.engine === 'llm' ? `Read by ${j.model} on the server` : 'Read by the built-in rules'} in ${(j.ms / 1000).toFixed(1)} s: ${j.understood.join(', ')}.${j.ignored?.length ? ` Not understood: ${j.ignored.join(', ')}.` : ''}${j.note ? ' ' + j.note : ''}` });
-    } catch (e) { setMsg({ ok: false, text: e.message }); } finally { setBusy(''); }
+      setMsg({ ok: true, short: `${j.engine === 'llm' ? j.model : 'rules'} · ${(j.ms / 1000).toFixed(1)} s${j.note ? ' · model failed' : ''}`, text: `${j.engine === 'llm' ? `Read by ${j.model} on the server` : 'Read by the built-in rules'} in ${(j.ms / 1000).toFixed(1)} s: ${j.understood.join(', ')}.${j.ignored?.length ? ` Not understood: ${j.ignored.join(', ')}.` : ''}${j.note ? ' ' + j.note : ''}` });
+    } catch (e) { setMsg({ ok: false, short: 'failed', text: e.message }); } finally { setBusy(''); }
   };
   const sketch = async (f) => {
     if (!f) return;
@@ -42,8 +43,8 @@ export default function AiAssist({ onBrief, onPlan }) {
       const j = await r.json();
       if (!r.ok) throw new Error(j.error);
       onPlan(j.plan, f.name);
-      setMsg({ ok: true, text: `Sketch read by ${j.model} on the server in ${(j.ms / 1000).toFixed(1)} s: ${j.plan.rooms.length} rooms. Check the types and sizes.` });
-    } catch (e) { setMsg({ ok: false, text: e.message }); } finally { setBusy(''); if (file.current) file.current.value = ''; }
+      setMsg({ ok: true, short: `${j.plan.rooms.length} rooms · ${(j.ms / 1000).toFixed(1)} s`, text: `Sketch read by ${j.model} on the server in ${(j.ms / 1000).toFixed(1)} s: ${j.plan.rooms.length} rooms. Check the types and sizes.` });
+    } catch (e) { setMsg({ ok: false, short: 'failed', text: e.message }); } finally { setBusy(''); if (file.current) file.current.value = ''; }
   };
 
   return (
@@ -55,7 +56,7 @@ export default function AiAssist({ onBrief, onPlan }) {
       <span className={`aipill ${status?.llm ? 'on' : ''}`} title={status?.llm ? `Models on the server: ${(status.served || []).join(', ') || 'unknown'}` : status?.hint || status?.error || ''}>
         {status === null ? '…' : (status.llm ? `${status.model} · server` : 'built-in rules') + (status.clip ? ' · CLIP' : '')}
       </span>
-      {msg && <p className={msg.ok ? 'hint aimsg' : 'hint bad aimsg'}>{msg.text}</p>}
+      {msg && <Pop side="below" wide trigger={<span className={`aichip ${msg.ok ? 'ok' : 'bad'}`}>{msg.ok ? '✓' : '!'} {msg.short}</span>}><p>{msg.text}</p></Pop>}
     </div>
   );
 }

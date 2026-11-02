@@ -5,7 +5,7 @@ import lod2 from '@shared/lod2Patterns.json';
 const share = (k) => patterns.dwelling_shape_share?.[k] ?? 0;
 
 /** Percentile of a value among the five quantiles (p10..p90) of a distribution: a coarse linear interpolation, clamped to 5..95. */
-function percentile(q, v) {
+export function percentile(q, v) {
   const pts = [[q.p10, 10], [q.p25, 25], [q.median, 50], [q.p75, 75], [q.p90, 90]];
   if (v <= pts[0][0]) return 5;
   if (v >= pts[4][0]) return 95;

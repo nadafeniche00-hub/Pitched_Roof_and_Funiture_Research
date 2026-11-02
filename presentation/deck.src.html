@@ -43,11 +43,51 @@ img.shot { display: block; border: 4px solid #fff; box-shadow: 14px 14px 0 var(-
 .node { position: absolute; padding: 18px 30px; font-weight: 900; font-size: 38px; text-transform: uppercase; border: 4px solid var(--ink); background: #fff; }
 .rfig { position: relative; margin: 0; }
 .rfig figcaption { position: absolute; left: 18px; bottom: 18px; padding: 5px 16px; background: rgba(15,18,23,.8); color: #fff; font-weight: 800; font-size: 22px; letter-spacing: .12em; text-transform: uppercase; }
+/* hover cards: the detail sits behind the picture and pops up under the pointer */
+#tip { position: absolute; z-index: 30; left: 0; top: 0; max-width: 560px; padding: 20px 28px 22px; background: #fff; color: var(--ink); border: 4px solid var(--ink); box-shadow: 12px 12px 0 var(--hot); font-weight: 700; font-size: 30px; line-height: 1.22; pointer-events: none; opacity: 0; transform: translateY(14px) scale(.94); transition: opacity .16s, transform .22s cubic-bezier(.2,.9,.25,1.3); }
+#tip.on { opacity: 1; transform: none; }
+#tip b { display: block; margin-bottom: 8px; font-size: 22px; letter-spacing: .16em; text-transform: uppercase; color: var(--hot); }
+[data-tip] { cursor: help; }
+.hint-i { position: absolute; display: grid; place-items: center; width: 64px; height: 64px; border-radius: 50%; border: 4px solid currentColor; font-weight: 900; font-size: 36px; opacity: .8; }
+.dark .hint-i { color: #fff; }
+/* the road: milestones of the plan */
+.rn { position: absolute; width: 124px; height: 124px; margin: -62px 0 0 -62px; border-radius: 50%; display: grid; place-items: center; background: conic-gradient(from 0deg, var(--c, #5d6470) calc(var(--p, 0) * 360deg), rgba(255,255,255,.16) 0); transition: scale .25s cubic-bezier(.2,.9,.25,1.4); }
+.rn::before { content: ""; position: absolute; inset: 11px; border-radius: 50%; background: #11151b; }
+.rn.done::before { background: var(--moss); }
+.rn svg { position: relative; width: 58px; height: 58px; stroke: #fff; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.rn .num { position: absolute; left: -4px; top: -4px; width: 40px; height: 40px; border-radius: 50%; background: #fff; color: var(--ink); font-weight: 900; font-size: 23px; display: grid; place-items: center; }
+.rn:hover { scale: 1.14; }
+.rn.now { --c: var(--hot); }
+.rn.now::after { content: ""; position: absolute; inset: 0; border-radius: 50%; }
+.on .rn.now::after { animation: pulse 1.8s ease-out infinite; }
+@keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255,77,46,.65); } 100% { box-shadow: 0 0 0 46px rgba(255,77,46,0); } }
+.rl { position: absolute; width: 170px; margin-left: -85px; text-align: center; font-weight: 800; font-size: 25px; letter-spacing: .04em; line-height: 1.1; color: #cfd3da; }
+.rail { position: absolute; left: 96px; width: 1728px; height: 10px; border-radius: 5px; background: rgba(255,255,255,.16); transform-origin: 0 50%; transform: scaleX(0); }
+.rail i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 5px; background: linear-gradient(90deg, var(--moss), var(--sun)); }
+.on .rail { animation: grow 1.6s cubic-bezier(.3,.8,.2,1) .2s forwards; }
+@keyframes grow { to { transform: none; } }
+.flag { position: absolute; width: 340px; margin-left: -170px; text-align: center; }
+.flag b { display: block; font-weight: 900; font-size: 74px; line-height: 1; letter-spacing: -.02em; text-transform: uppercase; }
+.flag i { display: block; width: 0; height: 250px; margin: 12px auto 0; border-left: 4px dashed rgba(255,255,255,.4); }
+.flag s { position: absolute; left: 50%; bottom: -16px; width: 34px; height: 34px; margin-left: -17px; background: var(--hot); transform: rotate(45deg); }
+.ex { position: absolute; width: 88px; height: 88px; margin: -44px 0 0 -44px; border-radius: 50%; display: grid; place-items: center; background: #171b22; border: 4px solid var(--c, #fff); transition: scale .25s cubic-bezier(.2,.9,.25,1.4); }
+.ex:hover { scale: 1.18; }
+.ex svg { width: 44px; height: 44px; stroke: #fff; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.ex.wait { border-style: dashed; }
+.legend { display: flex; align-items: center; gap: 14px; font-weight: 800; font-size: 24px; letter-spacing: .1em; text-transform: uppercase; color: #9aa1ab; }
+.legend .dot { width: 26px; height: 26px; border-radius: 50%; display: inline-block; margin-left: 14px; }
+.dot.done { background: var(--moss); } .dot.part { background: conic-gradient(var(--moss) 50%, rgba(255,255,255,.2) 0); } .dot.now { background: var(--hot); } .dot.todo { background: rgba(255,255,255,.2); }
+/* big-icon cards */
+.orb { display: grid; justify-items: center; align-content: center; gap: 18px; text-align: center; padding: 64px 20px; }
+.orb svg { width: 150px; height: 150px; stroke: var(--ink); fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.orb b { font-weight: 900; font-size: 54px; line-height: 1; letter-spacing: -.01em; text-transform: uppercase; }
+.orb.hot { background: #ffe9e3; }
 {{AI_SLIDES_CSS}}
 </style>
 
 <div id="stage">
 <div id="count"></div>
+<div id="tip" role="tooltip"></div>
 
 <!-- 1 hook -->
 <section class="slide dark" data-step="0" id="s1">
@@ -80,9 +120,9 @@ img.shot { display: block; border: 4px solid #fff; box-shadow: 14px 14px 0 var(-
   <div class="tag">Our research question</div>
   <h2 class="pop">Can we tell, in seconds, how much of a pitched roof is usable?</h2>
   <div class="abs" style="left: 96px; top: 560px; width: 1730px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 40px">
-    <div class="card pop" style="--i:3; padding: 34px"><div class="tag" style="font-size:22px">Guess</div><p class="big">Real roofs follow a few patterns. A tool can learn them and judge a plan against them.</p></div>
-    <div class="card pop" style="--i:4; padding: 34px"><div class="tag" style="font-size:22px">Proof</div><p class="big">Real roofs from open maps, then real furniture on the real floor.</p></div>
-    <div class="card pop" style="--i:5; padding: 34px"><div class="tag" style="font-size:22px">Honest</div><p class="big">We show how many buildings each number rests on, and where it breaks.</p></div>
+    <div class="card orb pop" style="--i:3; padding: 44px 20px" data-tip="Guess|Real roofs follow a few patterns. A tool can learn them and judge a plan against them."><svg viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.8.8 1 1.5 1 2.5h6c0-1 .2-1.7 1-2.5A6 6 0 0 0 12 3z"/></svg><b>Guess</b></div>
+    <div class="card orb pop" style="--i:4; padding: 44px 20px" data-tip="Proof|Real roofs from open maps, then real furniture on the real floor."><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M7.5 12.5l3 3 6-7"/></svg><b>Proof</b></div>
+    <div class="card orb pop" style="--i:5; padding: 44px 20px" data-tip="Honest|We show how many buildings each number rests on, and where it breaks."><svg viewBox="0 0 24 24"><path d="M12 4v16M6 20h12M5 8h14M7 8l-3 6a3 3 0 0 0 6 0zM17 8l-3 6a3 3 0 0 0 6 0z"/></svg><b>Honest</b></div>
   </div>
 </section>
 
@@ -116,7 +156,7 @@ img.shot { display: block; border: 4px solid #fff; box-shadow: 14px 14px 0 var(-
     <div class="card pop" style="--i:7; padding: 26px"><div class="tag" style="font-size:20px">Outskirts</div><b style="font-size:92px;line-height:1">38.5°</b><div class="mute" style="font-size:24px;font-weight:700">777 gabled roofs</div></div>
     <p class="big pop" style="--i:8">Our default roof: <b class="hot">38°</b>, a fairly typical one.</p>
   </div>
-  <p class="abs mute" style="left: 96px; top: 1010px; font-size: 26px; font-weight: 700">3D building models of NRW (LoD2), 11 map squares of 1 km, 10,949 buildings, 1,379 gabled dwellings.</p>
+  <span class="hint-i mute" style="left: 96px; top: 996px" data-tip="Source|3D building models of NRW (LoD2), 11 map squares of 1 km, 10,949 buildings, 1,379 gabled dwellings.">i</span>
 </section>
 
 <!-- 7 decision tree -->
@@ -144,7 +184,7 @@ img.shot { display: block; border: 4px solid #fff; box-shadow: 14px 14px 0 var(-
   <h2 class="pop" style="font-size: 88px">Hover a roof, see what it is made of</h2>
   <img class="shot pop" style="--i:3; position:absolute; left: 96px; top: 330px" src="{{IMG_app_house}}" width="900">
   <svg class="abs" id="layers" style="left: 1060px; top: 300px" width="770" height="740" viewBox="0 0 770 740"></svg>
-  <p class="abs mute" style="left: 1060px; top: 1010px; font-size: 24px; font-weight: 700">Typical build-up, a rule of thumb, not measured.</p>
+  <span class="hint-i" style="left: 1060px; top: 996px" data-tip="Typical build-up|A rule of thumb, not measured. The exact layers of the German Revit template follow once it is exported.">i</span>
 </section>
 
 <!-- 9b roof sculpture -->
@@ -184,7 +224,7 @@ img.shot { display: block; border: 4px solid #fff; box-shadow: 14px 14px 0 var(-
   <div class="tag">What the models see</div>
   <h2 class="pop" style="font-size: 88px; max-width: 1730px">Find it. Cut it out. Measure it.</h2>
   <div class="abs" id="aipipe" style="left: 96px; top: 300px; width: 1730px"></div>
-  <p class="abs big pop" style="--i:9; left: 96px; top: 960px; width: 1730px; font-size: 38px">Four generated roof photos, three models. CLIP then names the shape: 3 of 4 right, the gabled house was read as a mansard. We use it to inspire the plan check, never to replace it.</p>
+  <div class="abs pop" style="--i:9; left: 96px; top: 960px"><span class="chip" style="background:#2f7d4f;color:#fff" data-tip="Four roof photos|Four generated roof photos, three models. CLIP then names the shape: 3 of 4 right, the gabled house was read as a mansard. We use it to inspire the plan check, never to replace it.">CLIP: 3 of 4 right</span></div>
 </section>
 
 <!-- 11 server -->
@@ -195,7 +235,11 @@ img.shot { display: block; border: 4px solid #fff; box-shadow: 14px 14px 0 var(-
     <div><p class="big">Laptop graphics memory</p><div style="height:70px;background:rgba(255,255,255,.1);margin-top:12px"><div class="bar" data-w="6.6" style="background:#ffc533;display:flex;align-items:center;justify-content:flex-end;padding-right:16px;font-weight:900;font-size:36px;color:#0f1217;white-space:nowrap">8 GB</div></div></div>
     <div><p class="big">Office server (GX10)</p><div style="height:70px;background:rgba(255,255,255,.1);margin-top:12px"><div class="bar" data-w="100" style="background:#2f7d4f;display:flex;align-items:center;justify-content:flex-end;padding-right:16px;font-weight:900;font-size:36px;white-space:nowrap">121 GB, shared with the team</div></div></div>
   </div>
-  <p class="abs big pop" style="--i:6; left: 96px; top: 800px; width: 1600px">The 27-billion-parameter language model and 16 map files live there. The laptop runs the small CLIP model itself. The server also keeps working overnight.</p>
+  <div class="abs pop" style="--i:6; left: 96px; top: 800px; display: flex; gap: 26px; flex-wrap: wrap">
+    <span class="chip" style="background:#ffc533;color:#0f1217" data-tip="27 billion parameters|The language model lives on the server. The laptop only runs the small CLIP model itself.">language model 27 B</span>
+    <span class="chip" style="background:#7fb6d9;color:#0f1217" data-tip="16 map files|All 16 states, counted on the server.">16 map files</span>
+    <span class="chip" style="background:#ff4d2e;color:#fff" data-tip="Overnight|The server keeps working while the laptop sleeps.">overnight</span>
+  </div>
 </section>
 
 <!-- 11b tool test -->
@@ -204,7 +248,7 @@ img.shot { display: block; border: 4px solid #fff; box-shadow: 14px 14px 0 var(-
   <h2 class="pop" style="font-size: 88px; max-width: 1730px">One roof, five tools, same answer</h2>
   <div class="abs" id="fwrows" style="left: 96px; top: 330px; width: 1060px"></div>
   <div class="abs" id="fwcards" style="left: 1240px; top: 330px; width: 584px; display: grid; gap: 26px"></div>
-  <p class="abs big pop" style="--i:9; left: 96px; top: 900px; width: 1060px; font-size: 36px">Time for one attic, log scale. The comparison also found a bug in our own area count, up to 0.33 m² in a room. Fixed.</p>
+  <div class="abs pop" style="--i:9; left: 96px; top: 900px"><span class="chip" style="background:#ff4d2e;color:#fff" data-tip="A bug in our own count|Time for one attic, log scale. The comparison also found a bug in our own area count, up to 0.33 m² in a room. Fixed.">bug found in our count: fixed</span></div>
 </section>
 
 <!-- 12 tools -->
@@ -214,21 +258,25 @@ img.shot { display: block; border: 4px solid #fff; box-shadow: 14px 14px 0 var(-
   <div class="abs logos" id="logos" style="left: 96px; top: 320px; width: 1730px"></div>
 </section>
 
-<!-- 13 limits -->
+<!-- 12b where we are: the milestones of the plan, built by road() below -->
+<section class="slide dark" data-step="5" id="s12b">
+  <div class="tag">Plan vs proof</div>
+  <h2 class="pop" style="font-size: 88px">Where we are</h2>
+  <div class="abs legend pop" style="--i:3; right: 96px; top: 96px"><span class="dot done"></span>done<span class="dot part"></span>started<span class="dot now"></span>now<span class="dot todo"></span>next</div>
+  <div id="road" class="abs" style="left: 0; top: 230px; width: 1920px; height: 830px"></div>
+</section>
+
+<!-- 13 limits: six icons, the sentence behind each one appears on hover -->
 <section class="slide" data-step="5" id="s13">
   <div class="tag">Honest limits and next</div>
   <h2 class="pop" style="font-size: 88px">What we do not know yet</h2>
-  <div class="abs" style="left: 96px; top: 330px; width: 1730px; display: grid; grid-template-columns: 1fr 1fr; gap: 60px">
-    <div style="display:grid;gap:26px">
-      <div class="card pop" style="--i:2;padding:26px 34px"><p class="big">Map volunteers tag some homes, not all.</p></div>
-      <div class="card pop" style="--i:3;padding:26px 34px"><p class="big">The surveyed numbers come from one city.</p></div>
-      <div class="card pop" style="--i:4;padding:26px 34px"><p class="big">AI names a roof shape right 3 times in 4, not always.</p></div>
-    </div>
-    <div style="display:grid;gap:26px">
-      <div class="card pop" style="--i:5;padding:26px 34px;background:#ffe9e3"><p class="big">Next: more cities, 16 states of surveyed roofs.</p></div>
-      <div class="card pop" style="--i:6;padding:26px 34px;background:#ffe9e3"><p class="big">Next: test on real plans from architects.</p></div>
-      <div class="card pop" style="--i:7;padding:26px 34px;background:#ffe9e3"><p class="big">Next: plug into the floor-plan generator as a second opinion.</p></div>
-    </div>
+  <div class="abs" style="left: 96px; top: 330px; width: 1730px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 44px">
+    <div class="card orb pop" style="--i:2" data-tip="Untagged homes|Map volunteers tag some homes, not all."><svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7M5 10v10h14V10"/><path d="M9 14l6 6M15 14l-6 6" stroke="#ff4d2e"/></svg><b>Missing homes</b></div>
+    <div class="card orb pop" style="--i:3" data-tip="One city|The surveyed numbers come from one city, Detmold."><svg viewBox="0 0 24 24"><circle cx="12" cy="10" r="3"/><path d="M12 21s-7-6-7-11a7 7 0 0 1 14 0c0 5-7 11-7 11z"/></svg><b>One city</b></div>
+    <div class="card orb pop" style="--i:4" data-tip="AI, 3 in 4|AI names a roof shape right 3 times in 4, not always."><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M8 15l2.5-3 2 2 3.5-5"/><text x="12" y="22" font-size="0"/></svg><b>AI: 3 of 4</b></div>
+    <div class="card orb hot pop" style="--i:5" data-tip="More cities|Next: 16 states of surveyed roofs."><svg viewBox="0 0 24 24"><circle cx="6" cy="8" r="2.4"/><circle cx="17" cy="6" r="2.4"/><circle cx="14" cy="17" r="2.4"/><path d="M8 8.5l7-2M7 10l5.5 6M16 8l-1.5 7"/></svg><b>More cities</b></div>
+    <div class="card orb hot pop" style="--i:6" data-tip="Real plans|Next: test on real plans from architects."><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4zM4 11h8V4M12 14h8"/></svg><b>Real plans</b></div>
+    <div class="card orb hot pop" style="--i:7" data-tip="Second opinion|Next: plug into the floor-plan generator as a second opinion."><svg viewBox="0 0 24 24"><path d="M3 12h6l2-5 3 10 2-5h5"/></svg><b>Second opinion</b></div>
   </div>
 </section>
 
@@ -458,13 +506,76 @@ const SC = (() => {
 {{AI_SLIDES_JS}}
 
 /* ---------- navigation */
+/* ---------- hover cards: any element with data-tip ("Title|detail") shows its text under the pointer */
+const tip = $('#tip');
+stage.addEventListener('pointermove', (e) => {
+  const t = e.target.closest && e.target.closest('[data-tip]');
+  if (!t) { tip.classList.remove('on'); return; }
+  const [a, b] = t.dataset.tip.includes('|') ? t.dataset.tip.split('|') : ['', t.dataset.tip];
+  tip.textContent = '';
+  if (a) { const h = document.createElement('b'); h.textContent = a; tip.appendChild(h); }
+  tip.appendChild(document.createTextNode(b));
+  const r = stage.getBoundingClientRect(), k = r.width / 1920, px = (e.clientX - r.left) / k, py = (e.clientY - r.top) / k, w = tip.offsetWidth, h = tip.offsetHeight;
+  tip.style.left = Math.max(10, px + 30 + w > 1900 ? px - w - 30 : px + 30) + 'px';
+  tip.style.top = Math.max(10, py + 34 + h > 1090 ? py - h - 30 : py + 34) + 'px';
+  tip.classList.add('on');
+});
+stage.addEventListener('pointerleave', () => tip.classList.remove('on'));
+
+/* ---------- the road: the ten steps of docs/PIPELINE_PLAN.md against the three course dates (state of 2 Nov 2026) */
+const IC = {
+  inv: 'M4 5h16v5H4zM4 14h16v5H4zM8 7.5h.01M8 16.5h.01', air: 'M3 8h11a3 3 0 1 0-3-3M3 12h15a3 3 0 1 1-3 3M3 16h8', plan: 'M4 4h16v16H4zM4 12h8V4M12 15h8',
+  book: 'M4 5a2 2 0 0 1 2-2h12v16H6a2 2 0 0 0-2 2zM4 19V5M9 7h6M9 11h6', deck: 'M3 4h18v12H3zM12 16v4M8 20h8',
+  data: 'M5 6c0-1.7 3.1-3 7-3s7 1.3 7 3-3.1 3-7 3-7-1.3-7-3zM5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6',
+  roof: 'M3 12l9-8 9 8M5 10v10h14V10M10 20v-6h4v6', heart: 'M12 20s-7-4.6-9-9a5 5 0 0 1 9-3 5 5 0 0 1 9 3c-2 4.4-9 9-9 9z',
+  wand: 'M5 19L15 9M14 4l1 2 2 1-2 1-1 2-1-2-2-1 2-1zM19 12l.6 1.2 1.2.6-1.2.6-.6 1.2-.6-1.2-1.2-.6 1.2-.6z', twin: 'M12 2l8 4.5v9L12 20l-8-4.5v-9zM12 11l8-4.5M12 11L4 6.5M12 11v9',
+  cam: 'M4 8h4l2-3h4l2 3h4v11H4zM12 17a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z', spark: 'M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z',
+  up: 'M3 14l9-9 9 9M12 5v15', revit: 'M4 20V6l8-3 8 3v14zM9 20v-6h6v6',
+};
+const STEP = [ // number, label, progress 0..1, icon, hover text, now
+  [1, 'Inventory', 1, IC.inv, 'Inventory|The server was checked: GPU, libraries, which models answer. Done on 31 Oct.'],
+  [2, 'Airflow', 0, IC.air, 'Airflow|Not started. The server stack is written, never run. It is for learning and for February.'],
+  [3, 'Read plans', .8, IC.plan, 'Read plans|A drawn plan with four rooms came back with the right sizes in 9 s. Not tried on a real plan photo yet.'],
+  [4, 'Knowledge', .5, IC.book, 'Knowledge|WoFlV, building code, Neufert and adjacency are in the code and the prompt, with sources marked to verify. Sources on hover for every rule, and German room labels, are still missing.'],
+  [5, 'Deck', .7, IC.deck, 'Deck and rehearsal|The deck is ready. Rehearsal and a recorded fallback come next.', true],
+  [6, 'Data audit', 0, IC.data, 'Data audit|CubiCasa5K and 50 hand-labelled attic plans. Not started.'],
+  [7, 'Site + roof', .8, IC.roof, 'Site and roof|Detmold: 11 LoD2 tiles, 1,379 gable dwellings. All 16 states counted from OpenStreetMap. BauNVO and ALKIS attributes are missing.'],
+  [8, 'Preference', 0, IC.heart, 'Preference model|Pairwise ratings of layouts and a small model against the rule score. Not started.'],
+  [9, 'Generators', 0, IC.wand, 'Against generators|House-GAN++ and HouseDiffusion plans, scored by our engine. Not started.'],
+  [10, 'Real2Twin', .3, IC.twin, 'Real2Twin bridge|The five-tool lab test is done. A scan or a splat as input for the engine is next.'],
+];
+const FLAGS = [['4 Nov', 5, 'Plan presentation|25 % of the grade, 14:00. Steps 1 to 5.'], ['16 Dec', 7, 'Interim presentation|Aim: steps 6 and 7.'], ['3 Feb', 10, 'Final presentation|Aim: steps 8 to 10.']];
+const EXTRAS = [ // beyond the plan
+  ['Roof sculptor', IC.up, 1, 'Roof sculptor|Pull the ridge, cut, extrude a dormer, snap like in Blender. Done.'],
+  ['Realistic view', IC.cam, 1, 'Realistic view|Blender and Unreal pictures from one file, with thick walls and real moss. Done.'],
+  ['AI helpers', IC.spark, 1, 'AI helpers|Describe a flat, read a sketch, read a roof photo. CLIP names the roof right 3 times in 4.'],
+  ['Law and standards', IC.book, 1, 'Law and standards|WoFlV, building code, Neufert, adjacency and door swings, each with its source. The code values are still to verify.'],
+  ['Revit templates', IC.revit, 0, 'Revit templates|The exact roof types of the German Revit 2025 template. Waiting for the export to be run.'],
+];
+function road() {
+  const box = $('#road'); if (!box) return;
+  const X0 = 160, DX = 168, RY = 660, svg = (d) => `<svg viewBox="0 0 24 24"><path d="${d}"/></svg>`;
+  const add = (cls, css, html, tp, i) => { const d = document.createElement('div'); d.className = cls + ' pop'; d.style.cssText = `--i:${i};${css}`; if (html) d.innerHTML = html; if (tp) d.dataset.tip = tp; box.appendChild(d); return d; };
+  const rail = document.createElement('div'); rail.className = 'rail'; rail.style.top = RY - 5 + 'px'; box.appendChild(rail);
+  const fill = document.createElement('i'); fill.style.width = (X0 + DX * 4 - 96) + 'px'; rail.appendChild(fill); // up to step 5, the one under way
+  FLAGS.forEach(([date, after, tp], k) => { const x = X0 + DX * (after - 1) + DX / 2; add('flag', `left:${x}px;top:${RY - 336}px`, `<b>${date}</b><i></i><s></s>`, tp, 2 + k * .4); });
+  STEP.forEach(([n, label, p, ic, tp, now], k) => {
+    const x = X0 + DX * k;
+    add('rn' + (p >= 1 ? ' done' : '') + (now ? ' now' : ''), `left:${x}px;top:${RY}px;--p:${p}`, svg(ic) + `<span class="num">${n}</span>`, tp, 3 + k * .3);
+    add('rl', `left:${x}px;top:${RY + 84}px`, label, '', 3.3 + k * .3);
+  });
+  const cap = add('rl', 'left:96px;top:6px;width:auto;margin:0;text-align:left;font-size:22px;letter-spacing:.2em;text-transform:uppercase;color:#7d8590', 'Beyond the plan', '', 5);
+  EXTRAS.forEach(([label, ic, p, tp], k) => add('ex' + (p ? '' : ' wait'), `left:${140 + k * 118}px;top:92px;--c:${p ? '#2f7d4f' : '#ffc533'}`, svg(ic), tp, 5.5 + k * .25));
+}
+road();
+
 const slides = [...stage.querySelectorAll('.slide')], STEPS = ['Question', 'Hypothesis', 'Data', 'Evidence', 'Method', 'Limits', 'Next'];
 const mbox = $('#method'); STEPS.forEach((s, i) => { const b = document.createElement('button'); b.textContent = s; b.onclick = (e) => { e.stopPropagation(); const j = slides.findIndex((x) => +x.dataset.step === i); if (j >= 0) go(j); }; mbox.appendChild(b); });
 const STEPMAP = [0, 1, 2, 3, 3, 4, 4, 4, 4, 4, 5, 5, 6, 6];
 let cur = -1;
 function go(n) {
   n = Math.max(0, Math.min(slides.length - 1, n)); if (n === cur) return;
-  slides.forEach((s, i) => s.classList.toggle('on', i === n)); cur = n;
+  slides.forEach((s, i) => s.classList.toggle('on', i === n)); cur = n; tip.classList.remove('on');
   const dark = slides[n].classList.contains('dark'); $('#count').style.color = dark ? '#9aa1ab' : '#6b6f76'; $('#count').textContent = `${n + 1} / ${slides.length}`;
   const st = +slides[n].dataset.step; mbox.querySelectorAll('button').forEach((b, i) => b.classList.toggle('on', i === st));
   history.replaceState(null, '', '#' + (n + 1));
