@@ -30,8 +30,11 @@ if ($LASTEXITCODE -ne 0) { throw 'build failed' }
 
 Set-Content -Encoding UTF8 (Join-Path $work 'samples.txt') $found
 
-Copy-Item (Join-Path $here 'bin\SampleExport.dll') $addins -Force
-Copy-Item (Join-Path $here 'SampleExport.addin') $addins -Force
+# every run gets its own file name: a Revit that is still open from an earlier run keeps the old dll locked, and that must not stop this run
+Get-ChildItem $addins -Filter 'SampleExport_*.dll' -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
+$dllName = 'SampleExport_' + (Get-Date -Format 'yyyyMMddHHmmss') + '.dll'
+Copy-Item (Join-Path $here 'bin\SampleExport.dll') (Join-Path $addins $dllName) -Force
+(Get-Content (Join-Path $here 'SampleExport.addin') -Raw).Replace('<Assembly>SampleExport.dll</Assembly>', "<Assembly>$dllName</Assembly>") | Set-Content -Encoding UTF8 (Join-Path $addins 'SampleExport.addin')
 try {
   $env:SAMPLE_EXPORT_DIR = $work
   Start-Process -FilePath $revit -ArgumentList '/nosplash' | Out-Null
@@ -42,7 +45,7 @@ try {
     if ((Test-Path (Join-Path $work 'done.txt')) -or (Test-Path (Join-Path $work 'error.txt'))) { break }
   }
 } finally {
-  Remove-Item (Join-Path $addins 'SampleExport.dll'), (Join-Path $addins 'SampleExport.addin') -Force -ErrorAction SilentlyContinue
+  Remove-Item (Join-Path $addins $dllName), (Join-Path $addins 'SampleExport.addin') -Force -ErrorAction SilentlyContinue
 }
 if (Test-Path (Join-Path $work 'samples.json')) {
   Copy-Item (Join-Path $work 'samples.json') (Join-Path $out 'samples.json') -Force

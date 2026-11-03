@@ -23,8 +23,10 @@ for (const s of samples) {
   const levels = (s.levels || []).filter((l) => l.rooms > 0).map((l) => `${l.name} (${l.rooms} rooms)`);
   const attics = s.attics || (s.attic ? [s.attic] : []); // the storeys that lie under a roof (older exports: one attic)
   if (!attics.length) { report.push({ source: s.source, levels, note: 'no level with rooms' }); continue; }
+  const boxOf = (a) => { const p = (a.rooms || []).flatMap((r) => r.loops?.[0] || []); return p.length ? [Math.min(...p.map((q) => q[0])), Math.min(...p.map((q) => q[1])), Math.max(...p.map((q) => q[0])), Math.max(...p.map((q) => q[1]))] : null; };
   for (const attic of attics) {
-    const t = deriveTemplate({ ...s, attic });
+    const others = attics.filter((o) => o !== attic).map((o) => ({ elev: o.level.elevation_m, box: boxOf(o) }));
+    const t = deriveTemplate({ ...s, attic }, others);
     if (!t) continue;
     const rows = t.room ? checkRooms(t, bands) : [];
     report.push({ source: s.source, levels, level: attic.level.name, fallback: !!s.fallback, pitched: t.pitched, room: t.room, roofs: t.roofs, notes: t.notes, rooms: rows });
@@ -48,11 +50,16 @@ fs.mkdirSync(new URL('../../shared/revit/', import.meta.url), { recursive: true 
 fs.writeFileSync(new URL('../../shared/revit/sampleTemplates.json', import.meta.url), JSON.stringify(templates, null, 1));
 fs.writeFileSync(new URL('../data/revit/sample_check.json', import.meta.url), JSON.stringify(report, null, 1));
 
+let lastSource = null;
 for (const r of report) {
-  console.log(`\n== ${r.source}`);
+  if (r.source !== lastSource) { console.log(`\n== ${r.source}`); lastSource = r.source; if (!r.error && r.levels) console.log(`   levels with rooms: ${r.levels.length}`); }
   if (r.error) { console.log('   not read:', r.error); continue; }
-  console.log(`   levels: ${r.levels.join(', ')}`);
-  if (!r.room) { console.log(`   ${r.note || r.notes.join('; ')}`); continue; }
+  if (!r.room) { console.log(`   ${r.level || ''} ${r.note || r.notes.join('; ')}`); continue; }
+  if (!r.pitched) { // a storey without a pitched roof over it: one line, the rooms are still held against the size rules
+    const flagged = r.rooms.filter((q) => q.flags.some((f) => /narrow|small|thin/.test(f))).length;
+    console.log(`   ${r.level.padEnd(30)} no pitched roof over it (${r.notes[0] || 'none found'}); ${r.rooms.length} rooms, ${flagged} too small, narrow or thin by the rules`);
+    continue;
+  }
   console.log(`   ${r.level}: ${r.pitched ? 'pitched' : 'NOT pitched'} roof, ${r.room.width} x ${r.room.depth} m, knee wall ${r.room.kneeWall} m, pitch ${r.room.pitch}°, ridge ${r.room.maxHeight} m${r.notes.length ? `\n   notes: ${r.notes.join('; ')}` : ''}`);
   for (const q of r.rooms) {
     console.log(`   ${(q.name || '?').padEnd(24)} ${String(q.type || '?').padEnd(8)} ${String(q.area).padStart(6)} m²  ${q.short} x ${q.long} m   under roof: ${Math.round(q.headroom.full * 100)} % full, ${Math.round(q.headroom.half * 100)} % half, ${Math.round(q.headroom.low * 100)} % low${q.flags.length ? `\n      ! ${q.flags.join('\n      ! ')}` : ''}`);

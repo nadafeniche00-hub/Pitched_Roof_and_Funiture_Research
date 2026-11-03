@@ -171,24 +171,11 @@ public class App : IExternalApplication
                 };
             }, "roof").ToList();
 
-            // the storeys directly under a roof: rooms on the level, a roof over them that starts 1.5 to 7 m above the floor, and no other storey with rooms between. A level called Dachgeschoss comes first.
+            // every level that has rooms is described (up to 45): which storeys lie under a pitched roof is decided afterwards from all of them (convert_sample.mjs), not guessed here from the extent of a roof
             var roomBox = roomLevels.ToDictionary(l => l.Id.Value, l => RoomsOn(l).Select(r => r.get_BoundingBox(null)).Where(b => b != null).Aggregate((BoundingBoxXYZ?)null, (u, b) => Union(u, b!)));
-            var under = new List<Level>();
-            var named = NamedAttic(roomLevels);
-            if (named != null) under.Add(named);
-            foreach (var l in roomLevels)
-            {
-                var rb = roomBox[l.Id.Value];
-                if (rb == null || under.Contains(l)) continue;
-                var roof = roofBoxes.Where(b => Overlap(b, rb) && b.Min.Z >= l.Elevation + Ft(1.5) && b.Min.Z <= l.Elevation + Ft(7)).OrderBy(b => b.Min.Z).FirstOrDefault();
-                if (roof == null) continue;
-                bool covered = roomLevels.Any(o => o != l && o.Elevation > l.Elevation + Ft(0.5) && o.Elevation < roof.Min.Z && roomBox[o.Id.Value] is { } ob && Overlap(ob, rb));
-                if (!covered) under.Add(l);
-            }
-            under = under.OrderByDescending(l => RoomsOn(l).Count()).Take(4).ToList();
-            bool fallback = under.Count == 0;
-            if (fallback && roomLevels.Count > 0) under.Add(roomLevels[^1]);
-            foreach (var l in under) Note(fallback ? $"no storey under a roof: the top level with rooms, {l.Name}, is described instead" : $"storey under a roof: {l.Name} at {M(l.Elevation)} m");
+            var under = roomLevels.Take(45).ToList();
+            bool fallback = false;
+            foreach (var l in under) Note($"storey {l.Name} at {M(l.Elevation)} m: {RoomsOn(l).Count()} rooms");
             if (roomLevels.Count == 0) Note("no level with rooms: only the levels are written");
 
             object Describe(Level lvl)

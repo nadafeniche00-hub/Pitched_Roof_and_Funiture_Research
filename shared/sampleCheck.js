@@ -55,7 +55,7 @@ const mid = (a, b) => (a + b) / 2;
  * The attic of one exported sample as a room of the app. Revit has x east and y north; the app has x across the roof slope and y along the ridge, so the long side of the footprint becomes y.
  * Returns { pitched, notes, room, frame, rooms } or null when the sample has no attic level. `pitched` is false for a flat roof or when no roof was found above the level.
  */
-export function deriveTemplate(sample) {
+export function deriveTemplate(sample, others = []) {
   const at = sample.attic;
   if (!at) return null;
   const notes = [];
@@ -77,8 +77,13 @@ export function deriveTemplate(sample) {
   let kneeWall = tops.length ? Math.min(...tops) - floorZ : null;
   if (kneeWall == null) notes.push('the walls gave no top height: the knee wall is the default of the app');
   // roof: the roofs above this level that overlap the footprint
-  const over = (r) => r.box && r.box.max[0] > x0 && r.box.min[0] < x1 && r.box.max[1] > y0 && r.box.min[1] < y1 && r.box.max[2] > floorZ + 0.5 && r.box.min[2] < floorZ + 8;
-  const roofs = (sample.roofs || []).filter(over);
+  // `others`: the other storeys of the project as { elev, box: [x0, y0, x1, y1] } of their rooms. A roof belongs to this storey when it overlaps its footprint, starts 0.5 to 7 m above its floor and no other
+  // storey over the same footprint lies between; of those roofs the ones within 3 m of the lowest are taken (one roof system)
+  const overlaps = (b) => b[2] > x0 && b[0] < x1 && b[3] > y0 && b[1] < y1;
+  const covered = (zTop) => others.some((o) => o.box && o.elev > floorZ + 0.5 && o.elev < zTop && overlaps(o.box));
+  const candidates = (sample.roofs || []).filter((r) => r.box && overlaps([r.box.min[0], r.box.min[1], r.box.max[0], r.box.max[1]]) && r.box.min[2] >= floorZ + 0.5 && r.box.min[2] <= floorZ + 7 && !covered(r.box.min[2]));
+  const lowest = candidates.length ? Math.min(...candidates.map((r) => r.box.min[2])) : 0;
+  const roofs = candidates.filter((r) => r.box.min[2] <= lowest + 3);
   let pitch = null, ridge = null;
   if (roofs.length) {
     ridge = Math.max(...roofs.map((r) => r.box.max[2]));
