@@ -10,7 +10,7 @@ namespace SampleExport;
 
 /// <summary>
 /// Reads the architecture samples of Revit: for every path in samples.txt it opens the project (read only, it is never saved) and writes the levels (with the rooms and areas on each), every roof
-/// with its slope and extent, and on the attic level (Dachgeschoss, or else the top level that has rooms) the rooms with their boundaries, the walls, floors, doors, windows and stairs.
+/// with its slope and extent, and on every storey that lies directly under a roof (a level called Dachgeschoss comes first; else the top level with rooms) the rooms with their boundaries, the walls, floors, doors, windows and stairs.
 /// The result is samples.json next to samples.txt; done.txt or error.txt tells run.ps1 that it is finished. Metres, Revit's internal origin, y up (north).
 /// pipeline/revit/convert_sample.mjs turns the file into templates of the app and into cases for the rule check.
 /// </summary>
@@ -81,13 +81,23 @@ public class App : IExternalApplication
         return p != null && p.HasValue && p.StorageType == StorageType.Double ? convert(p.AsDouble()) : null;
     }
 
-    /// <summary>The attic level: a level whose name says Dachgeschoss (also Dachgeschoß, DG, attic); a plain "Dach" level only when nothing better exists.</summary>
-    static Level? PickAttic(List<Level> levels)
+    static double Ft(double meters) => UnitUtils.ConvertToInternalUnits(meters, UnitTypeId.Meters);
+
+    static bool Overlap(BoundingBoxXYZ a, BoundingBoxXYZ b) => a.Max.X > b.Min.X && a.Min.X < b.Max.X && a.Max.Y > b.Min.Y && a.Min.Y < b.Max.Y;
+
+    static BoundingBoxXYZ Union(BoundingBoxXYZ? u, BoundingBoxXYZ b) => u == null ? new BoundingBoxXYZ { Min = b.Min, Max = b.Max } : new BoundingBoxXYZ
+    {
+        Min = new XYZ(Math.Min(u.Min.X, b.Min.X), Math.Min(u.Min.Y, b.Min.Y), Math.Min(u.Min.Z, b.Min.Z)),
+        Max = new XYZ(Math.Max(u.Max.X, b.Max.X), Math.Max(u.Max.Y, b.Max.Y), Math.Max(u.Max.Z, b.Max.Z)),
+    };
+
+    /// <summary>A level whose name says Dachgeschoss (also Dachgeschoß, DG, attic) and that has rooms.</summary>
+    static Level? NamedAttic(List<Level> roomLevels)
     {
         bool Has(Level l, params string[] words) => words.Any(w => l.Name.Contains(w, StringComparison.OrdinalIgnoreCase));
-        return levels.FirstOrDefault(l => Has(l, "Dachgeschoss", "Dachgeschoß", "Dachgeschos"))
-            ?? levels.FirstOrDefault(l => l.Name.Trim().Equals("DG", StringComparison.OrdinalIgnoreCase) || l.Name.StartsWith("DG ", StringComparison.OrdinalIgnoreCase) || l.Name.StartsWith("DG_", StringComparison.OrdinalIgnoreCase))
-            ?? levels.FirstOrDefault(l => Has(l, "Attic", "Dach", "Roof"));
+        return roomLevels.FirstOrDefault(l => Has(l, "Dachgeschoss", "Dachgeschoß", "Dachgeschos"))
+            ?? roomLevels.FirstOrDefault(l => l.Name.Trim().Equals("DG", StringComparison.OrdinalIgnoreCase) || l.Name.StartsWith("DG ", StringComparison.OrdinalIgnoreCase) || l.Name.StartsWith("DG_", StringComparison.OrdinalIgnoreCase))
+            ?? roomLevels.FirstOrDefault(l => Has(l, "Attic"));
     }
 
     static object Export(Application app, string path)
@@ -97,47 +107,56 @@ public class App : IExternalApplication
         {
             Note($"opened {path} in {app.VersionName} ({app.VersionBuild})");
             var levels = new FilteredElementCollector(doc).OfClass(typeof(Level)).Cast<Level>().OrderBy(l => l.Elevation).ToList();
-            var attic = PickAttic(levels);
-            // no level called Dachgeschoss (a tower, a Japanese sample): the top level that has rooms is looked at in the same way
-            attic ??= levels.LastOrDefault(l => new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Rooms).WhereElementIsNotElementType().Cast<Element>().Any(e => e.LevelId == l.Id));
 
-            // how much every level holds: makes it possible to see at once whether the right level was taken
             IEnumerable<T> OnLevel<T>(Level l, BuiltInCategory? cat = null, Type? type = null) where T : Element
             {
                 var c = new FilteredElementCollector(doc);
                 var col = type != null ? c.OfClass(type) : cat != null ? c.OfCategory(cat.Value).WhereElementIsNotElementType() : c;
                 return col.Cast<Element>().Where(e => e.LevelId == l.Id).OfType<T>();
             }
+            // a Revit project has many levels for one storey (finished floor, raw floor, structure): an element belongs to a storey when its level lies within 0.45 m of it
+            bool SameStorey(Element e, Level l) => doc.GetElement(e.LevelId) is Level el && Math.Abs(el.Elevation - l.Elevation) <= Ft(0.45);
+            IEnumerable<Room> RoomsOn(Level l) => OnLevel<SpatialElement>(l, BuiltInCategory.OST_Rooms).OfType<Room>().Where(r => r.Area > 1e-6);
+
+            var roomLevels = levels.Where(l => RoomsOn(l).Any()).ToList();
             var summary = levels.Select(l => new
             {
                 name = l.Name,
                 id = l.Id.Value,
                 elevation_m = M(l.Elevation),
-                rooms = OnLevel<SpatialElement>(l, BuiltInCategory.OST_Rooms).Count(),
-                roomArea_m2 = M2(OnLevel<SpatialElement>(l, BuiltInCategory.OST_Rooms).OfType<Room>().Sum(r => r.Area)),
+                rooms = RoomsOn(l).Count(),
+                roomArea_m2 = M2(RoomsOn(l).Sum(r => r.Area)),
                 walls = OnLevel<Wall>(l, type: typeof(Wall)).Count(),
                 floors = OnLevel<Floor>(l, type: typeof(Floor)).Count(),
                 windows = OnLevel<FamilyInstance>(l, BuiltInCategory.OST_Windows).Count(),
                 doors = OnLevel<FamilyInstance>(l, BuiltInCategory.OST_Doors).Count(),
             }).ToList();
-            foreach (var s in summary) Note($"level {s.name} at {s.elevation_m} m: {s.rooms} rooms ({s.roomArea_m2} m2), {s.walls} walls, {s.floors} floors, {s.windows} windows, {s.doors} doors");
-            if (attic == null) Note("no level with rooms: only the levels are written");
-            else if (!attic.Name.Contains("Dach", StringComparison.OrdinalIgnoreCase) && !attic.Name.Contains("DG", StringComparison.Ordinal)) Note($"no level named Dachgeschoss: the top level with rooms, {attic.Name}, is described instead");
+            foreach (var s in summary.Where(s => s.rooms > 0 || s.walls > 0)) Note($"level {s.name} at {s.elevation_m} m: {s.rooms} rooms ({s.roomArea_m2} m2), {s.walls} walls, {s.floors} floors, {s.windows} windows, {s.doors} doors");
 
-            // roofs of the whole project (a roof sits on the level below the attic or on a level of its own): the converter picks the ones above the attic
+            // roofs of the whole project. An edge of a footprint roof that does not define the slope refuses to give its angle: ask only the ones that define it
+            var roofBoxes = new List<BoundingBoxXYZ>();
             var roofs = Safe(new FilteredElementCollector(doc).OfClass(typeof(RoofBase)).Cast<Element>(), el =>
             {
                 var r = (RoofBase)el;
                 var profiles = new List<object>();
                 if (r is FootPrintRoof fr)
                 {
-                    foreach (ModelCurveArray loop in fr.GetProfiles())
-                        foreach (ModelCurve mc in loop)
-                        {
-                            var c = mc.GeometryCurve;
-                            profiles.Add(new { p0 = P(c.GetEndPoint(0)), p1 = P(c.GetEndPoint(1)), definesSlope = fr.get_DefinesSlope(mc), slopeAngle = fr.get_SlopeAngle(mc), overhang_m = M(fr.get_Offset(mc)) });
-                        }
+                    try
+                    {
+                        foreach (ModelCurveArray loop in fr.GetProfiles())
+                            foreach (ModelCurve mc in loop)
+                            {
+                                var c = mc.GeometryCurve;
+                                bool defines = false;
+                                double? slope = null;
+                                try { defines = fr.get_DefinesSlope(mc); if (defines) slope = fr.get_SlopeAngle(mc); } catch { /* an edge that cannot say */ }
+                                profiles.Add(new { p0 = P(c.GetEndPoint(0)), p1 = P(c.GetEndPoint(1)), definesSlope = defines, slopeAngle = slope });
+                            }
+                    }
+                    catch (Exception ex) { Note($"roof {r.Id.Value} profiles: {ex.Message}"); }
                 }
+                var bb = r.get_BoundingBox(null);
+                if (bb != null) roofBoxes.Add(bb);
                 return (object)new
                 {
                     id = r.Id.Value,
@@ -152,21 +171,31 @@ public class App : IExternalApplication
                 };
             }, "roof").ToList();
 
-            // the rooms of every level, areas only (the boundaries follow for the attic): to compare what real storeys look like
-            var roomsByLevel = levels.Select(l => new
+            // the storeys directly under a roof: rooms on the level, a roof over them that starts 1.5 to 7 m above the floor, and no other storey with rooms between. A level called Dachgeschoss comes first.
+            var roomBox = roomLevels.ToDictionary(l => l.Id.Value, l => RoomsOn(l).Select(r => r.get_BoundingBox(null)).Where(b => b != null).Aggregate((BoundingBoxXYZ?)null, (u, b) => Union(u, b!)));
+            var under = new List<Level>();
+            var named = NamedAttic(roomLevels);
+            if (named != null) under.Add(named);
+            foreach (var l in roomLevels)
             {
-                level = l.Name,
-                rooms = OnLevel<SpatialElement>(l, BuiltInCategory.OST_Rooms).OfType<Room>().Where(r => r.Area > 1e-6)
-                    .Select(r => new { name = r.get_Parameter(BuiltInParameter.ROOM_NAME)?.AsString(), area_m2 = M2(r.Area), height_m = M(r.UnboundedHeight) }).ToList(),
-            }).Where(x => x.rooms.Count > 0).ToList();
+                var rb = roomBox[l.Id.Value];
+                if (rb == null || under.Contains(l)) continue;
+                var roof = roofBoxes.Where(b => Overlap(b, rb) && b.Min.Z >= l.Elevation + Ft(1.5) && b.Min.Z <= l.Elevation + Ft(7)).OrderBy(b => b.Min.Z).FirstOrDefault();
+                if (roof == null) continue;
+                bool covered = roomLevels.Any(o => o != l && o.Elevation > l.Elevation + Ft(0.5) && o.Elevation < roof.Min.Z && roomBox[o.Id.Value] is { } ob && Overlap(ob, rb));
+                if (!covered) under.Add(l);
+            }
+            under = under.OrderByDescending(l => RoomsOn(l).Count()).Take(4).ToList();
+            bool fallback = under.Count == 0;
+            if (fallback && roomLevels.Count > 0) under.Add(roomLevels[^1]);
+            foreach (var l in under) Note(fallback ? $"no storey under a roof: the top level with rooms, {l.Name}, is described instead" : $"storey under a roof: {l.Name} at {M(l.Elevation)} m");
+            if (roomLevels.Count == 0) Note("no level with rooms: only the levels are written");
 
-            object? detail = null;
-            if (attic != null)
+            object Describe(Level lvl)
             {
-                var rooms = Safe(OnLevel<SpatialElement>(attic, BuiltInCategory.OST_Rooms).OfType<Room>(), el =>
+                var rooms = Safe(RoomsOn(lvl), el =>
                 {
                     var r = (Room)el;
-                    if (r.Area <= 1e-6) return null; // not placed or not enclosed
                     var loops = new List<object>();
                     var segs = r.GetBoundarySegments(new SpatialElementBoundaryOptions { SpatialElementBoundaryLocation = SpatialElementBoundaryLocation.Finish });
                     if (segs != null)
@@ -185,7 +214,8 @@ public class App : IExternalApplication
                     };
                 }, "room").ToList();
 
-                var walls = Safe(OnLevel<Wall>(attic, type: typeof(Wall)), el =>
+                // walls stand on the raw-floor level of a storey, not on the finished-floor level that the rooms use: take the walls whose base is within 0.45 m of the floor
+                var walls = Safe(new FilteredElementCollector(doc).OfClass(typeof(Wall)).Cast<Element>().Where(w => w.get_BoundingBox(null) is { } b && Math.Abs(b.Min.Z - lvl.Elevation) <= Ft(0.45)), el =>
                 {
                     var w = (Wall)el;
                     var line = (w.Location as LocationCurve)?.Curve;
@@ -204,10 +234,10 @@ public class App : IExternalApplication
                     };
                 }, "wall").ToList();
 
-                var floors = Safe(OnLevel<Floor>(attic, type: typeof(Floor)), el => (object)new
+                var floors = Safe(new FilteredElementCollector(doc).OfClass(typeof(Floor)).Cast<Element>().Where(f => SameStorey(f, lvl)), el => (object)new
                 {
                     id = el.Id.Value,
-                    type = (doc.GetElement(el.GetTypeId()))?.Name,
+                    type = doc.GetElement(el.GetTypeId())?.Name,
                     area_m2 = Param(el, BuiltInParameter.HOST_AREA_COMPUTED, M2),
                     thickness_mm = Param(el, BuiltInParameter.FLOOR_ATTR_THICKNESS_PARAM, Mm),
                     box = Box(el),
@@ -233,12 +263,12 @@ public class App : IExternalApplication
                         sill_mm = Param(fi, BuiltInParameter.INSTANCE_SILL_HEIGHT_PARAM, Mm),
                     };
                 }
-                var windows = Safe(OnLevel<FamilyInstance>(attic, BuiltInCategory.OST_Windows), Opening, "window").ToList();
-                var doors = Safe(OnLevel<FamilyInstance>(attic, BuiltInCategory.OST_Doors), Opening, "door").ToList();
+                IEnumerable<Element> OpeningsOf(BuiltInCategory cat) => new FilteredElementCollector(doc).OfCategory(cat).WhereElementIsNotElementType().Cast<Element>().Where(e => e is FamilyInstance && SameStorey(e, lvl));
+                var windows = Safe(OpeningsOf(BuiltInCategory.OST_Windows), Opening, "window").ToList();
+                var doors = Safe(OpeningsOf(BuiltInCategory.OST_Doors), Opening, "door").ToList();
 
-                // stairs that reach the attic: from the level below or on the attic level itself
-                var below = levels.LastOrDefault(l => l.Elevation < attic.Elevation - 1e-6);
-                var stairs = Safe(new FilteredElementCollector(doc).OfClass(typeof(Stairs)).Cast<Element>().Where(s => s.LevelId == attic.Id || (below != null && s.LevelId == below.Id)), el => (object)new
+                var rb = roomBox[lvl.Id.Value];
+                var stairs = Safe(new FilteredElementCollector(doc).OfClass(typeof(Stairs)).Cast<Element>().Where(s => s.get_BoundingBox(null) is { } b && rb != null && Overlap(b, rb) && b.Max.Z > lvl.Elevation - Ft(0.5) && b.Min.Z < lvl.Elevation + Ft(3)), el => (object)new
                 {
                     id = el.Id.Value,
                     type = doc.GetElement(el.GetTypeId())?.Name,
@@ -246,9 +276,11 @@ public class App : IExternalApplication
                     box = Box(el),
                 }, "stair").ToList();
 
-                detail = new { level = new { name = attic.Name, id = attic.Id.Value, elevation_m = M(attic.Elevation), above = levels.FirstOrDefault(l => l.Elevation > attic.Elevation + 1e-6)?.Name }, rooms, walls, floors, windows, doors, stairs };
-                Note($"attic {attic.Name}: {rooms.Count} rooms, {walls.Count} walls, {floors.Count} floors, {windows.Count} windows, {doors.Count} doors, {stairs.Count} stairs; {roofs.Count} roofs in the project");
+                Note($"{lvl.Name}: {rooms.Count} rooms, {walls.Count} walls, {floors.Count} floors, {windows.Count} windows, {doors.Count} doors, {stairs.Count} stairs");
+                return new { level = new { name = lvl.Name, id = lvl.Id.Value, elevation_m = M(lvl.Elevation) }, rooms, walls, floors, windows, doors, stairs };
             }
+            var attics = under.Select(Describe).ToList();
+            Note($"{roofs.Count} roofs in the project");
 
             return new
             {
@@ -259,9 +291,9 @@ public class App : IExternalApplication
                 language = app.Language.ToString(),
                 units = "m, mm for thicknesses; Revit internal origin, y up (north)",
                 levels = summary,
-                roomsByLevel,
                 roofs,
-                attic = detail,
+                fallback,
+                attics,
             };
         }
         finally { doc.Close(false); }

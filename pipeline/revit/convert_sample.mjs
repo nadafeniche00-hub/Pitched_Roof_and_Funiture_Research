@@ -20,19 +20,23 @@ const slug = (s) => s.replace(/\.rvt$/i, '').replace(/[^A-Za-z0-9]+/g, '-').repl
 const report = [], kept = [];
 for (const s of samples) {
   if (s.error) { report.push({ source: s.source, error: String(s.error).split('\n')[0] }); continue; }
-  const t = deriveTemplate(s);
-  const levels = (s.levels || []).map((l) => `${l.name} (${l.rooms} rooms)`);
-  if (!t) { report.push({ source: s.source, levels, note: 'no level with rooms' }); continue; }
-  const rows = t.room ? checkRooms(t, bands) : [];
-  report.push({ source: s.source, levels, level: s.attic.level.name, pitched: t.pitched, room: t.room, roofs: t.roofs, notes: t.notes, rooms: rows });
-  if (t.pitched && t.rooms.length >= 2) kept.push({ s, t });
+  const levels = (s.levels || []).filter((l) => l.rooms > 0).map((l) => `${l.name} (${l.rooms} rooms)`);
+  const attics = s.attics || (s.attic ? [s.attic] : []); // the storeys that lie under a roof (older exports: one attic)
+  if (!attics.length) { report.push({ source: s.source, levels, note: 'no level with rooms' }); continue; }
+  for (const attic of attics) {
+    const t = deriveTemplate({ ...s, attic });
+    if (!t) continue;
+    const rows = t.room ? checkRooms(t, bands) : [];
+    report.push({ source: s.source, levels, level: attic.level.name, fallback: !!s.fallback, pitched: t.pitched, room: t.room, roofs: t.roofs, notes: t.notes, rooms: rows });
+    if (t.pitched && t.rooms.length >= 2) kept.push({ s, attic, t });
+  }
 }
 kept.sort((a, b) => b.t.rooms.length - a.t.rooms.length);
-const templates = kept.slice(0, 3).map(({ s, t }) => {
+const templates = kept.slice(0, 3).map(({ s, attic, t }) => {
   const rooms = t.rooms.filter((r) => r.type && r.type !== 'hall' && r.type !== 'stair');
   return {
-    id: `revit-${slug(s.source)}`,
-    name: `Revit sample: ${s.source.replace(/\.rvt$/i, '')}, ${s.attic.level.name}`,
+    id: `revit-${slug(s.source)}-${slug(attic.level.name)}`,
+    name: `Revit sample: ${s.source.replace(/\.rvt$/i, '')}, ${attic.level.name}`,
     note: `Read from ${s.source} by Revit's API: ${t.rooms.length} rooms, roof ${t.room.pitch}°, knee wall ${t.room.kneeWall} m. The sizes are the real ones of the sample.`,
     source: s.source,
     room: t.room,
