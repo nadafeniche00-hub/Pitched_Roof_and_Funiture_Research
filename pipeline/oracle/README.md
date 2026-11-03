@@ -139,3 +139,22 @@ The archive's other 21,488 files are the ML-ready form of the same 5,372 plans: 
 | `semantic/gx10_extract.py` | **written, not run**: needs the GX10; zero-shot, never measured on line drawings |
 | MSD calibration | **built and run** on 127,908 real rooms (results above, `msd/calibration_results.json`); 35 Python tests. ResPlan not loaded |
 | Python rules inside the app | no: the app checks in JavaScript (`shared/`) for the browser; the Python rules audit and gate the pipeline. The two agree on windows (15 of 15 plans the JS flagged were found by the Python rule) |
+
+### Distilled MSD: what real flats contain and how they connect (4 Nov 2026)
+
+`msd/distill.py` reads the 5,372 access graphs of the MSD archive (13 seconds, standard library only, nothing in a pickle is executed) and writes the heavy data down to three small files:
+`shared/msdPriors.js` (8 KB), `shared/msdExemplars.js` (450 KB, 350 real flats) and `msd/priors_results.json`. The raw archive and the 14 GB of image tensors stay on the computer and the server; the app carries only these.
+A **flat** is a connected group of rooms: entrance edges and the public stairs are cut, what stays connected is one dwelling (16,744 of them, each with its entrance door, a bath and a bedroom or living room).
+
+| What | Result (Swiss flats, not attics) |
+|---|---|
+| Bedrooms by size | 28 m² median: 70 % have one; 73 m²: 2 bedrooms 52 %; 89 m²: 2 bedrooms 49 %, 3 bedrooms 37 %; 109 m²: 3 bedrooms 64 %; 143 m²: 4 or more 71 % |
+| Share of a flat's net area (65 to 80 m²) | bedrooms 43 %, living 26 %, hall 12 %, kitchen 12 %, bath 7 % |
+| Where the front door opens | corridor 92 %, living room 4 %, bedroom 2 % |
+| A bath is connected to | the corridor 89 %, a bedroom **5 %** (by a door: 5.2 %), the living room 5 %: baths open into the corridor, not into the bedroom |
+| A bedroom is connected to | the corridor 89 %, a balcony 22 %, another bedroom 6 %, the living room 9 % |
+| Kitchen and living room | connected in 50 % to 66 % of the flats, mostly by an open passage |
+
+**Caution.** In MSD 34,379 of the 42,584 rooms typed Bedroom are the generic type ROOM (the CSV maps ROOM to Bedroom): "bedrooms" means habitable rooms that are not the living room, kitchen or bath, and the counts above are an upper bound
+(26 % of the flats of 65 to 80 m² have no room that the data calls a living room). The exemplars are therefore taken only from flats of 40 m² and more that name a bedroom, a kitchen and a living room, no room over half of the flat,
+a compact outline: 50 per size band, the ones furthest apart in size, bedrooms and proportion. Each carries its source (split, floor id). `server/test/msdPriors.test.js` checks the files against what the script promises.

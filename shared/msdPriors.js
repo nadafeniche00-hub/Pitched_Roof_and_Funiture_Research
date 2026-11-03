@@ -1,0 +1,405 @@
+// Written by pipeline/oracle/msd/distill.py from the MSD access graphs. Do not edit by hand.
+export const MSD_PRIORS = {
+ "source": "Modified Swiss Dwellings v2 (Kaggle), the access graphs of 5,372 floors; a flat = a connected group of rooms with its entrance door",
+ "floors_read": 5372,
+ "flats_used": 16744,
+ "buckets": [
+  {
+   "from": 0,
+   "to": 35,
+   "flats": 873,
+   "net_area_median": 28.2,
+   "rooms_median": 4,
+   "bedrooms": {
+    "0": 0.2784,
+    "1": 0.7033,
+    "2": 0.0183,
+    "3": 0.0,
+    "4": 0.0
+   },
+   "baths": {
+    "1": 0.9794,
+    "2": 0.0206,
+    "3": 0.0
+   },
+   "has": {
+    "kitchen": 0.8522,
+    "living": 0.3047,
+    "dining": 0.0011,
+    "storeroom": 0.0367,
+    "balcony": 0.4021
+   },
+   "area_share": {
+    "bath": 0.12,
+    "bedroom": 0.479,
+    "corridor": 0.079,
+    "dining": 0.0,
+    "kitchen": 0.133,
+    "living": 0.186,
+    "storeroom": 0.003
+   }
+  },
+  {
+   "from": 35,
+   "to": 50,
+   "flats": 1113,
+   "net_area_median": 45.0,
+   "rooms_median": 5,
+   "bedrooms": {
+    "0": 0.23,
+    "1": 0.5103,
+    "2": 0.2579,
+    "3": 0.0018,
+    "4": 0.0
+   },
+   "baths": {
+    "1": 0.9533,
+    "2": 0.0467,
+    "3": 0.0
+   },
+   "has": {
+    "kitchen": 0.9748,
+    "living": 0.575,
+    "dining": 0.009,
+    "storeroom": 0.142,
+    "balcony": 0.6918
+   },
+   "area_share": {
+    "bath": 0.092,
+    "bedroom": 0.372,
+    "corridor": 0.1,
+    "dining": 0.002,
+    "kitchen": 0.148,
+    "living": 0.279,
+    "storeroom": 0.007
+   }
+  },
+  {
+   "from": 50,
+   "to": 65,
+   "flats": 2932,
+   "net_area_median": 58.3,
+   "rooms_median": 6.0,
+   "bedrooms": {
+    "0": 0.044,
+    "1": 0.4328,
+    "2": 0.3404,
+    "3": 0.1801,
+    "4": 0.0027
+   },
+   "baths": {
+    "1": 0.9202,
+    "2": 0.0791,
+    "3": 0.0007
+   },
+   "has": {
+    "kitchen": 0.9802,
+    "living": 0.6269,
+    "dining": 0.0351,
+    "storeroom": 0.1548,
+    "balcony": 0.8322
+   },
+   "area_share": {
+    "bath": 0.074,
+    "bedroom": 0.422,
+    "corridor": 0.117,
+    "dining": 0.006,
+    "kitchen": 0.127,
+    "living": 0.247,
+    "storeroom": 0.008
+   }
+  },
+  {
+   "from": 65,
+   "to": 80,
+   "flats": 3829,
+   "net_area_median": 72.8,
+   "rooms_median": 7,
+   "bedrooms": {
+    "0": 0.0073,
+    "1": 0.1585,
+    "2": 0.5208,
+    "3": 0.2528,
+    "4": 0.0606
+   },
+   "baths": {
+    "1": 0.7302,
+    "2": 0.2664,
+    "3": 0.0034
+   },
+   "has": {
+    "kitchen": 0.9888,
+    "living": 0.7414,
+    "dining": 0.0185,
+    "storeroom": 0.1922,
+    "balcony": 0.9117
+   },
+   "area_share": {
+    "bath": 0.066,
+    "bedroom": 0.433,
+    "corridor": 0.122,
+    "dining": 0.003,
+    "kitchen": 0.116,
+    "living": 0.255,
+    "storeroom": 0.007
+   }
+  },
+  {
+   "from": 80,
+   "to": 100,
+   "flats": 4751,
+   "net_area_median": 88.6,
+   "rooms_median": 8,
+   "bedrooms": {
+    "0": 0.0021,
+    "1": 0.0301,
+    "2": 0.4889,
+    "3": 0.3742,
+    "4": 0.1046
+   },
+   "baths": {
+    "1": 0.2545,
+    "2": 0.7285,
+    "3": 0.017
+   },
+   "has": {
+    "kitchen": 0.9933,
+    "living": 0.8493,
+    "dining": 0.0328,
+    "storeroom": 0.3147,
+    "balcony": 0.9434
+   },
+   "area_share": {
+    "bath": 0.073,
+    "bedroom": 0.408,
+    "corridor": 0.126,
+    "dining": 0.004,
+    "kitchen": 0.101,
+    "living": 0.279,
+    "storeroom": 0.009
+   }
+  },
+  {
+   "from": 100,
+   "to": 130,
+   "flats": 2657,
+   "net_area_median": 109.2,
+   "rooms_median": 9,
+   "bedrooms": {
+    "0": 0.0011,
+    "1": 0.0087,
+    "2": 0.1099,
+    "3": 0.6417,
+    "4": 0.2386
+   },
+   "baths": {
+    "1": 0.0478,
+    "2": 0.8607,
+    "3": 0.0915
+   },
+   "has": {
+    "kitchen": 0.9947,
+    "living": 0.8826,
+    "dining": 0.038,
+    "storeroom": 0.4189,
+    "balcony": 0.9409
+   },
+   "area_share": {
+    "bath": 0.076,
+    "bedroom": 0.419,
+    "corridor": 0.127,
+    "dining": 0.004,
+    "kitchen": 0.089,
+    "living": 0.272,
+    "storeroom": 0.013
+   }
+  },
+  {
+   "from": 130,
+   "to": null,
+   "flats": 589,
+   "net_area_median": 142.5,
+   "rooms_median": 11,
+   "bedrooms": {
+    "0": 0.0,
+    "1": 0.0085,
+    "2": 0.0407,
+    "3": 0.2377,
+    "4": 0.7131
+   },
+   "baths": {
+    "1": 0.0492,
+    "2": 0.5976,
+    "3": 0.3531
+   },
+   "has": {
+    "kitchen": 0.983,
+    "living": 0.7708,
+    "dining": 0.0951,
+    "storeroom": 0.584,
+    "balcony": 0.8744
+   },
+   "area_share": {
+    "bath": 0.068,
+    "bedroom": 0.457,
+    "corridor": 0.145,
+    "dining": 0.01,
+    "kitchen": 0.077,
+    "living": 0.22,
+    "storeroom": 0.024
+   }
+  }
+ ],
+ "adjacency": {
+  "connected_to": {
+   "bath": {
+    "balcony": 0.003,
+    "bath": 0.02,
+    "bedroom": 0.053,
+    "corridor": 0.891,
+    "dining": 0.0,
+    "kitchen": 0.012,
+    "living": 0.048,
+    "storeroom": 0.008
+   },
+   "bedroom": {
+    "balcony": 0.222,
+    "bath": 0.036,
+    "bedroom": 0.055,
+    "corridor": 0.889,
+    "dining": 0.002,
+    "kitchen": 0.04,
+    "living": 0.088,
+    "storeroom": 0.008
+   },
+   "corridor": {
+    "balcony": 0.013,
+    "bath": 0.856,
+    "bedroom": 0.81,
+    "corridor": 0.159,
+    "dining": 0.018,
+    "kitchen": 0.519,
+    "living": 0.674,
+    "storeroom": 0.181
+   },
+   "dining": {
+    "balcony": 0.335,
+    "bath": 0.018,
+    "bedroom": 0.157,
+    "corridor": 0.655,
+    "kitchen": 0.639,
+    "living": 0.512,
+    "storeroom": 0.028
+   },
+   "kitchen": {
+    "balcony": 0.212,
+    "bath": 0.018,
+    "bedroom": 0.09,
+    "corridor": 0.603,
+    "dining": 0.019,
+    "living": 0.502,
+    "storeroom": 0.02
+   },
+   "living": {
+    "balcony": 0.85,
+    "bath": 0.09,
+    "bedroom": 0.212,
+    "corridor": 0.937,
+    "dining": 0.02,
+    "kitchen": 0.663,
+    "living": 0.002,
+    "storeroom": 0.03
+   },
+   "storeroom": {
+    "balcony": 0.058,
+    "bath": 0.043,
+    "bedroom": 0.06,
+    "corridor": 0.736,
+    "dining": 0.003,
+    "kitchen": 0.067,
+    "living": 0.079,
+    "storeroom": 0.018
+   }
+  },
+  "door_to": {
+   "bath": {
+    "balcony": 0.003,
+    "bath": 0.019,
+    "bedroom": 0.052,
+    "corridor": 0.888,
+    "dining": 0.0,
+    "kitchen": 0.012,
+    "living": 0.048,
+    "storeroom": 0.008
+   },
+   "bedroom": {
+    "balcony": 0.222,
+    "bath": 0.036,
+    "bedroom": 0.05,
+    "corridor": 0.866,
+    "dining": 0.002,
+    "kitchen": 0.024,
+    "living": 0.085,
+    "storeroom": 0.007
+   },
+   "corridor": {
+    "balcony": 0.013,
+    "bath": 0.854,
+    "bedroom": 0.787,
+    "corridor": 0.118,
+    "dining": 0.006,
+    "kitchen": 0.416,
+    "living": 0.295,
+    "storeroom": 0.17
+   },
+   "dining": {
+    "balcony": 0.335,
+    "bath": 0.018,
+    "bedroom": 0.139,
+    "corridor": 0.223,
+    "kitchen": 0.239,
+    "living": 0.12,
+    "storeroom": 0.018
+   },
+   "kitchen": {
+    "balcony": 0.211,
+    "bath": 0.018,
+    "bedroom": 0.055,
+    "corridor": 0.487,
+    "dining": 0.007,
+    "living": 0.155,
+    "storeroom": 0.018
+   },
+   "living": {
+    "balcony": 0.849,
+    "bath": 0.09,
+    "bedroom": 0.205,
+    "corridor": 0.437,
+    "dining": 0.005,
+    "kitchen": 0.206,
+    "living": 0.001,
+    "storeroom": 0.027
+   },
+   "storeroom": {
+    "balcony": 0.049,
+    "bath": 0.041,
+    "bedroom": 0.052,
+    "corridor": 0.688,
+    "dining": 0.002,
+    "kitchen": 0.063,
+    "living": 0.071,
+    "storeroom": 0.013
+   }
+  }
+ },
+ "entrance_opens_into": {
+  "corridor": 0.916,
+  "living": 0.043,
+  "bedroom": 0.022,
+  "kitchen": 0.015,
+  "balcony": 0.002,
+  "bath": 0.001,
+  "storeroom": 0.0,
+  "dining": 0.0
+ }
+};
