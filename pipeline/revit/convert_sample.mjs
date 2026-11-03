@@ -5,6 +5,7 @@
 // A sample without a pitched roof is reported and not kept as a template. Nothing is invented: what Revit did not give is said in `notes`.
 import fs from 'node:fs';
 import { deriveTemplate, checkRooms } from '../../shared/sampleCheck.js';
+import { DEFAULT_ROOM, sanitizeRoom } from '../../shared/engine.js';
 
 const input = new URL(process.argv[2] ? 'file:///' + process.argv[2].replace(/\\/g, '/') : '../data/revit/samples.json', import.meta.url);
 if (!fs.existsSync(input)) {
@@ -16,6 +17,8 @@ const cal = JSON.parse(fs.readFileSync(new URL('../oracle/msd/calibration_result
 const bands = Object.fromEntries(Object.entries(cal).map(([k, v]) => [k, { p5: +v.net_area.p5.toFixed(1), p95: +v.net_area.p95.toFixed(1) }]));
 bands.child = bands.bedroom;
 
+// the room of the app has limits (sanitizeRoom): a real storey that is bigger is cut, and the example says so
+const cut = (room) => { const r = sanitizeRoom({ ...DEFAULT_ROOM, dormers: [], ...room }); return r.width < room.width - 0.01 || r.depth < room.depth - 0.01 ? `${r.width} x ${r.depth} m (the sample: ${room.width} x ${room.depth} m)` : ''; };
 const slug = (s) => s.replace(/\.rvt$/i, '').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').toLowerCase() || 'sample';
 const report = [], kept = [];
 for (const s of samples) {
@@ -28,9 +31,9 @@ for (const s of samples) {
     const others = attics.filter((o) => o !== attic).map((o) => ({ elev: o.level.elevation_m, box: boxOf(o) }));
     const t = deriveTemplate({ ...s, attic }, others);
     if (!t) continue;
-    const rows = t.room ? checkRooms(t, bands) : [];
-    report.push({ source: s.source, levels, level: attic.level.name, fallback: !!s.fallback, pitched: t.pitched, room: t.room, roofs: t.roofs, notes: t.notes, rooms: rows });
-    if (t.pitched && t.rooms.length >= 2) kept.push({ s, attic, t });
+    const rows = t.room ? checkRooms(t, bands, { headroom: t.pitched && t.slopeKnown && t.fits }) : [];
+    report.push({ source: s.source, levels, level: attic.level.name, fallback: !!s.fallback, pitched: t.pitched, slopeKnown: t.slopeKnown, fits: t.fits, room: t.room, roofs: t.roofs, notes: t.notes, rooms: rows });
+    if (t.pitched && t.slopeKnown && t.fits && t.rooms.length >= 2 && t.rooms.some((r) => r.type !== 'hall' && r.type !== 'stair')) kept.push({ s, attic, t }); // not a stair core // a slope that the roof itself gives, and one gable that the app can model
   }
 }
 kept.sort((a, b) => b.t.rooms.length - a.t.rooms.length);
@@ -39,7 +42,7 @@ const templates = kept.slice(0, 3).map(({ s, attic, t }) => {
   return {
     id: `revit-${slug(s.source)}-${slug(attic.level.name)}`,
     name: `Revit sample: ${s.source.replace(/\.rvt$/i, '')}, ${attic.level.name}`,
-    note: `Read from ${s.source} by Revit's API: ${t.rooms.length} rooms, roof ${t.room.pitch}°, knee wall ${t.room.kneeWall} m. The sizes are the real ones of the sample.`,
+    note: `Read from ${s.source} by Revit's API: ${t.rooms.length} rooms, roof ${t.room.pitch}°, knee wall ${t.room.kneeWall} m. The sizes are the real ones of the sample.${cut(t.room) ? ` The app limits a room to ${cut(t.room)}, so the example is cut to that.` : ''}`,
     source: s.source,
     room: t.room,
     brief: { rooms: rooms.slice(0, 8).map((r, i) => ({ id: `${r.type}${i}`, type: r.type, area: +r.area.toFixed(1) })), links: [] },
@@ -55,9 +58,9 @@ for (const r of report) {
   if (r.source !== lastSource) { console.log(`\n== ${r.source}`); lastSource = r.source; if (!r.error && r.levels) console.log(`   levels with rooms: ${r.levels.length}`); }
   if (r.error) { console.log('   not read:', r.error); continue; }
   if (!r.room) { console.log(`   ${r.level || ''} ${r.note || r.notes.join('; ')}`); continue; }
-  if (!r.pitched) { // a storey without a pitched roof over it: one line, the rooms are still held against the size rules
+  if (!(r.pitched && r.slopeKnown && r.fits)) { // a storey without a roof the app can model: one line, the rooms are still held against the size rules
     const flagged = r.rooms.filter((q) => q.flags.some((f) => /narrow|small|thin/.test(f))).length;
-    console.log(`   ${r.level.padEnd(30)} no pitched roof over it (${r.notes[0] || 'none found'}); ${r.rooms.length} rooms, ${flagged} too small, narrow or thin by the rules`);
+    console.log(`   ${r.level.padEnd(30)} ${r.pitched ? 'pitched, but not kept' : 'no pitched roof over it'} (${r.notes.filter((n) => !/^pitch from|^the knee wall/.test(n)).join('; ') || (r.slopeKnown ? 'none' : 'the roofs give no slope')}); ${r.rooms.length} rooms, ${flagged} too small, narrow or thin by the rules`);
     continue;
   }
   console.log(`   ${r.level}: ${r.pitched ? 'pitched' : 'NOT pitched'} roof, ${r.room.width} x ${r.room.depth} m, knee wall ${r.room.kneeWall} m, pitch ${r.room.pitch}°, ridge ${r.room.maxHeight} m${r.notes.length ? `\n   notes: ${r.notes.join('; ')}` : ''}`);

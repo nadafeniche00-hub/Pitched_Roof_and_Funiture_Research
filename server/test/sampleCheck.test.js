@@ -8,7 +8,7 @@ const rect = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
 const wall = (a, b, top = 4.1) => ({ function: 'Exterior', p0: [...a, 3], p1: [...b, 3], box: { min: [Math.min(a[0], b[0]), Math.min(a[1], b[1]), 3], max: [Math.max(a[0], b[0]), Math.max(a[1], b[1]), top] } });
 const sample = {
   source: 'Made up.rvt',
-  roofs: [{ type: 'Ziegeldach', level: 'Dachgeschoss', kind: 'FootPrintRoof', box: { min: [-0.5, -0.5, 4], max: [8.5, 10.5, 7.1] } }],
+  roofs: [{ type: 'Ziegeldach', level: 'Dachgeschoss', kind: 'FootPrintRoof', area_m2: 150, box: { min: [-0.5, -0.5, 4], max: [8.5, 10.5, 7.1] } }],
   attic: {
     level: { name: 'Dachgeschoss', elevation_m: 3 },
     walls: [wall([0, 0], [8, 0]), wall([8, 0], [8, 10]), wall([8, 10], [0, 10]), wall([0, 10], [0, 0])],
@@ -56,11 +56,37 @@ test('the attic of a sample becomes a room of the app: footprint, knee wall, pit
 });
 
 test('a flat roof is not a pitched template', () => {
-  const flat = { ...sample, roofs: [{ ...sample.roofs[0], box: { min: [-0.5, -0.5, 4.05], max: [8.5, 10.5, 4.2] } }] };
+  const flat = { ...sample, roofs: [{ ...sample.roofs[0], box: { min: [-0.5, -0.5, 5.9], max: [8.5, 10.5, 6.1] } }] };
   const t = deriveTemplate(flat);
   assert.equal(t.pitched, false);
   assert.ok(t.notes.some((n) => /flat roof/.test(n)));
   assert.equal(deriveTemplate({ ...sample, attic: null }), null);
+});
+
+test('the slope of a roof comes from its own edges when Revit gives them (a tangent), and the span follows from the ridge', () => {
+  // a roof that comes down to the floor and rises 4 m to the ridge at a slope of 1 (45 degrees): the span is 8 m. A small canopy beside it is no roof of this storey
+  const steep = {
+    ...sample,
+    roofs: [
+      { type: 'Ziegeldach', level: 'x', kind: 'FootPrintRoof', area_m2: 120, box: { min: [-1, -1, 3], max: [9, 11, 7] }, profiles: [{ definesSlope: true, slopeAngle: 1 }, { definesSlope: true, slopeAngle: 1 }, { definesSlope: false, slopeAngle: null }] },
+      { type: 'Vordach', level: 'x', kind: 'FootPrintRoof', area_m2: 3, box: { min: [0, 0, 3.2], max: [1, 1, 3.4] }, profiles: [{ definesSlope: true, slopeAngle: 0.05 }] },
+    ],
+    attic: { ...sample.attic, walls: [], rooms: [{ name: 'Büro', area_m2: 48, loops: [rect(1, 1, 7, 9)] }] }, // no walls: the rooms and 0.4 m for the walls give the footprint (6.8 m across), less than the span
+  };
+  const t = deriveTemplate(steep);
+  assert.equal(t.pitched, true);
+  assert.ok(Math.abs(t.room.pitch - 45) < 0.1, `pitch ${t.room.pitch}`);
+  assert.equal(t.room.kneeWall, 0, 'the roof comes down to the floor');
+  assert.ok(Math.abs(t.room.width - 8) < 0.01, `width ${t.room.width}: twice the 4 m of the ridge over a slope of 1`);
+  assert.equal(t.roofs.length, 1);
+  assert.ok(t.notes.some((n) => /own edges/.test(n)));
+});
+
+test('a storey below another storey that has the roof over it has no roof of its own', () => {
+  const above = { elev: 6, box: [0, 0, 8, 10] };
+  const t = deriveTemplate({ ...sample, roofs: [{ ...sample.roofs[0], box: { min: [-0.5, -0.5, 8], max: [8.5, 10.5, 11] } }] }, [above]);
+  assert.equal(t.pitched, false);
+  assert.ok(t.notes.some((n) => /no roof/.test(n)));
 });
 
 test('headroom under the roof: a room by the eave stands lower than one at the ridge', () => {

@@ -67,3 +67,11 @@ What the converter does (`shared/sampleCheck.js`, tested on a made-up export in 
 their polygons. A sample whose roof is flat (under 8°) is reported and not kept. Then the rules of the app are held against every real room: the narrowest clear width and the minimum area of its type, the proportion
 (`maxAspect`), the share of the room that stands 2.0 m / 1 to 2 m / lower under that roof (the counting of the app), and whether its area lies inside the 5th to 95th percentile of the real plans of the training data (MSD).
 Everything the rules flag in a real, built storey is a candidate for a wrong rule or a wrong default, not only for a wrong room: read it that way.
+
+**What the first real run found (3 Nov 2026, Revit 2025.5, three architecture samples, 256 rooms on 36 storeys).** Only Golden Nugget has a pitched roof: the Ziegeldach of the rear building (slope 1.1 rise over run, 47.6°, ridge 4.5 m above the floor
+of `HG_OG 1`, which holds Büro 1-d 34.2 m² and Galerie 25.9 m²). Its top floor `GN_OG 5` lies under a sheet-metal roof of 12.6°. Snowdon Towers and the Japanese sample have flat roofs (2 to 3 %), so they are not templates for an attic; their rooms
+are still counted. Two templates were kept (they join the Examples list; the room of the app is limited to 12 x 14 m and cuts them). Held against the real rooms, the app's rules flag 5 narrow, 4 small and 1 thin room of 56 typed rooms: tea kitchens
+(1.9 m²), baths of 1.0 and 1.3 m width, a WC of 0.86 m, a kitchen of 4.5 m² and 1.56 m width. Read these as built, working examples that sit below the app's minimum, not as errors of the samples. 23 rooms lie outside the 5th to 95th percentile
+of the real plans of the training data, most of them office rooms and halls, which the data (residential) does not describe. The generated templates (`shared/revit/sampleTemplates.json`) and the export (`pipeline/data/revit/samples.json`) are
+Autodesk's sample data: they stay out of the repository until it is decided that they may go in. Limits of this reading: types come from room names (Galerie and Dachterrasse have no type), a gable roof with eaves on both sides is the only roof the app
+can model, and `GN_OG 5` is a penthouse with a terrace.
