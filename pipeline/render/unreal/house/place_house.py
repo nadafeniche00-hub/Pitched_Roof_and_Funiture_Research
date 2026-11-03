@@ -183,12 +183,33 @@ x0, y0, x1, y1 = max(x0, BOX[0]), max(y0, BOX[1]), min(x1, BOX[2]), min(y1, BOX[
 STEP = float(os.environ.get("US_STEP", "400"))
 # solid things by their bounding boxes (traces do not see the cliffs and rocks of this level): anything taller than 60 cm standing in the box
 solid = []
+rocks, trees = [], []          # (x, y, reach): where rocks and cliffs stand, where the level's own trees and bushes stand (the PCG plants of run time are not actors and are not seen)
+ROCK_WORDS = ("rock", "cliff", "stone", "boulder", "sandstone", "scree")
+TREE_WORDS = ("tree", "beech", "elderberry", "birch", "alder", "willow", "bush", "shrub", "sapling", "trunk", "vine", "fern", "bamboo", "palm")
 for a in actors:
-    if a.get_class().get_name() == "StaticMeshActor":
+    if a.get_class().get_name() == "StaticMeshActor" and a.get_actor_label() not in OURS:          # not the house of an earlier run: it moves
         o, e = a.get_actor_bounds(False)
         if x0 - 3000 < o.x < x1 + 3000 and y0 - 3000 < o.y < y1 + 3000 and e.z > 30:
             solid.append((o.x, o.y, o.z, e.x, e.y, e.z))
-say("static meshes in the box:", len(solid))
+            sm =a.static_mesh_component.static_mesh
+            nm = (a.get_actor_label() + " " + (sm.get_name() if sm else "")).lower()
+            if any(w in nm for w in ROCK_WORDS):
+                rocks.append((o.x, o.y, max(e.x, e.y)))
+            elif any(w in nm for w in TREE_WORDS):
+                trees.append((o.x, o.y, max(e.x, e.y)))
+say("static meshes in the box:", len(solid), "| rocks and cliffs:", len(rocks), "| trees and bushes:", len(trees))
+ROCK_MIN = float(os.environ.get("US_ROCK_MIN", "0"))        # cm of free ground between the house's edge and the nearest rock or cliff (0 = no rule)
+TREE_MIN = float(os.environ.get("US_TREE_MIN", "0"))        # the same for the nearest tree or bush
+
+
+VIEW_ROCK = float(os.environ.get("US_VIEW_ROCK", "0"))      # cm of free ground between the viewer and the nearest rock or cliff (0 = no rule)
+VIEW_TREE = float(os.environ.get("US_VIEW_TREE", "0"))      # the same for the nearest tree or bush
+VIEW_OPEN = float(os.environ.get("US_VIEW_OPEN", "0"))      # share (0..1) of free 8 m rays around the viewer by line traces (0 = no rule)
+
+
+def gap(x, y, things):
+    """distance from the point to the nearest thing's edge (its box reach counts), in cm"""
+    return min((math.hypot(tx - x, ty - y) - r for tx, ty, r in things), default=1e9)
 
 
 def clutter(x, y, zg, r):
@@ -227,7 +248,7 @@ else:
                 if zs is not None and max(zs) - min(zs) <= 70:
                     n_flat += 1
                     zc = sorted(zs)[len(zs) // 2]
-                    if clutter(x, y, zc, RADIUS) == 0:
+                    if clutter(x, y, zc, RADIUS) == 0 and gap(x, y, rocks) - RADIUS >= ROCK_MIN and gap(x, y, trees) - RADIUS >= TREE_MIN:
                         m = moss_near(x, y)
                         # moss round it, and a clearing: few big meshes within 30 m
                         near_solid = sum(1 for ox, oy, oz, ex, ey, ez in solid if (ox - x) ** 2 + (oy - y) ** 2 < 3000 ** 2 and ez > 150)
@@ -235,7 +256,7 @@ else:
                         cands.append((score, x, y, zc, max(zs) - min(zs), 0, 0, 0, 0, m))
             y += STEP
         x += STEP
-    cands.sort(reverse=True)
+    cands.sort(reverse=True, key=(lambda c: (c[9], c[0])) if os.environ.get("US_RANK") == "moss" else None)      # US_RANK=moss: the most moss within 25 m first
     say("columns with landscape on top:", n_ground, "| flat discs:", n_flat, "| clearings:", len(cands))
     for c in cands[:12]:
         say("   score %.1f | at %.0f %.0f | ground z %.0f | unevenness %.0f cm | open low %.2f mid %.2f high %.2f | sun %d | moss within 25 m: %d | %.0f m from the sample's start" % (
@@ -248,7 +269,7 @@ else:
 
     # ---- where the viewer stands: flat ground about 20 m away, a clear line to the house, the sun behind the viewer, an open background behind the house
     best = None
-    for r in (1800, 2200, 2600):
+    for r in (1800, 2200, 2600, 3000):
         for k in range(24):
             vang = k * 15.0
             vx, vy = cx + r * math.cos(math.radians(vang)), cy + r * math.sin(math.radians(vang))
@@ -256,6 +277,17 @@ else:
             if zs is None or max(zs) - min(zs) > 40 or abs(zs[0] - zc) > 150:
                 continue
             vz = zs[0]
+            if gap(vx, vy, rocks) < VIEW_ROCK or gap(vx, vy, trees) < VIEW_TREE:
+                continue                       # the viewer would stand between rocks or inside a bush
+            if VIEW_OPEN:
+                # rocks that are not actors of the level (the PCG graphs make them) still block a trace: 16 horizontal rays at the height of the eye and at the knee, 8 m long
+                free = tot = 0
+                for h in (60, 190):
+                    for k2 in range(16):
+                        tot += 1
+                        free += hit_distance(V3(vx, vy, vz + h), dirv(k2 * 22.5, 0), 800.0) is None
+                if free / tot < VIEW_OPEN:
+                    continue
             eye = V3(vx, vy, vz + 170)
             dx, dy, dz = cx - vx, cy - vy, zc + 880 - (vz + 170)
             dist = math.sqrt(dx * dx + dy * dy + dz * dz)
@@ -306,7 +338,12 @@ hl = house.get_actor_location()
 say("the house:", tuple(round(v) for v in (hl.x, hl.y, hl.z)), "yaw", round(house.get_actor_rotation().yaw), "| mobility", attempt("mobility", lambda: str(house.root_component.get_editor_property("mobility"))), "| saved in", attempt("package", lambda: house.get_package().get_name()))
 
 # ---- the viewer: our own start on the floor, looking at the house. The "#UsableSpace" after the map name picks it (the tag is the portal of the URL).
-ps = put("PlayerStart_UsableSpace", lambda l, r: eas.spawn_actor_from_class(unreal.PlayerStart, l, r), unreal.Vector(vx, vy, vz + 110 + float(os.environ.get("US_LIFT", "0"))), unreal.Rotator(0, 0, face))
+ps = put("PlayerStart_UsableSpace", lambda l, r: eas.spawn_actor_from_class(unreal.PlayerStart, l, r), unreal.Vector(vx, vy, vz + 110 + float(os.environ.get("US_LIFT", "0")) + float(os.environ.get("US_EYE", "0"))), unreal.Rotator(0, 0, face))
+POSE = os.environ.get("US_START_POSE")         # "x,y,z,pitch,yaw": start exactly here (the pose hover_info.py wrote to pov.log), the eye height is then the z given
+if POSE:
+    px, py_, pz, ppitch, pyaw = [float(v) for v in POSE.split(",")]
+    ps.set_actor_location_and_rotation(unreal.Vector(px, py_, pz - 110), unreal.Rotator(0, ppitch, pyaw), False, True)    # a start place stands 110 cm under the eye (the pawn's half height)
+    say("start place set to the given pose:", POSE)
 attempt("start tag", lambda: ps.set_editor_property("player_start_tag", "UsableSpace"))
 say("our start:", tuple(round(v) for v in (ps.get_actor_location().x, ps.get_actor_location().y, ps.get_actor_location().z)), "yaw", round(ps.get_actor_rotation().yaw), "tag", attempt("read tag", lambda: str(ps.get_editor_property("player_start_tag"))), "| saved in", attempt("package", lambda: ps.get_package().get_name()))
 

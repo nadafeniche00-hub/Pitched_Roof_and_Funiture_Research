@@ -14,7 +14,11 @@ param(
     [int]$StreamerPort = 8888,
     [ValidateSet('', 'H264', 'VP8', 'VP9', 'AV1')][string]$Codec = '',
     [switch]$SampleStart,   # ElectricDreams: begin at Epic's own start place instead of in front of the house
-    [switch]$Mute,     # no sound in the browser: the jungle sample brings its own ambience (birds, crickets, grasshoppers, flies, frogs, monkeys), streamed with the picture
+    [switch]$Ghost,    # start in Unreal's "ghost" mode: you fly through rocks and walls instead of getting stuck between them (the rocks of the jungle have no collision the placement script can see)
+    [switch]$Hover,    # ElectricDreams: simple facts about the house appear on the picture while the middle of the view is on it (house\hover_info.py, runs inside the game)
+    [switch]$Capture,  # ElectricDreams: the first minute locks the keys and the mouse and saves two full-size pictures of the standard view to house\shots (for the deck); then the viewer steers again
+    [switch]$Clean,    # no red on-screen messages (Lumen and exposure warnings of the small GPU) in the picture: for the pictures of the deck. It hides the facts of -Hover as well.
+    [switch]$Mute,    # no sound in the browser: the jungle sample brings its own ambience (birds, crickets, grasshoppers, flies, frogs, monkeys), streamed with the picture
     [switch]$Light,    # a big project on a small GPU (Epic's Electric Dreams sample on 8 GB): no hardware ray tracing, medium scalability, 1280x720 unless -Resolution says otherwise. Not tried yet.
     [string]$Bin = 'C:\Program Files\Epic Games\UE_5.8\Engine\Binaries\Win64'
 )
@@ -72,6 +76,13 @@ try {
     if ($Codec) { $ue += "-PixelStreamingEncoderCodec=$Codec" }
     # the picture is sent at 60 frames a second: no point in rendering more (the house level used the whole GPU without this)
     $cmds = @('t.MaxFPS 60')
+    if ($Ghost) { $cmds += 'ghost' }
+    if ($Clean) { $cmds += 'DisableAllScreenMessages' }
+    # -ExecutePythonScript is refused outside the editor ("cannot be used outside of the editor"), so the script goes in through the console command py (the path has no spaces: it sits in a comma list)
+    # the standard view is the start place of house\start_pose.txt (place and direction, level: the hover drone of the sample ignores a tilt); start_look.py only serves -Capture
+    if ($Capture) { $env:US_CAPTURE = '1' }
+    if ($Capture -and $Project -eq 'ElectricDreams' -and -not $SampleStart) { $cmds += ('py ' + (Resolve-Path (Join-Path $here '..\house\start_look.py')).Path) }
+    if ($Hover) { $cmds += ('py ' + (Resolve-Path (Join-Path $here '..\house\hover_info.py')).Path) }
     if ($Light) {
         # Ray tracing off: the sample switches it on in its own DefaultEngine.ini, and it does not fit 8 GB. Every setting like this changes what Unreal has to build: with these ones Epic's 12 GB
         # pre-built cache (DerivedDataCache/Compressed.ddp, mounted) was NOT found for the meshes, so the FIRST start builds about 600 of them from source, at 8 to 10 a minute (2 Nov 2026: 162 after

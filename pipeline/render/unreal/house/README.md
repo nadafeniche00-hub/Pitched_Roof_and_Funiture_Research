@@ -78,3 +78,12 @@ The sample's trees, ferns and ground cover are made at run time by its PCG graph
 ## What it has not been checked against
 
 The picture. Everything above is geometry read by traces; whether the house looks right in the jungle (orientation, lighting, plants growing through it) is decided in the stream.
+
+## The standard view and the pictures for the deck (3 Nov 2026, 15:20)
+
+The viewer starts where the user stood when the picture looked right: `start_pose.txt` (x y z pitch yaw roll of the view, in cm and degrees), set by `set_start.py` as the place of `PlayerStart_UsableSpace`
+(headless like `place_house.py`; the house stays where it is). Place and direction come across, the **tilt does not**: the player flies a `BP_OpalHoverDrone` with its own camera manager, and
+`set_control_rotation` or the pawn's rotation do not keep a pitch (tried on 3 Nov), so the view is level. `hover_info.py` keeps the live pose in `logs\pov.log` (twice a second) if a new view is wanted: stand there, copy the line into `start_pose.txt`, run `set_start.py`.
+
+`run_stream.ps1 -Capture` (with `-Clean`, no red on-screen messages) is how the deck picture was made: `start_look.py` locks the keys and mouse of every viewer, waits, saves two 1920x1080 pictures to `shots\standard_1.png` and `standard_2.png`
+(HighResShot: no buttons, no warnings) and gives the input back. `presentation\img\render_unreal_jungle.jpg` is `standard_2.png` cropped to 1500 x 637 (the box of slide 9, `object-fit: cover`), top at y 100.

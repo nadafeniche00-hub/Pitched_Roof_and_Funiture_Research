@@ -45,3 +45,4 @@ pipeline/render/unreal/pixelstreaming/logs/
 # the house pack (built by pipeline/render/unreal/house/make_house_pack.py from the UsableSpace project) and the logs of its scripts
 pipeline/render/unreal/house/pack/
 pipeline/render/unreal/house/logs/
+pipeline/render/unreal/house/shots/
