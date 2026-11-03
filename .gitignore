@@ -46,3 +46,12 @@ pipeline/render/unreal/pixelstreaming/logs/
 pipeline/render/unreal/house/pack/
 pipeline/render/unreal/house/logs/
 pipeline/render/unreal/house/shots/
+
+# evaluation of the sketch reading: the drawn cases and the run log are made again by the scripts in server/eval
+server/eval/cases/
+server/eval/run*.log
+
+# the oracle: plans exported for the Python audit and the real-plan data (large, made or downloaded again)
+pipeline/oracle/out/
+pipeline/oracle/data/
+__pycache__/
