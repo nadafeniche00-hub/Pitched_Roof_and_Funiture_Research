@@ -45,6 +45,11 @@ with a start place of its own: `run_stream.ps1 -Project ElectricDreams` now star
 `PlayerStart` to begin at), so the viewer stands 20 m from the house and looks at it. `-SampleStart` begins where Epic's sample does. See `house\README.md` for what it changes in Epic's project.
 Placed by line traces in a headless editor; **not yet seen in the stream**.
 
+**A GPU crash in the first minute** (3 Nov 2026, 09:28, first start of the day): the level loaded in 26 s and the viewer joined, then `logs\unreal_ElectricDreams.log` showed `Waited for PSO creation for 6400ms`
+(the driver needed seconds per pipeline-state object), `GPU Crashed or D3D Device Removed` with a Nanite pass in the breadcrumbs, and Windows logged an `nvlddmkm` error: the driver was reset and Unreal ended,
+which stops the signalling server too (the page says DISCONNECTED). The same start run again without streaming (200 pipeline builds, the longest wait 400 ms) went through 170 s without a crash, most likely
+because the driver keeps what it compiled: **start again**. Close other programs that use the GPU first; the crash report said 6.1 of 7.1 GB of video memory were in use.
+
 What `probe_level.py` found out about the level without opening a window (2 Nov 2026, `UnrealEditor-Cmd -nullrhi`): it loads with this engine (the project's prebuilt modules carry the build id of UE 5.8.4, so no Visual
 Studio is needed); it is a World Partition map with the game mode `GM_AnimSandbox` (a character you walk with W A S D and the mouse, not a free camera); the one `PlayerStart` is at (81188, -14778, 2444) cm, among 87
 cinematic cameras of the sample's beauty shots, so a viewer starts in the part of the jungle Epic composed.

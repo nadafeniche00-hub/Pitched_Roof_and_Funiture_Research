@@ -66,100 +66,217 @@ pl, pr = P.get_actor_location(), P.get_actor_rotation()
 say("loaded actors:", len(actors), "| the sample's start place (cm):", round(pl.x), round(pl.y), round(pl.z), "yaw", round(pr.yaw))
 
 TRACE = unreal.TraceTypeQuery.TRACE_TYPE_QUERY1
+TOP, BOTTOM = 26000.0, -2000.0
+V3 = unreal.Vector
 
 
-def column(x, y, z_ref):
-    """every blocking hit on the vertical line through (x, y): (z, is landscape), top to bottom"""
-    r = unreal.SystemLibrary.line_trace_multi(world, unreal.Vector(x, y, z_ref + 6000), unreal.Vector(x, y, z_ref - 6000), TRACE, False, [], unreal.DrawDebugTrace.NONE, True)
+def column(x, y):
+    """every blocking hit on the vertical line through (x, y), top to bottom: (z, is landscape)"""
+    r = unreal.SystemLibrary.line_trace_multi(world, V3(x, y, TOP), V3(x, y, BOTTOM), TRACE, False, [], unreal.DrawDebugTrace.NONE, True)
     out = []
     for h in (r[1] if isinstance(r, tuple) else r) or []:
         t = h.to_tuple()          # (blocking, initial overlap, time, distance, location, impact point, normal, impact normal, phys mat, actor, ...)
+        if not t[0]:
+            continue              # a touch (an audio volume, a trigger) is not solid
         a = t[9]
-        cls = a.get_class().get_name() if a else ""
-        out.append((t[5].z, "Landscape" in cls))
+        out.append((t[5].z, "Landscape" in (a.get_class().get_name() if a else "")))
     return sorted(out, reverse=True)
 
 
-# ---- where: a flat, empty piece of ground near the sample's start place. What the probes (probe_landscape.py) found: under the start place itself a rock mesh stops every trace, so its ground cannot be
-# read; east, north and south of it the landscape is one wide flat floor at 11 m (z 1100, the dry river bed of the sample), with no solid mesh above it; west the terrain climbs to 27 to 37 m.
-# The house goes on that floor, and the viewer starts on the same floor. A landscape hit is the ground; any other blocking hit within the height of the house above it is in the way.
-def ground_of(col):
-    return next((z for z, land in col if land), None)
+def ground(x, y):
+    """z of the landscape when it is the highest solid thing on the column, else None"""
+    col = column(x, y)
+    if not col or not col[0][1]:
+        return None
+    return col[0][0]
 
 
-def free_flat(cx, cy, hx, hy, yaw_deg, z_ref, nx=5, ny=5):
-    """(heights, share of blocked columns) on a grid over a rectangle, or None where there is no ground"""
-    c, s = math.cos(math.radians(yaw_deg)), math.sin(math.radians(yaw_deg))
-    zs, blocked = [], 0
-    for i in range(nx):
-        for j in range(ny):
-            lx = ((i / (nx - 1)) - 0.5) * 2 * hx if nx > 1 else 0
-            ly = ((j / (ny - 1)) - 0.5) * 2 * hy if ny > 1 else 0
-            col = column(cx + lx * c - ly * s, cy + lx * s + ly * c, z_ref)
-            g = ground_of(col)
+def hit_distance(origin, direction, length):
+    """distance to the first solid thing along the ray, None when the ray is free"""
+    end = V3(origin.x + direction.x * length, origin.y + direction.y * length, origin.z + direction.z * length)
+    r = unreal.SystemLibrary.line_trace_single(world, origin, end, TRACE, False, [], unreal.DrawDebugTrace.NONE, True)
+    if isinstance(r, tuple):
+        if not r[0]:
+            return None
+        return r[1].to_tuple()[3]
+    return None
+
+
+def free_ground(cx, cy, radius, rings=((0, 1), (0.5, 8), (1.0, 12))):
+    """ground heights over a disc; None if any column has no landscape on top (a rock, a hole)"""
+    zs = []
+    missing = 0
+    for fr, n in rings:
+        for i in range(n):
+            ang = 2 * math.pi * i / max(n, 1)
+            g = ground(cx + fr * radius * math.cos(ang), cy + fr * radius * math.sin(ang))
             if g is None:
-                return None
+                missing += 1          # a rock or a plant mesh on top of the landscape there: the bounding boxes judge those
+                continue
             zs.append(g)
-            if any((not land) and g + 30 < z < g + HEIGHT for z, land in col):
-                blocked += 1
-    return zs, blocked / (nx * ny)
+    return zs if missing <= 4 and zs else None
 
 
-def seen(px, py, pz, cx, cy, cz):
-    r = unreal.SystemLibrary.line_trace_single(world, unreal.Vector(px, py, pz + 120), unreal.Vector(cx, cy, cz + 300), TRACE, False, [], unreal.DrawDebugTrace.NONE, True)
-    return (not r[0]) if isinstance(r, tuple) else not (r and r.to_tuple()[0])
+def dirv(az_deg, el_deg):
+    a, e = math.radians(az_deg), math.radians(el_deg)
+    return V3(math.cos(a) * math.cos(e), math.sin(a) * math.cos(e), math.sin(e))
 
 
-Z0 = 1100.0
-cands = []
-for dist in (1600, 2000, 2600, 3200, 4000):
-    for k in range(24):
-        ang = k * 15.0
-        cx, cy = pl.x + dist * math.cos(math.radians(ang)), pl.y + dist * math.sin(math.radians(ang))
-        res = free_flat(cx, cy, HX + MARGIN, HY + MARGIN, 0, Z0 + 200)
-        if res is None:
-            continue
-        zs, blocked = res
-        slope = max(zs) - min(zs)
-        if blocked > 0.1 or slope > 40 or abs(zs[12] - Z0) > 60:
-            continue
-        cands.append((blocked * 1000 + slope + 0.02 * dist, dist, ang, cx, cy, zs[12], slope, blocked))
-cands.sort()
-say("flat and free spots for the house:", len(cands), "of 120")
-for c in cands[:8]:
-    say("   %4d cm at %3d deg | ground z %5.0f | slope %3.0f cm | blocked %.0f %%" % (c[1], c[2], c[5], c[6], 100 * c[7]))
-if not cands:
-    say("no spot found")
-    raise SystemExit
-_, dist, ang, cx, cy, zc, slope, blocked = cands[0]
+def openness(x, y, z):
+    """share of free rays, 80 m long, 12 directions: low (12 deg), middle (30 deg) and high (55 and 85 deg) elevations"""
+    out = []
+    for els in ((12,), (30,), (55, 85)):
+        n = f = 0
+        for el in els:
+            for k in range(12):
+                n += 1
+                f += hit_distance(V3(x, y, z), dirv(k * 30 + (7 * el) % 30, el), 8000.0) is None
+        out.append(f / n)
+    return out
 
-# ---- where the viewer stands: on the same floor, about 20 m from the house, with a free column of ground under it and a clear line to the house
-views = []
-for r in (1800, 2000, 2300):
-    for k in range(24):
-        vang = k * 15.0
-        vx, vy = cx + r * math.cos(math.radians(vang)), cy + r * math.sin(math.radians(vang))
-        res = free_flat(vx, vy, 150, 150, 0, Z0 + 200, 3, 3)
-        if res is None:
-            continue
-        zs, vblocked = res
-        vslope = max(zs) - min(zs)
-        if vblocked > 0 or vslope > 30 or abs(zs[4] - Z0) > 60:
-            continue
-        if not seen(vx, vy, zs[4], cx, cy, zc):
-            continue
-        views.append((vslope + 0.01 * abs(r - 2000), r, vang, vx, vy, zs[4]))
-views.sort()
-say("places for the viewer on the same floor:", len(views))
-for v in views[:5]:
-    say("   %4d cm from the house at %3d deg | ground z %5.0f" % (v[1], v[2], v[5]))
-if not views:
-    say("no place for the viewer")
-    raise SystemExit
-_, r, vang, vx, vy, vz = views[0]
+
+# ---- the sun: a directional light of the level (its forward vector is the way the light travels)
+suns = []
+for a in actors:
+    if any(w in a.get_class().get_name() for w in ("DirectionalLight", "Sun", "Sky", "Light")):
+        for c in attempt("light components", lambda a=a: a.get_components_by_class(unreal.DirectionalLightComponent), []) or []:
+            suns.append((attempt("intensity", lambda c=c: float(c.get_editor_property("intensity")), 0.0), a.get_actor_label(), c.get_forward_vector()))
+suns.sort(key=lambda s_: -s_[0])
+sun = None
+for it, lab, fv in suns[:4]:
+    say("directional light:", lab, "intensity", round(it, 2), "travels", round(fv.x, 2), round(fv.y, 2), round(fv.z, 2))
+if suns:
+    fv = suns[0][2]
+    sun = V3(-fv.x, -fv.y, -fv.z)
+    say("the sun is towards azimuth", round(math.degrees(math.atan2(sun.y, sun.x))), "deg, elevation", round(math.degrees(math.asin(max(-1, min(1, sun.z))))), "deg")
+
+# ---- moss: what the level says is moss (labels, meshes, decal materials)
+moss = []
+for a in actors:
+    nm = a.get_actor_label().lower()
+    cn = a.get_class().get_name()
+    if cn == "StaticMeshActor":
+        sm = a.static_mesh_component.static_mesh
+        nm += " " + (sm.get_name().lower() if sm else "")
+    elif cn == "DecalActor":
+        nm += " " + str(attempt("decal", lambda a=a: a.get_decal_material().get_name().lower(), ""))
+    if "moss" in nm:
+        l = a.get_actor_location()
+        moss.append((l.x, l.y))
+say("things called moss in the level:", len(moss))
+
+
+def moss_near(x, y, r=2500.0):
+    return sum(1 for mx, my in moss if (mx - x) ** 2 + (my - y) ** 2 < r * r)
+
+
+# ---- where: a flat, empty clearing with open sky, sun and moss. Cascade: ground column, flat disc, free volume, sky openness; then the viewer.
+lands = [a for a in actors if a.get_class().get_name().startswith("Landscape")]
+x0 = y0 = 1e12
+x1 = y1 = -1e12
+for a in lands:
+    o, e = a.get_actor_bounds(False)
+    x0, x1, y0, y1 = min(x0, o.x - e.x), max(x1, o.x + e.x), min(y0, o.y - e.y), max(y1, o.y + e.y)
+# the beauty-shot cameras of the sample (probe_cameras.py) stand 4 to 6 m above the flat floor at x 80000..89000, y -11000..-6000, in the moss: the nice clearings are there
+BOX = [float(v) for v in os.environ.get("US_BOX", "79000,-11500,87000,-5500").split(",")]
+x0, y0, x1, y1 = max(x0, BOX[0]), max(y0, BOX[1]), min(x1, BOX[2]), min(y1, BOX[3])
+STEP = float(os.environ.get("US_STEP", "400"))
+# solid things by their bounding boxes (traces do not see the cliffs and rocks of this level): anything taller than 60 cm standing in the box
+solid = []
+for a in actors:
+    if a.get_class().get_name() == "StaticMeshActor":
+        o, e = a.get_actor_bounds(False)
+        if x0 - 3000 < o.x < x1 + 3000 and y0 - 3000 < o.y < y1 + 3000 and e.z > 30:
+            solid.append((o.x, o.y, o.z, e.x, e.y, e.z))
+say("static meshes in the box:", len(solid))
+
+
+def clutter(x, y, zg, r):
+    """meshes whose box touches the disc and rises into the house's volume"""
+    n = 0
+    for ox, oy, oz, ex, ey, ez in solid:
+        if abs(ox - x) < r + ex and abs(oy - y) < r + ey and ez > 60 and oz + ez > zg + 120 and oz - ez < zg + HEIGHT:
+            n += 1
+    return n
+
+RADIUS = math.hypot(HX, HY) + MARGIN
+say("landscape covers x %.0f..%.0f y %.0f..%.0f, grid step %.0f cm" % (x0, x1, y0, y1, STEP))
+# US_VIEWER="x,y,yaw": stand there (a spot the sample's artists composed a shot from, see probe_cameras.py) and put the house US_DIST cm ahead; no search
+FORCE = os.environ.get("US_VIEWER")
+if FORCE:
+    vx, vy, fyaw = [float(v) for v in FORCE.split(",")]
+    d = float(os.environ.get("US_DIST", "2200"))
+    cx, cy = vx + d * math.cos(math.radians(fyaw)), vy + d * math.sin(math.radians(fyaw))
+    vz, zc = ground(vx, vy), ground(cx, cy)
+    say("forced: viewer ground", vz, "house ground", zc)
+    if vz is None or zc is None:
+        say("no landscape on top at the viewer or the house")
+        raise SystemExit
+    vang, r, behind, face_sun, v_open = fyaw + 180.0, d, 0.0, 0.0, 0.0
+else:
+    cands = []
+    n_ground = n_flat = 0
+    x = x0 + STEP
+    while x < x1 - STEP:
+        y = y0 + STEP
+        while y < y1 - STEP:
+            g = ground(x, y)
+            if g is not None:
+                n_ground += 1
+                zs = free_ground(x, y, RADIUS)
+                if zs is not None and max(zs) - min(zs) <= 70:
+                    n_flat += 1
+                    zc = sorted(zs)[len(zs) // 2]
+                    if clutter(x, y, zc, RADIUS) == 0:
+                        m = moss_near(x, y)
+                        # moss round it, and a clearing: few big meshes within 30 m
+                        near_solid = sum(1 for ox, oy, oz, ex, ey, ez in solid if (ox - x) ** 2 + (oy - y) ** 2 < 3000 ** 2 and ez > 150)
+                        score = min(m, 400) / 40.0 - near_solid / 40.0
+                        cands.append((score, x, y, zc, max(zs) - min(zs), 0, 0, 0, 0, m))
+            y += STEP
+        x += STEP
+    cands.sort(reverse=True)
+    say("columns with landscape on top:", n_ground, "| flat discs:", n_flat, "| clearings:", len(cands))
+    for c in cands[:12]:
+        say("   score %.1f | at %.0f %.0f | ground z %.0f | unevenness %.0f cm | open low %.2f mid %.2f high %.2f | sun %d | moss within 25 m: %d | %.0f m from the sample's start" % (
+            c[0], c[1], c[2], c[3], c[4], c[5], c[6], c[7], c[8], c[9], math.hypot(c[1] - pl.x, c[2] - pl.y) / 100))
+    if not cands:
+        say("no clearing found")
+        raise SystemExit
+    PICK = int(os.environ.get("US_PICK", "0"))
+    _, cx, cy, zc, _u, _l, _m, _h, _s, _mo = cands[PICK]
+
+    # ---- where the viewer stands: flat ground about 20 m away, a clear line to the house, the sun behind the viewer, an open background behind the house
+    best = None
+    for r in (1800, 2200, 2600):
+        for k in range(24):
+            vang = k * 15.0
+            vx, vy = cx + r * math.cos(math.radians(vang)), cy + r * math.sin(math.radians(vang))
+            zs = free_ground(vx, vy, 150, ((0, 1), (1.0, 8)))
+            if zs is None or max(zs) - min(zs) > 40 or abs(zs[0] - zc) > 150:
+                continue
+            vz = zs[0]
+            eye = V3(vx, vy, vz + 170)
+            dx, dy, dz = cx - vx, cy - vy, zc + 880 - (vz + 170)
+            dist = math.sqrt(dx * dx + dy * dy + dz * dz)
+            az, el = math.degrees(math.atan2(dy, dx)), math.degrees(math.asin(dz / dist))
+            if clutter(vx, vy, vz, 200) or any(abs(ox - (vx + cx) / 2) < ex + 400 and abs(oy - (vy + cy) / 2) < ey + 400 and oz + ez > vz + 120 for ox, oy, oz, ex, ey, ez in solid if ez > 20):
+                continue                       # something in the viewer's way
+            behind = 9000.0
+            face_sun = math.cos(math.radians(vang) - math.atan2(sun.y, sun.x)) if sun else 0.0
+            v_open = 1.0
+            score = face_sun
+            if best is None or score > best[0]:
+                best = (score, r, vang, vx, vy, vz, behind, face_sun, v_open)
+    if not best:
+        say("no place for the viewer")
+        raise SystemExit
+    _, r, vang, vx, vy, vz, behind, face_sun, v_open = best
+zc += float(os.environ.get("US_LIFT", "0"))                # the house higher than the landscape the traces see (cm): seen in the stream, the floor of the clearing is above it
 face = math.degrees(math.atan2(cy - vy, cx - vx))          # the viewer looks at the house
-yaw = vang + 121                                           # the house turned so that the viewer sees a gable and a long side, from the south-west as in the pictures of the app
-say("house centre", round(cx), round(cy), round(zc), "| house yaw", round(yaw), "| viewer at", round(vx), round(vy), round(vz), "looking along yaw", round(face), "| the sample's start place is", round(dist), "cm from the house")
+yaw = vang + 121                                           # the house turned so that the viewer sees a gable and a long side
+say("house centre", round(cx), round(cy), round(zc), "| house yaw", round(yaw), "| viewer at", round(vx), round(vy), round(vz), "looking along yaw", round(face),
+    "| free background behind the house %.0f m | sun behind the viewer %.2f | open sky at the viewer %.2f" % (behind / 100, face_sun, v_open))
 if not APPLY:
     say("---- done (dry run: nothing changed)")
     raise SystemExit
@@ -189,7 +306,7 @@ hl = house.get_actor_location()
 say("the house:", tuple(round(v) for v in (hl.x, hl.y, hl.z)), "yaw", round(house.get_actor_rotation().yaw), "| mobility", attempt("mobility", lambda: str(house.root_component.get_editor_property("mobility"))), "| saved in", attempt("package", lambda: house.get_package().get_name()))
 
 # ---- the viewer: our own start on the floor, looking at the house. The "#UsableSpace" after the map name picks it (the tag is the portal of the URL).
-ps = put("PlayerStart_UsableSpace", lambda l, r: eas.spawn_actor_from_class(unreal.PlayerStart, l, r), unreal.Vector(vx, vy, vz + 110), unreal.Rotator(0, 0, face))
+ps = put("PlayerStart_UsableSpace", lambda l, r: eas.spawn_actor_from_class(unreal.PlayerStart, l, r), unreal.Vector(vx, vy, vz + 110 + float(os.environ.get("US_LIFT", "0"))), unreal.Rotator(0, 0, face))
 attempt("start tag", lambda: ps.set_editor_property("player_start_tag", "UsableSpace"))
 say("our start:", tuple(round(v) for v in (ps.get_actor_location().x, ps.get_actor_location().y, ps.get_actor_location().z)), "yaw", round(ps.get_actor_rotation().yaw), "tag", attempt("read tag", lambda: str(ps.get_editor_property("player_start_tag"))), "| saved in", attempt("package", lambda: ps.get_package().get_name()))
 
@@ -203,6 +320,11 @@ for name, size in (("T_roof_clay_diff", 1024), ("T_roof_clay_nor", 1024), ("T_ro
 
 # ---- save what is ours: the two actors and the textures. The level file of the sample is left alone, unless Unreal gives no other way to save the actors.
 new = [p for n, p in dirty().items() if n not in before and n != LEVEL]
+# Unreal does not always list a moved actor's file as dirty: save the two actors' own packages whatever it says
+for actor in (house, ps):
+    pk = attempt("package of " + actor.get_actor_label(), lambda actor=actor: actor.get_package())
+    if pk is not None and pk.get_name() not in [p.get_name() for p in new] and pk.get_name() != LEVEL:
+        new.append(pk)
 say("packages to save:", [p.get_name() for p in new])
 if new:
     say("saved:", unreal.EditorLoadingAndSavingUtils.save_packages(new, False))

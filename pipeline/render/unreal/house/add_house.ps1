@@ -24,8 +24,13 @@ $before = (Get-FileHash $umap -Algorithm SHA256).Hash
 $t0 = Get-Date
 
 if (-not $Remove) {
-    Copy-Item $pack (Join-Path $Project 'Content') -Recurse -Force
-    "copied the pack into $(Join-Path $Project 'Content\UsableSpace')"
+    try {
+        Copy-Item $pack (Join-Path $Project 'Content') -Recurse -Force -ErrorAction Stop
+        "copied the pack into $(Join-Path $Project 'Content\UsableSpace')"
+    } catch {
+        # a running stream holds the files: the pack that is there is the one to use
+        "the pack could not be copied (a stream is running and holds its files); using the pack already in the project"
+    }
 }
 
 $log = Join-Path $here 'logs'
