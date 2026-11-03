@@ -4,6 +4,8 @@
 import { sanitizeBrief } from '../shared/plans.js';
 import { parseBriefText } from '../shared/briefText.js';
 import { rulebook } from '../shared/knowledge.js';
+import { checkSketchPlan, findingsText } from '../shared/planCheck.js';
+import { sanitizeRoom } from '../shared/engine.js';
 
 const cfg = () => ({
   url: (process.env.LLM_URL || '').replace(/\/+$/, ''),
@@ -74,15 +76,36 @@ const SKETCH_PROMPT = `This image is a floor plan or a hand sketch of one. Read 
 Metres, origin at the top-left corner of the outline, x to the right, y downwards. Use the dimensions written on the sketch; if there are none, estimate from typical room sizes.
 Every room is a rectangle; the rooms should tile the outline. Do not invent rooms that are not drawn.`;
 
-export async function planFromSketch(dataUrl) {
+// The model proposes, the checker (shared/planCheck.js) decides: a plan with overlapping rooms, holes in the outline or rooms outside it is sent back with the measured reasons,
+// at most AI_REPAIR_ROUNDS times (default 2, 0 = ask once). The answer says what the checker found, so a plan that never passed is shown as such and not believed.
+const repairRounds = (v) => {
+  const n = v === undefined || v === null || v === '' ? Number(process.env.AI_REPAIR_ROUNDS ?? 2) : Number(v);
+  return Math.max(0, Math.min(4, Number.isFinite(n) ? Math.round(n) : 2));
+};
+const repairAsk = (findings) => `A deterministic checker measured your plan and found these problems:\n${findings}\nCorrect the plan and answer with the complete JSON only, in the same format. Change only what is needed to fix the problems: keep the rooms, their types and everything that was right.`;
+const badAnswer = { ok: false, findings: [{ code: 'format', severity: 'error', msg: 'The answer was not valid JSON. Answer with the JSON object only.' }], stats: { errors: 1, warns: 0, coverage: 0 } };
+
+/** @param opts { rounds: repair rounds (default AI_REPAIR_ROUNDS or 2), room: the roof storey, for the headroom findings } */
+export async function planFromSketch(dataUrl, opts = {}) {
   if (!configured()) throw Object.assign(new Error('Sketch reading needs the model server: set LLM_URL, LLM_API_KEY and a vision model in LLM_VISION_MODEL (server/.env).'), { status: 501 });
   if (!/^data:image\/(png|jpe?g|webp);base64,/.test(dataUrl || '')) throw Object.assign(new Error('Send a PNG, JPEG or WebP image.'), { status: 400 });
-  const t0 = Date.now();
-  const out = await chat([{ role: 'user', content: [{ type: 'text', text: SKETCH_PROMPT }, { type: 'image_url', image_url: { url: dataUrl } }] }], cfg().vision, 120000);
-  const plan = jsonIn(out);
-  const ok = plan?.footprint?.w > 1 && plan?.footprint?.d > 1 && Array.isArray(plan.rooms) && plan.rooms.length;
-  if (!ok) throw Object.assign(new Error('The model could not read rooms from that image. A clearer drawing, or a model that accepts images, may help.'), { status: 422 });
-  return { plan, engine: 'vision', model: cfg().vision, ms: Date.now() - t0 };
+  const t0 = Date.now(), max = repairRounds(opts.rounds);
+  const messages = [{ role: 'user', content: [{ type: 'text', text: SKETCH_PROMPT }, { type: 'image_url', image_url: { url: dataUrl } }] }];
+  const history = [];
+  let best = null;
+  for (let round = 0; round <= max; round++) {
+    const out = await chat(messages, cfg().vision, 120000);
+    let plan = null, check = badAnswer;
+    try { plan = jsonIn(out); check = checkSketchPlan(plan, { room: opts.room ? sanitizeRoom(opts.room) : undefined }); } catch { /* not JSON: the same message goes back */ }
+    const usable = !!plan && !check.findings.some((f) => f.code === 'format');
+    history.push({ round, ok: check.ok, errors: check.stats.errors ?? 0, warns: check.stats.warns ?? 0, coverage: check.stats.coverage ?? 0, ...(opts.trace ? { plan } : {}) }); // trace: keep every answer (the evaluation compares the first with the last)
+    const better = !best || check.stats.errors < best.check.stats.errors || (check.stats.errors === best.check.stats.errors && check.stats.warns < best.check.stats.warns);
+    if (usable && better) best = { plan, check };
+    if (check.ok || round === max) break;
+    messages.push({ role: 'assistant', content: out }, { role: 'user', content: repairAsk(findingsText(check.findings)) });
+  }
+  if (!best) throw Object.assign(new Error('The model could not read rooms from that image. A clearer drawing, or a model that accepts images, may help.'), { status: 422 });
+  return { plan: best.plan, engine: 'vision', model: cfg().vision, ms: Date.now() - t0, check: { ok: best.check.ok, rounds: history.length - 1, history, findings: best.check.findings } };
 }
 
 const ROOF_PROMPT = `This is a photo or drawing of a building with a pitched roof. Decide which roof shape it has and answer with JSON only:

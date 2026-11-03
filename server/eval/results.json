@@ -1,0 +1,238 @@
+{
+ "summary": {
+  "model": "qwen3.8-27b",
+  "rounds": 2,
+  "cases": 12,
+  "answered": 11,
+  "oneShot": {
+   "iou": 0.938,
+   "pass": 11,
+   "count": 11,
+   "type": 1
+  },
+  "withOracle": {
+   "iou": 0.938,
+   "pass": 11,
+   "count": 11,
+   "type": 1
+  },
+  "repaired": 0,
+  "at": "2026-11-03T20:53:12.617Z"
+ },
+ "rows": [
+  {
+   "case": "case_01",
+   "rooms": 4,
+   "rounds": 0,
+   "one": {
+    "iou": 0.951708429283263,
+    "count": true,
+    "type": 1,
+    "pass": true
+   },
+   "loop": {
+    "iou": 0.951708429283263,
+    "count": true,
+    "type": 1,
+    "pass": true
+   },
+   "ms": 73586,
+   "findings": []
+  },
+  {
+   "case": "case_02",
+   "rooms": 6,
+   "rounds": 0,
+   "one": {
+    "iou": 0.8438936118641013,
+    "count": true,
+    "type": 1,
+    "pass": true
+   },
+   "loop": {
+    "iou": 0.8438936118641013,
+    "count": true,
+    "type": 1,
+    "pass": true
+   },
+   "ms": 90582,
+   "findings": []
+  },
+  {
+   "case": "case_03",
+   "rooms": 5,
+   "rounds": 0,
+   "one": {
+    "iou": 0.8984637893177855,
+    "count": true,
+    "type": 1,
+    "pass": true
+   },
+   "loop": {
+    "iou": 0.8984637893177855,
+    "count": true,
+    "type": 1,
+    "pass": true
+   },
+   "ms": 52145,
+   "findings": []
+  },
+  {
+   "case": "case_04",
+   "rooms": 6,
+   "error": "This operation was aborted"
+  },
+  {
+   "case": "case_05",
+   "rooms": 4,
+   "rounds": 0,
+   "one": {
+    "iou": 0.9866152597402598,
+    "count": true,
+    "type": 1,
+    "pass": true
+   },
+   "loop": {
+    "iou": 0.9866152597402598,
+    "count": true,
+    "type": 1,
+    "pass": true
+   },
+   "ms": 27639,
+   "findings": []
+  },
+  {
+   "case": "case_06",
+   "rooms": 5,
+   "rounds": 0,
+   "one": {
+    "iou": 0.9674327016977802,
+    "count": true,
+    "type": 1,
+    "pass": true
+   },
+   "loop": {
+    "iou": 0.9674327016977802,
+    "count": true,
+    "type": 1,
+    "pass": true
+   },
+   "ms": 85120,
+   "findings": []
+  },
+  {
+   "case": "case_07",
+   "rooms": 4,
+   "rounds": 0,
+   "one": {
+    "iou": 0.9850146215046383,
+    "count": true,
+    "type": 1,
+    "pass": true
+   },
+   "loop": {
+    "iou": 0.9850146215046383,
+    "count": true,
+    "type": 1,
+    "pass": true
+   },
+   "ms": 78644,
+   "findings": []
+  },
+  {
+   "case": "case_08",
+   "rooms": 6,
+   "rounds": 0,
+   "one": {
+    "iou": 0.8525493380663419,
+    "count": true,
+    "type": 1,
+    "pass": true
+   },
+   "loop": {
+    "iou": 0.8525493380663419,
+    "count": true,
+    "type": 1,
+    "pass": true
+   },
+   "ms": 73125,
+   "findings": []
+  },
+  {
+   "case": "case_09",
+   "rooms": 5,
+   "rounds": 0,
+   "one": {
+    "iou": 0.9731476310935555,
+    "count": true,
+    "type": 1,
+    "pass": true
+   },
+   "loop": {
+    "iou": 0.9731476310935555,
+    "count": true,
+    "type": 1,
+    "pass": true
+   },
+   "ms": 67507,
+   "findings": []
+  },
+  {
+   "case": "case_10",
+   "rooms": 6,
+   "rounds": 0,
+   "one": {
+    "iou": 0.8749453597113614,
+    "count": true,
+    "type": 1,
+    "pass": true
+   },
+   "loop": {
+    "iou": 0.8749453597113614,
+    "count": true,
+    "type": 1,
+    "pass": true
+   },
+   "ms": 119040,
+   "findings": []
+  },
+  {
+   "case": "case_11",
+   "rooms": 4,
+   "rounds": 0,
+   "one": {
+    "iou": 0.9975404312668464,
+    "count": true,
+    "type": 1,
+    "pass": true
+   },
+   "loop": {
+    "iou": 0.9975404312668464,
+    "count": true,
+    "type": 1,
+    "pass": true
+   },
+   "ms": 63333,
+   "findings": []
+  },
+  {
+   "case": "case_12",
+   "rooms": 5,
+   "rounds": 0,
+   "one": {
+    "iou": 0.9853897082958245,
+    "count": true,
+    "type": 1,
+    "pass": true
+   },
+   "loop": {
+    "iou": 0.9853897082958245,
+    "count": true,
+    "type": 1,
+    "pass": true
+   },
+   "ms": 74558,
+   "findings": []
+  }
+ ]
+}

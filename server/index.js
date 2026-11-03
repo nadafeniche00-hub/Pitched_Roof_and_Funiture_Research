@@ -23,7 +23,7 @@ const app = express();
 app.use(cors());
 // a sketch photo is big: this route takes its own, larger body before the general small limit applies
 app.post('/api/ai/sketch', express.json({ limit: '12mb' }), async (req, res) => {
-  try { res.json(await planFromSketch(req.body?.image)); } catch (e) { res.status(e.status || 502).json({ error: e.message || 'sketch reading failed' }); }
+  try { res.json(await planFromSketch(req.body?.image, { rounds: req.body?.rounds, room: req.body?.room })); } catch (e) { res.status(e.status || 502).json({ error: e.message || 'sketch reading failed' }); }
 });
 app.post('/api/ai/roof', express.json({ limit: '12mb' }), async (req, res) => {
   try { res.json(await roofFromPhoto(req.body?.image)); } catch (e) { res.status(e.status || 502).json({ error: e.message || 'roof reading failed' }); }
