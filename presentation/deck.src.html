@@ -41,7 +41,16 @@ img.shot { display: block; border: 4px solid #fff; box-shadow: 14px 14px 0 var(-
 .slide:not(.dark) .row .track { background: var(--line); }
 .node { position: absolute; padding: 18px 30px; font-weight: 900; font-size: 38px; text-transform: uppercase; border: 4px solid var(--ink); background: #fff; }
 .rfig { position: relative; margin: 0; }
+.fadeloop { position: relative; }
+.fadeloop img { position: absolute; left: 0; top: 0; width: 100%; height: 100%; object-fit: cover; }
+.fadeloop .b { animation: fadeab 8s ease-in-out infinite; }
+@keyframes fadeab { 0%, 35% { opacity: 0; } 50%, 85% { opacity: 1; } 100% { opacity: 0; } }
 .streambtn { display: flex; align-items: center; gap: 16px; height: 64px; padding: 0 28px; background: var(--hot, #e4002b); color: #fff; font-weight: 800; font-size: 28px; text-decoration: none; box-shadow: 6px 6px 0 #0f1217; cursor: pointer; }
+.streamcap { position: absolute; left: 0; right: 0; bottom: 0; padding: 8px 0; text-align: center; background: #7b61ff; color: #fff; font-weight: 800; font-size: 24px; }
+.ounreal { display: block; }
+.onote2 { font-weight: 800; font-size: 24px; color: #9aa1ab; cursor: help; }
+.onote2 b { color: #fff; }
+.onote2 .warn { color: #ffc533; }
 .streambtn svg { width: 36px; height: 36px; fill: none; stroke: #fff; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .streambtn:hover { transform: translate(-2px,-2px); box-shadow: 8px 8px 0 #0f1217; }
 .rfig figcaption { position: absolute; left: 18px; bottom: 18px; padding: 5px 16px; background: rgba(15,18,23,.8); color: #fff; font-weight: 800; font-size: 22px; letter-spacing: .12em; text-transform: uppercase; }
@@ -95,7 +104,7 @@ img.shot { display: block; border: 4px solid #fff; box-shadow: 14px 14px 0 var(-
 .ometrics { position: absolute; left: 22px; bottom: 22px; display: grid; gap: 14px; }
 .ometrics div { display: flex; align-items: baseline; gap: 14px; padding: 8px 18px; border: 3px solid #fff; cursor: help; width: 440px; }
 .ometrics big { font-weight: 900; font-size: 52px; line-height: 1; min-width: 190px; }
-.ometrics span { font-weight: 800; font-size: 28px; color: #9aa1ab; }
+.ometrics span { font-weight: 800; font-size: 28px; color: #9aa1ab; white-space: nowrap; }
 .ounreal { position: absolute; right: 24px; bottom: 28px; margin: 0; }
 .orevit { display: flex; gap: 22px; margin-top: 14px; }
 .onote { position: absolute; left: 22px; right: 22px; bottom: 18px; display: flex; gap: 12px; flex-wrap: wrap; font-weight: 800; font-size: 24px; cursor: help; }
@@ -202,7 +211,10 @@ img.shot { display: block; border: 4px solid #fff; box-shadow: 14px 14px 0 var(-
 <section class="slide dark" data-step="4" id="s9">
   <div class="tag">Walk inside</div>
   <h2 class="pop" style="font-size: 88px">Hover a roof, see what it is made of</h2>
-  <img class="shot pop" style="--i:3; position:absolute; left: 96px; top: 330px" src="{{IMG_app_house}}" width="900">
+  <div class="fadeloop pop" style="--i:3; position:absolute; left: 96px; top: 330px; width: 900px; height: 382px">
+    <img class="shot a" src="{{IMG_render_exterior}}">
+    <img class="shot b" src="{{IMG_render_unreal_jungle}}">
+  </div>
   <svg class="abs" id="layers" style="left: 1060px; top: 300px" width="770" height="740" viewBox="0 0 770 740"></svg>
   <span class="hint-i" style="left: 1060px; top: 996px" data-tip="Typical build-up|A rule of thumb, not measured. The exact layers of the German Revit template follow once it is exported.">i</span>
 </section>
@@ -225,7 +237,7 @@ img.shot { display: block; border: 4px solid #fff; box-shadow: 14px 14px 0 var(-
 <section class="slide dark" data-step="4" id="s9c">
   <div class="tag">Realistic view</div>
   <h2 class="pop" style="font-size: 88px">Walk it, then render it</h2>
-  <div class="abs pop" style="--i:1; left: 96px; top: 212px; font-weight: 800; font-size: 32px; color: #9aa1ab">One scene, two ways out. You pick: free, or licensed.</div>
+  <div class="abs pop" style="--i:1; left: 96px; top: 212px; font-weight: 800; font-size: 32px; color: #9aa1ab">One scene, two renderers, both free. Revit is the licensed one.</div>
   <figure class="rfig pop" style="--i:2; position: absolute; left: 96px; top: 272px" data-tip="Walls from the technical plan|The walls are extruded from the same wall list as the technical plan: 36.5 cm outside, 11.5 cm inside, door openings where the plan has them. Their cut faces are black, as wall sections are on a drawing. Roof off, plain daylight, half-timbered facade as real geometry.">
     <img class="shot" src="{{IMG_render_cutaway}}" width="880"><figcaption>Walls from the plan · cuts black</figcaption>
     <svg id="pplan" class="pinset" width="226" height="274" viewBox="0 0 226 274"></svg>
@@ -236,25 +248,27 @@ img.shot { display: block; border: 4px solid #fff; box-shadow: 14px 14px 0 var(-
     <figure class="rfig pop" style="--i:5" data-tip="Moss and grass|Close-up of the vegetation: particle grass and moss on a rock. The vegetation is the same for every shot."><img class="shot" src="{{IMG_render_detail}}" width="272" style="box-shadow: 10px 10px 0 var(--hot)"><figcaption style="font-size: 18px; left: 10px; bottom: 10px">Detail</figcaption></figure>
   </div>
 
-  <a class="abs pop streambtn" style="--i:2; left: 1040px; top: 196px" href="http://localhost:8080" target="_blank" rel="noopener" onclick="event.stopPropagation()" data-tip="Live in Unreal|The house in a jungle level, rendered live by Unreal on this laptop and streamed to the browser (Pixel Streaming). Opens only on the presenter's computer while the stream runs: start it with run_stream.ps1 or the Stream button in the app."><svg viewBox="0 0 24 24"><path d="M3 5h18v11H3zM9 8.5v4.5l4-2.25zM8 20h8M12 16v4"/></svg>Walk it live in Unreal</a>
-  <div class="abs pop ocard" style="--i:3; --c:#ea7600; left: 1040px; top: 272px; width: 784px; height: 372px">
+  <div class="abs pop ocard" style="--i:2; --c:#7b61ff; left: 1040px; top: 272px; width: 784px; height: 380px">
+    <div class="ohead"><i class="ologo" style="background:#7b61ff"><svg viewBox="0 0 24 24"><path d="M6 4v9a6 6 0 0 0 12 0V4M4 20h16"/></svg></i><b>Unreal</b><s class="free">FREE TO USE</s><s>EPIC · 5.8</s></div>
+    <div class="ometrics">
+      <div data-tip="Live, in a browser tab|Pixel Streaming: Unreal renders on this laptop (RTX 5070, 8 GB) and sends the picture as video to a browser tab. Nothing to install for the viewer; keys and mouse go back."><big>Live</big><span>in a tab</span></div>
+      <div data-tip="Lumen and Nanite|Epic's Electric Dreams jungle with the house standing in a clearing. Real-time light and shadow. The first start takes minutes, and it crashed the GPU once in the first minute."><big>Lumen</big><span>real-time</span></div>
+      <div data-tip="Free to use for this|The same .glb file goes into Unreal. A second renderer that is free to use for this research."><big>.glb</big><span>same file</span></div>
+    </div>
+    <a class="rfig ounreal" href="http://localhost:8080" target="_blank" rel="noopener" onclick="event.stopPropagation()" data-tip="Walk it live|Opens the live stream of the house in the jungle. Works on the presenter's computer while the stream runs (run_stream.ps1, or the Stream button in the app)."><img class="shot" src="{{IMG_render_unreal_jungle}}" width="290" style="border-width: 3px; box-shadow: 8px 8px 0 #7b61ff"><figcaption class="streamcap">&#9654; Walk it live</figcaption></a>
+  </div>
+
+  <div class="abs pop ocard" style="--i:3; --c:#ea7600; left: 1040px; top: 676px; width: 784px; height: 372px">
     <div class="ohead"><i class="ologo" style="background:#ea7600"><svg viewBox="0 0 24 24"><path d="M4 8h4l2-3h4l2 3h4v11H4zM12 17a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z"/></svg></i><b>Blender</b><s class="free">FREE</s><s>OPEN SOURCE</s></div>
     <div class="ometrics">
       <div data-tip="One file|The walk view saves the whole scene as one .glb file (glTF): walls, roof, facade, furniture, vegetation. The same file goes to Blender and to Unreal."><big>.glb</big><span>one file</span></div>
       <div data-tip="Cycles on the laptop GPU|Blender 5.2, Cycles path tracing with OptiX, 160 samples, AgX colour. 24 to 28 seconds a picture at 1920 by 1200."><big>24–28 s</big><span>a picture</span></div>
       <div data-tip="Plain daylight|Poly Haven textures (CC0), a sun and a sky, no lamps and no exposure tricks."><big>CC0</big><span>textures</span></div>
     </div>
-    <figure class="rfig ounreal" data-tip="Unreal Engine 5.8|The same .glb file in Unreal, with sun and sky only. A second renderer that is free to use for this."><img class="shot" src="{{IMG_render_unreal_exterior}}" width="250" style="border-width: 3px; box-shadow: 8px 8px 0 var(--hot)"><figcaption style="font-size: 17px; left: 8px; bottom: 8px">Unreal 5.8</figcaption></figure>
+    <figure class="rfig ounreal" data-tip="Blender 5.2|The same .glb file rendered by Blender Cycles: path-traced, a still picture."><img class="shot" src="{{IMG_render_exterior}}" width="290" style="border-width: 3px; box-shadow: 8px 8px 0 #ea7600"><figcaption style="font-size: 17px; left: 8px; bottom: 8px">Blender 5.2</figcaption></figure>
   </div>
 
-  <div class="abs pop ocard" style="--i:4; --c:#0696d7; left: 1040px; top: 668px; width: 784px; height: 392px">
-    <div class="ohead"><i class="ologo" style="background:#0696d7"><svg viewBox="0 0 24 24"><path d="M4 20V6l8-3 8 3v14zM9 20v-6h6v6"/></svg></i><b>Revit</b><s class="lic">LICENCE</s><s>AUTODESK</s></div>
-    <div class="orevit">
-      <figure class="rfig" data-tip="DEMO.rvt, outside|A small add-in builds DEMO.rvt in Revit 2025 from the German architecture template: walls of 36.5 and 11.5 cm, floors, the roof type of the template, doors and windows. Until it has been run on a licensed machine this is a placeholder."><img class="shot" src="{{IMG_revit_exterior}}" width="320" style="border-width: 3px; box-shadow: 8px 8px 0 #0696d7"></figure>
-      <figure class="rfig" data-tip="Floor plan with black cut walls|The add-in also makes a floor plan whose cut walls are filled black, like the technical plan. Until it has been run on a licensed machine this is a placeholder."><img class="shot" src="{{IMG_revit_plan}}" width="320" style="border-width: 3px; box-shadow: 8px 8px 0 #0696d7"></figure>
-    </div>
-    <div class="onote" data-tip="Honest status|The add-in (pipeline/revit/DemoBuild) compiles against the Revit 2025 API. It has not been run yet: that needs Revit open on a licensed machine and one click on Load Once. run_demo.ps1 does the rest and puts the pictures here."><span>German template</span><span>template roof type</span><span class="warn">not run yet</span></div>
-  </div>
+  <div class="abs pop onote2" style="--i:4; left: 1040px; top: 1070px; width: 784px" data-tip="Revit, not run yet|A small add-in (pipeline/revit/DemoBuild) builds DEMO.rvt in Revit 2025 from the German template. It compiles but has not been run: that needs Revit open on a licensed machine and one click on Load Once."><b>Revit</b> · licence, Autodesk · add-in built, <span class="warn">not run yet</span></div>
 </section>
 
 {{AI_SLIDES_HTML}}
