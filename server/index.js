@@ -5,6 +5,7 @@ import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { spawn } from 'node:child_process';
 import { evaluate, solve, sanitizeRoom, sanitizeItems, DEFAULT_RULES } from '../shared/engine.js';
 import { sanitizeSite } from '../shared/site.js';
 import { sanitizeLph } from '../shared/lph.js';
@@ -54,6 +55,24 @@ app.get('/api/dev/demo', (req, res) => {
   let log = [];
   try { log = fs.readFileSync(path.join(demoDir, 'demo_log.txt'), 'utf8').split(/\r?\n/).filter(Boolean).slice(-12); } catch { /* no run yet */ }
   res.json({ plan: has('demo.json'), project: has('DEMO.rvt'), done: has('done.txt'), failed: has('error.txt'), pictures: ['exterior', 'section', 'cutaway', 'plan'].filter((n) => has(`revit_${n}.png`)), log, dir: demoDir });
+});
+// dev only, loopback only: the Unreal level as a Pixel Streaming page (pipeline/render/unreal/pixelstreaming/). GET says whether the page answers; POST starts run_stream.ps1 in a console of its own
+// (Ctrl+C there stops Unreal and the signalling server). One stream at a time: a second start stops with a message about the ports.
+const STREAM_URL = 'http://localhost:8080';
+const streamUp = async () => { try { return (await fetch(STREAM_URL, { signal: AbortSignal.timeout(1500) })).ok; } catch { return false; } };
+app.get('/api/dev/stream', async (req, res) => {
+  if (!loopback(req)) return res.status(403).json({ error: 'local only' });
+  res.json({ up: await streamUp(), url: STREAM_URL });
+});
+app.post('/api/dev/stream', async (req, res) => {
+  if (!loopback(req)) return res.status(403).json({ error: 'local only' });
+  if (await streamUp()) return res.json({ up: true, started: false, url: STREAM_URL });
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const script = path.join(root, 'pipeline/render/unreal/pixelstreaming/run_stream.ps1');
+  if (!fs.existsSync(script)) return res.status(404).json({ error: 'run_stream.ps1 not found' });
+  const project = req.query.project === 'UsableSpace' ? 'UsableSpace' : 'ElectricDreams';
+  spawn('powershell.exe', ['-NoExit', '-ExecutionPolicy', 'Bypass', '-File', script, '-Project', project, '-Mute'], { cwd: root, detached: true, stdio: 'ignore' }).unref();
+  res.status(202).json({ up: false, started: true, url: STREAM_URL, note: 'Unreal needs a minute or more to load the level' });
 });
 app.use(express.json({ limit: '200kb' }));
 app.get('/api/ai/status', async (_q, res) => res.json(await aiStatus()));

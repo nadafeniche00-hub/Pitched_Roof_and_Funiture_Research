@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { loadScenario } from '../store/actions.js';
 import { uiActions } from '../store/uiSlice.js';
@@ -7,6 +8,26 @@ import { useT, useLang } from '../lib/i18n.js';
 import { IconBtn } from './Icon.jsx';
 
 const VIEW_ICON = { planner: 'house', library: 'library', ifc: 'cube', lph5: 'clipboard', knowledge: 'book' };
+
+// The Unreal level in the browser (Pixel Streaming, pipeline/render/unreal/pixelstreaming): opens the page when the stream runs, otherwise asks the local server to start it. Local server only.
+function StreamButton({ onToast }) {
+  const [wait, setWait] = useState(false);
+  const go = async () => {
+    const win = window.open('', '_blank');
+    try {
+      let st = await (await fetch('/api/dev/stream')).json();
+      if (!st.up) {
+        const r = await fetch('/api/dev/stream', { method: 'POST' });
+        if (!r.ok) throw new Error((await r.json()).error || 'could not start');
+        setWait(true); onToast('Starting Unreal: the level takes a minute or more to load');
+        for (let i = 0; i < 40 && !st.up; i++) { await new Promise((ok) => setTimeout(ok, 3000)); st = await (await fetch('/api/dev/stream')).json(); }
+      }
+      if (win) win.location = st.url || 'http://localhost:8080';
+    } catch (e) { win?.close(); onToast(`Stream: ${e.message} (it runs only with the local server)`); }
+    setWait(false);
+  };
+  return <IconBtn icon="stream" label="Walk the house in Unreal in a browser tab (Pixel Streaming). Starts it when it is not running." cap={wait ? 'Starting…' : 'Stream'} disabled={wait} onClick={go} />;
+}
 
 export default function Toolbar() {
   const dispatch = useDispatch();
@@ -55,6 +76,8 @@ export default function Toolbar() {
             onClick={() => { const p = list.find((x) => x.name === projectName); if (p && confirm(`Delete saved project “${p.name}”?`)) dispatch(deleteProject(p.id)); }} />
         )}
       </div>
+
+      <StreamButton onToast={(m) => dispatch(uiActions.setToast(m))} />
 
       <div className="langsw" role="group" aria-label="Language">
         {['en', 'de'].map((l) => <button key={l} className={lang === l ? 'on' : ''} onClick={() => dispatch(uiActions.setLang(l))}>{l.toUpperCase()}</button>)}
