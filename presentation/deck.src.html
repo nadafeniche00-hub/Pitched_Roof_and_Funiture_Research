@@ -281,6 +281,82 @@ img.shot { display: block; border: 4px solid #fff; box-shadow: 14px 14px 0 var(-
   <div class="abs pop" style="--i:9; left: 96px; top: 960px"><span class="chip" style="background:#2f7d4f;color:#fff" data-tip="Four roof photos|Four generated roof photos, three models. CLIP then names the shape: 3 of 4 right, the gabled house was read as a mansard. We use it to inspire the plan check, never to replace it.">CLIP: 3 of 4 right</span></div>
 </section>
 
+<!-- 10b pipeline: a model proposes, rules decide -->
+<section class="slide dark" data-step="4" id="s10b">
+  <div class="tag">The pipeline</div>
+  <h2 class="pop" style="font-size: 88px; max-width: 1730px">A model proposes. Rules decide.</h2>
+  <svg class="abs" style="left: 0; top: 0; pointer-events: none" width="1920" height="1200" viewBox="0 0 1920 1200" aria-hidden="true">
+    <path class="draw" style="--i:5" d="M620 560 H690 M676 540 L698 560 L676 580" fill="none" stroke="#fff" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+    <path class="draw" style="--i:7" d="M1224 560 H1294 M1280 540 L1302 560 L1280 580" fill="none" stroke="#fff" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+  <div class="ocard abs pop" style="--c:#7fb6d9; --i:2; left: 96px; top: 330px; width: 524px; height: 460px" data-tip="See|Grounding DINO finds rooms, doors and windows from words; SAM 2.1 cuts them out; Qwen (27 B, on the office server) reads the words of a brief. All zero-shot: nothing is trained. The picture script is written but not run on plans yet, and nobody has measured how well DINO finds doors on line drawings.">
+    <div class="ohead"><i class="ologo" style="background:#7fb6d9"><svg viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></i><b>See</b></div>
+    <p class="big" style="margin-top: 30px; font-size: 40px">DINO and SAM find the rooms, doors and windows.</p>
+    <p class="big mute" style="margin-top: 18px; font-size: 36px">Qwen reads the words.</p>
+    <div class="onote"><span>zero-shot</span><span class="warn">not run on plans yet</span></div>
+  </div>
+  <div class="ocard abs pop" style="--c:#ffc533; --i:4; left: 700px; top: 330px; width: 524px; height: 460px" data-tip="Measure|OpenCV turns pixels into metres with the dimensions written on the plan. A prototype read one synthetic plan: 5 of 5 rooms within about 4 cm. Not yet tested on real plans, and not yet in the app, which still lets the vision model write the coordinates. That is the weak link, and the next thing to replace.">
+    <div class="ohead"><i class="ologo" style="background:#ffc533"><svg viewBox="0 0 24 24" style="stroke:#0f1217"><path d="M3 17L17 3l4 4L7 21z"/><path d="M7 13l2 2M10 10l2 2M13 7l2 2"/></svg></i><b>Measure</b></div>
+    <p class="big" style="margin-top: 30px; font-size: 40px">OpenCV turns pixels into metres.</p>
+    <p class="big mute" style="margin-top: 18px; font-size: 36px">Walls from the drawing, size from its dimensions.</p>
+    <div class="onote"><span>5 of 5 rooms, 4 cm</span><span class="warn">one synthetic plan</span></div>
+  </div>
+  <div class="ocard abs pop" style="--c:#2f7d4f; --i:6; left: 1304px; top: 330px; width: 524px; height: 460px" data-tip="Decide|Rules in plain Python (standard library only, 27 tests) check what the models cannot: how wide a room is between the walls, whether a wall ends in a window, whether furniture stands in a wall, whether one wall lies in another. Each rule names its source. No model is ever asked whether a wall hits a window.">
+    <div class="ohead"><i class="ologo" style="background:#2f7d4f"><svg viewBox="0 0 24 24"><path d="M12 4v16M6 20h12M5 8h14M7 8l-3 6a3 3 0 0 0 6 0zM17 8l-3 6a3 3 0 0 0 6 0z"/></svg></i><b>Decide</b></div>
+    <p class="big" style="margin-top: 30px; font-size: 40px">Plain Python rules check the numbers.</p>
+    <p class="big mute" style="margin-top: 18px; font-size: 36px">No model is asked if a wall hits a window.</p>
+    <div class="onote"><span>27 tests</span><span>standard library only</span></div>
+  </div>
+  <div class="abs pop" style="--i:8; left: 96px; top: 850px; display: flex; gap: 22px; flex-wrap: wrap; width: 1730px">
+    <span class="chip" style="background:#7fb6d9;color:#0f1217" data-tip="ResPlan|17,000 residential plans as vector geometry and room graphs (arXiv:2508.14006). Its automated checks became ours: openings on a wall, wall thickness 10 to 40 cm, rooms adding up to the footprint.">ResPlan · 17,000 plans</span>
+    <span class="chip" style="background:#ffc533;color:#0f1217" data-tip="MSD|Modified Swiss Dwellings: over 5.3K plans of building complexes (ECCV 2024, arXiv:2407.10121). Its rule that a door lies within 0.05 m of both rooms is in our checks; its data will calibrate how small a real room is.">MSD · 5.3K plans</span>
+    <span class="chip" style="background:#ff4d2e;color:#fff" data-tip="Verifiable rewards|A language model trained against a checker that proves a plan right or wrong (ACL Findings 2026, arXiv:2605.14117). Their checker covers overlap, connections and total area, and no roofs; ours adds the height under the slope. We train nothing.">Verifiable rewards · ACL 2026</span>
+    <span class="chip" style="background:#2f7d4f;color:#fff" data-tip="Grounded-Segment-Anything|Open-source chain of Grounding DINO and SAM (Apache-2.0). Our notebooks use the same idea with the newer SAM 2.1.">Grounded-SAM</span>
+  </div>
+  <p class="abs pop mute" style="--i:9; left: 96px; top: 960px; width: 1730px; font-size: 34px; font-weight: 700; line-height: 1.25">Papers and datasets are reference material, not training data: they set the checks and calibrate the numbers. Nothing is trained.</p>
+</section>
+
+<!-- 10c what the checker found in our own app -->
+<section class="slide" data-step="4" id="s10c">
+  <div class="tag">The checker audits our own app</div>
+  <h2 class="pop" style="font-size: 88px; max-width: 1730px">Rules found it. We fixed it.</h2>
+  <div class="abs" id="auditrows" style="left: 96px; top: 330px; width: 1730px; display: grid; gap: 26px">
+    <div class="pop" style="--i:2" data-tip="Furniture inside walls|The rooms tile the footprint including its walls, and the outer wall (36.5 cm) lies inside it, so furniture stood in walls. Now everything is judged between the walls.">
+      <p class="big" style="font-size: 40px">Furniture inside walls</p>
+      <div style="display:grid;gap:8px;margin-top:8px">
+        <div style="display:flex;align-items:center;gap:16px"><span class="mute" style="width:100px;font-weight:800;font-size:24px">BEFORE</span><div style="flex:1;height:34px;background:var(--line)"><div class="bar" data-w="100" style="background:#ff4d2e"></div></div><b style="width:120px;font-size:34px">100 %</b></div>
+        <div style="display:flex;align-items:center;gap:16px"><span class="mute" style="width:100px;font-weight:800;font-size:24px">AFTER</span><div style="flex:1;height:34px;background:var(--line)"><div class="bar" data-w="0" style="background:#2f7d4f"></div></div><b style="width:120px;font-size:34px;color:#2f7d4f">0 %</b></div>
+      </div>
+    </div>
+    <div class="pop" style="--i:3" data-tip="Walls inside walls|Partition walls ran through the outer wall. They now stop at its inner face.">
+      <p class="big" style="font-size: 40px">Walls inside walls</p>
+      <div style="display:grid;gap:8px;margin-top:8px">
+        <div style="display:flex;align-items:center;gap:16px"><span class="mute" style="width:100px;font-weight:800;font-size:24px">BEFORE</span><div style="flex:1;height:34px;background:var(--line)"><div class="bar" data-w="100" style="background:#ff4d2e"></div></div><b style="width:120px;font-size:34px">100 %</b></div>
+        <div style="display:flex;align-items:center;gap:16px"><span class="mute" style="width:100px;font-weight:800;font-size:24px">AFTER</span><div style="flex:1;height:34px;background:var(--line)"><div class="bar" data-w="0" style="background:#2f7d4f"></div></div><b style="width:120px;font-size:34px;color:#2f7d4f">0 %</b></div>
+      </div>
+    </div>
+    <div class="pop" style="--i:4" data-tip="Walls that hit windows|A partition wall ended inside a window opening. The plan builder now avoids it and slides the wall to the window edge when it can. One plan in 60 is left.">
+      <p class="big" style="font-size: 40px">Walls that hit windows</p>
+      <div style="display:grid;gap:8px;margin-top:8px">
+        <div style="display:flex;align-items:center;gap:16px"><span class="mute" style="width:100px;font-weight:800;font-size:24px">BEFORE</span><div style="flex:1;height:34px;background:var(--line)"><div class="bar" data-w="75" style="background:#ff4d2e"></div></div><b style="width:120px;font-size:34px">75 %</b></div>
+        <div style="display:flex;align-items:center;gap:16px"><span class="mute" style="width:100px;font-weight:800;font-size:24px">AFTER</span><div style="flex:1;height:34px;background:var(--line)"><div class="bar" data-w="2" style="background:#2f7d4f"></div></div><b style="width:120px;font-size:34px;color:#2f7d4f">2 %</b></div>
+      </div>
+    </div>
+    <div class="pop" style="--i:5" data-tip="Too small spaces|Now judged between the walls. The 35 % left are all plans where the brief asks for more than the roof gives, and the app warns about every one of them. It still draws them: refusing them is the next step.">
+      <p class="big" style="font-size: 40px">Rooms too small between the walls</p>
+      <div style="display:grid;gap:8px;margin-top:8px">
+        <div style="display:flex;align-items:center;gap:16px"><span class="mute" style="width:100px;font-weight:800;font-size:24px">BEFORE</span><div style="flex:1;height:34px;background:var(--line)"><div class="bar" data-w="87" style="background:#ff4d2e"></div></div><b style="width:120px;font-size:34px">87 %</b></div>
+        <div style="display:flex;align-items:center;gap:16px"><span class="mute" style="width:100px;font-weight:800;font-size:24px">AFTER</span><div style="flex:1;height:34px;background:var(--line)"><div class="bar" data-w="35" style="background:#ffc533"></div></div><b style="width:120px;font-size:34px">35 %</b></div>
+      </div>
+    </div>
+  </div>
+  <div class="abs pop" style="--i:7; left: 96px; top: 1000px; display: flex; gap: 22px; flex-wrap: wrap; width: 1730px">
+    <span class="chip" style="background:#0f1217;color:#fff" data-tip="Same plans|60 attic plans made by the app from the same seeds, audited before and after the fixes. Plans with any error: 60 of 60 before, 22 of 60 after.">60 plans, before and after</span>
+    <span class="chip" style="background:#ffc533;color:#0f1217" data-tip="The 35 % left|Every one of them is a brief the roof cannot hold, and the app warned about it. The audit found none that the app did not flag.">35 %: briefs that do not fit, all flagged</span>
+    <span class="chip" style="background:#ff4d2e;color:#fff" data-tip="Smaller numbers|Areas are now counted between the walls, as the floor-area ordinance counts them (to verify): the same attic shows a smaller floor. The test attic went from 43 to 34 m².">areas now between the walls</span>
+  </div>
+</section>
+
 <!-- 11 server -->
 <section class="slide dark" data-step="4" id="s11">
   <div class="tag">Why a server</div>
