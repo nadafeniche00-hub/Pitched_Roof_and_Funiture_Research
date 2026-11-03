@@ -335,24 +335,24 @@ img.shot { display: block; border: 4px solid #fff; box-shadow: 14px 14px 0 var(-
         <div style="display:flex;align-items:center;gap:16px"><span class="mute" style="width:100px;font-weight:800;font-size:24px">AFTER</span><div style="flex:1;height:34px;background:var(--line)"><div class="bar" data-w="0" style="background:#2f7d4f"></div></div><b style="width:120px;font-size:34px;color:#2f7d4f">0 %</b></div>
       </div>
     </div>
-    <div class="pop" style="--i:4" data-tip="Walls that hit windows|A partition wall ended inside a window opening. The plan builder now avoids it and slides the wall to the window edge when it can. One plan in 60 is left.">
+    <div class="pop" style="--i:4" data-tip="Walls that hit windows|A partition wall ended inside a window opening. The plan builder now avoids it and slides the wall to the window edge when it can. About 3 plans in 100 are left, with a warning.">
       <p class="big" style="font-size: 40px">Walls that hit windows</p>
       <div style="display:grid;gap:8px;margin-top:8px">
         <div style="display:flex;align-items:center;gap:16px"><span class="mute" style="width:100px;font-weight:800;font-size:24px">BEFORE</span><div style="flex:1;height:34px;background:var(--line)"><div class="bar" data-w="75" style="background:#ff4d2e"></div></div><b style="width:120px;font-size:34px">75 %</b></div>
-        <div style="display:flex;align-items:center;gap:16px"><span class="mute" style="width:100px;font-weight:800;font-size:24px">AFTER</span><div style="flex:1;height:34px;background:var(--line)"><div class="bar" data-w="2" style="background:#2f7d4f"></div></div><b style="width:120px;font-size:34px;color:#2f7d4f">2 %</b></div>
+        <div style="display:flex;align-items:center;gap:16px"><span class="mute" style="width:100px;font-weight:800;font-size:24px">AFTER</span><div style="flex:1;height:34px;background:var(--line)"><div class="bar" data-w="3" style="background:#2f7d4f"></div></div><b style="width:120px;font-size:34px;color:#2f7d4f">3 %</b></div>
       </div>
     </div>
-    <div class="pop" style="--i:5" data-tip="Too small spaces|Now judged between the walls. The 35 % left are all plans where the brief asks for more than the roof gives, and the app warns about every one of them. It still draws them: refusing them is the next step.">
+    <div class="pop" style="--i:5" data-tip="Too small spaces|Now judged between the walls, with proportions from 127,908 real rooms. A brief that asks for more than the roof gives is made to fit: areas scale down, then the least important rooms are left out, and the plan says what changed. About 9 plans in 100 still have a room that is too small, all with warnings.">
       <p class="big" style="font-size: 40px">Rooms too small between the walls</p>
       <div style="display:grid;gap:8px;margin-top:8px">
         <div style="display:flex;align-items:center;gap:16px"><span class="mute" style="width:100px;font-weight:800;font-size:24px">BEFORE</span><div style="flex:1;height:34px;background:var(--line)"><div class="bar" data-w="87" style="background:#ff4d2e"></div></div><b style="width:120px;font-size:34px">87 %</b></div>
-        <div style="display:flex;align-items:center;gap:16px"><span class="mute" style="width:100px;font-weight:800;font-size:24px">AFTER</span><div style="flex:1;height:34px;background:var(--line)"><div class="bar" data-w="35" style="background:#ffc533"></div></div><b style="width:120px;font-size:34px">35 %</b></div>
+        <div style="display:flex;align-items:center;gap:16px"><span class="mute" style="width:100px;font-weight:800;font-size:24px">AFTER</span><div style="flex:1;height:34px;background:var(--line)"><div class="bar" data-w="9" style="background:#ffc533"></div></div><b style="width:120px;font-size:34px">9 %</b></div>
       </div>
     </div>
   </div>
   <div class="abs pop" style="--i:7; left: 96px; top: 1000px; display: flex; gap: 22px; flex-wrap: wrap; width: 1730px">
-    <span class="chip" style="background:#0f1217;color:#fff" data-tip="Same plans|60 attic plans made by the app from the same seeds, audited before and after the fixes. Plans with any error: 60 of 60 before, 22 of 60 after.">60 plans, before and after</span>
-    <span class="chip" style="background:#ffc533;color:#0f1217" data-tip="The 35 % left|Every one of them is a brief the roof cannot hold, and the app warned about it. The audit found none that the app did not flag.">35 %: briefs that do not fit, all flagged</span>
+    <span class="chip" style="background:#0f1217;color:#fff" data-tip="Same method|Attic plans made by the app from seeded briefs and audited by plain Python rules. Before: 60 plans, every one had an error. After: 120 plans from two seeds, 11 % have one.">before 60 plans · after 120</span>
+    <span class="chip" style="background:#ffc533;color:#0f1217" data-tip="Made to fit|When the brief asks for more than the roof gives, the plan builder scales areas down, then leaves the least important room out, and says so in the plan. 26 of 60 plans were changed.">plans are made to fit, and say so</span>
     <span class="chip" style="background:#ff4d2e;color:#fff" data-tip="Smaller numbers|Areas are now counted between the walls, as the floor-area ordinance counts them (to verify): the same attic shows a smaller floor. The test attic went from 43 to 34 m².">areas now between the walls</span>
   </div>
 </section>

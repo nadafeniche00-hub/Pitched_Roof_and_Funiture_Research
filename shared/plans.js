@@ -16,16 +16,20 @@ const RES = 0.1;
 
 // min = narrowest clear width (m), area = default counted area (m2), share = needed counted/gross share, light = needs daylight, sleep = a pass-through is unwelcome
 export const ROOM_TYPES = {
-  bedroom: { label: 'Bedroom', min: 2.4, minArea: 7, area: 12, share: 0.6, light: true, sleep: true },
-  child: { label: 'Child room', min: 2.4, minArea: 6, area: 10, share: 0.6, light: true, sleep: true },
-  living: { label: 'Living room', min: 3.0, minArea: 12, area: 18, share: 0.6, light: true, sleep: false },
-  kitchen: { label: 'Kitchen', min: 2.2, minArea: 5, area: 9, share: 0.6, light: true, sleep: false },
-  study: { label: 'Study', min: 2.0, minArea: 4, area: 8, share: 0.55, light: true, sleep: false },
-  bath: { label: 'Bathroom', min: 1.5, minArea: 2.5, area: 5, share: 0.5, light: false, sleep: false },
-  wc: { label: 'WC', min: 0.9, minArea: 1.2, area: 2.5, share: 0.5, light: false, sleep: false },
-  storage: { label: 'Storage', min: 1.2, minArea: 1, area: 4, share: 0, light: false, sleep: false },
+  bedroom: { label: 'Bedroom', min: 2.4, minArea: 7, maxAspect: 2.0, area: 12, share: 0.6, light: true, sleep: true },
+  child: { label: 'Child room', min: 2.4, minArea: 6, maxAspect: 2.0, area: 10, share: 0.6, light: true, sleep: true },
+  living: { label: 'Living room', min: 3.0, minArea: 12, maxAspect: 2.5, area: 18, share: 0.6, light: true, sleep: false },
+  kitchen: { label: 'Kitchen', min: 1.8, minArea: 5, maxAspect: 2.5, area: 9, share: 0.6, light: true, sleep: false },
+  study: { label: 'Study', min: 2.0, minArea: 4, maxAspect: 2.2, area: 8, share: 0.55, light: true, sleep: false },
+  bath: { label: 'Bathroom', min: 1.5, minArea: 2.5, maxAspect: 2.2, area: 5, share: 0.5, light: false, sleep: false },
+  wc: { label: 'WC', min: 0.9, minArea: 1.2, maxAspect: 2.5, area: 2.5, share: 0.5, light: false, sleep: false },
+  storage: { label: 'Storage', min: 0.8, minArea: 1, maxAspect: 2.8, area: 4, share: 0, light: false, sleep: false },
 };
-export const HALL = { label: 'Stair hall', min: 1.2, minArea: 3, area: 4, share: 0.4, light: false, sleep: false };
+// min (narrowest clear width) and maxAspect (longest proportion, long side over short side) are checked against 127,908 real rooms of 5,372 plans (Modified Swiss Dwellings, pipeline/oracle/msd):
+// the old kitchen width of 2.2 m flagged 31 % of real kitchens and the old storage width of 1.2 m 48 % of real storerooms (now 1.8 and 0.8 m); maxAspect is the 95th percentile of real rooms
+// (bedroom 1.95, bath 2.2, kitchen 2.46, living 2.45, storage 2.72, hall 3.96), rounded up. Swiss flats, not attics: the lower end of what real plans contain, not a design target.
+export const HALL = { label: 'Stair hall', min: 1.2, minArea: 3, maxAspect: 4.0, area: 4, share: 0.4, light: false, sleep: false };
+export const THIN = 1.3; // a room longer than maxAspect x THIN is too thin to be a room of its kind (95th percentile of real rooms plus 30 %)
 
 export const typeOf = (t) => (t === 'hall' ? HALL : ROOM_TYPES[t] || ROOM_TYPES.storage);
 
@@ -206,11 +210,13 @@ export function scorePlan(room, brief, rects, opts = {}) {
   let shapeS = 0, narrowN = 0;
   for (const r of rooms) {
     const t = typeOf(r.type), lo = Math.min(r.w, r.d), hi = Math.max(r.w, r.d);
-    const narrow = Math.min(1, lo / t.min), aspect = hi / lo <= 2.5 ? 1 : Math.max(0, 1 - (hi / lo - 2.5) / 2.5);
+    const maxA = t.maxAspect || 2.5, ratio = hi / lo;
+    const narrow = Math.min(1, lo / t.min), aspect = ratio <= maxA ? 1 : Math.max(0, 1 - (ratio - maxA) / maxA);
     shapeS += narrow * narrow * 0.6 + aspect * 0.4;
+    if (ratio > maxA * THIN) narrowN += 1; // too thin for a room of its kind
     if (lo < t.min || (t.minArea && r.w * r.d < t.minArea)) narrowN += 1; // narrower than the rule, or smaller than the provisional minimum area (a planning rule of thumb), between the walls
     if (lo < t.min * 0.9) findings.push({ room: r.id, severity: 'warn', msg: `${label(r.id)} is only ${lo.toFixed(2)} m wide between the walls (rule of thumb: at least ${t.min} m).` });
-    else if (hi / lo > 3) findings.push({ room: r.id, severity: 'info', msg: `${label(r.id)} is long and thin (${hi.toFixed(1)} × ${lo.toFixed(1)} m).` });
+    else if (ratio > maxA * THIN) findings.push({ room: r.id, severity: 'warn', msg: `${label(r.id)} is long and thin (${hi.toFixed(1)} × ${lo.toFixed(1)} m): 95 % of real rooms of its kind are at most ${maxA}:1.` });
   }
   shapeS /= rooms.length;
 
@@ -381,8 +387,42 @@ function repairWindows(room, brief, cur, opts) {
 /** Sort order of the generator: a layout with no room too small and no wall on a window comes first; among equals the better score. */
 const byValidity = (a, b) => (a.narrow > 0 || a.clashes > 0) - (b.narrow > 0 || b.clashes > 0) || b.score - a.score;
 
-export function generatePlans(room, briefIn, opts = {}) {
+// what is dropped first when even the minimum areas do not fit the roof: the least important rooms
+const DROP_ORDER = ['storage', 'study', 'wc', 'child', 'kitchen', 'living', 'bath', 'bedroom'];
+
+/**
+ * A brief that asks for more than the roof gives is made to fit, so the plan is functional and not only drawn: the wanted areas are scaled down towards the minimum areas of their types; if even
+ * the minima do not fit, the least important rooms are dropped one by one. Returns { brief, notes }: a plain sentence for every change, shown to the user. opts.fit === false skips it.
+ */
+export function fitToRoof(room, briefIn, slack = 0.9) {
   const brief = sanitizeBrief(briefIn);
+  const notes = [];
+  const have = capacity(room, brief).have;
+  const budget = have * slack - HALL.area; // what is left for the rooms: walls, circulation and the hall take the rest
+  const minOf = (r) => typeOf(r.type).minArea || 2;
+  let rooms = brief.rooms.map((r) => ({ ...r }));
+  let links = brief.links;
+  while (rooms.length > 1 && rooms.reduce((s, r) => s + minOf(r), 0) > budget) {
+    let k = -1, best = 99;
+    rooms.forEach((r, i) => { const rank = DROP_ORDER.indexOf(r.type); if (k < 0 || rank < best || (rank === best && r.area < rooms[k].area)) { best = rank; k = i; } });
+    const id = rooms[k].id;
+    notes.push(`${typeOf(rooms[k].type).label} left out: the roof gives only ${have.toFixed(0)} m² of usable floor.`);
+    rooms.splice(k, 1);
+    links = links.filter((l) => l[0] !== id && l[1] !== id);
+  }
+  const want = rooms.reduce((s, r) => s + r.area, 0);
+  if (want > budget) {
+    const floor = rooms.reduce((s, r) => s + minOf(r), 0), spare = Math.max(1e-9, want - floor);
+    const k = Math.max(0, Math.min(1, (budget - floor) / spare));
+    rooms = rooms.map((r) => ({ ...r, area: +(minOf(r) + Math.max(0, r.area - minOf(r)) * k).toFixed(1) }));
+    notes.push(`The wanted ${want.toFixed(0)} m² were scaled down to ${Math.max(budget, floor).toFixed(0)} m² to fit the roof.`);
+  }
+  return { brief: { ...brief, rooms, links }, notes };
+}
+
+export function generatePlans(room, briefIn, opts = {}) {
+  const fit = opts.fit === false ? { brief: sanitizeBrief(briefIn), notes: [] } : fitToRoof(room, briefIn, opts.slack);
+  const brief = fit.brief;
   if (!brief.rooms.length) return [];
   const { seed = 1, tries = 300, keep = 3, refine = 40 } = opts;
   const rng = mulberry32(seed);
@@ -406,7 +446,9 @@ export function generatePlans(room, briefIn, opts = {}) {
   const best = pool.slice(0, Math.max(keep * 4, 8));
   for (let k = 0; k < best.length; k++) {
     let cur = best[k];
-    for (let i = 0; i < refine; i++) {
+    // a layout that still has a room too small or a wall on a window keeps being nudged, up to six times as long: a valid one is worth the time
+    for (let i = 0; i < refine * ((cur.narrow > 0 || cur.clashes > 0) ? 6 : 1); i++) {
+      if (i >= refine && !(cur.narrow > 0 || cur.clashes > 0)) break;
       const tree = cloneTree(cur.tree);
       const cuts = cutsOf(tree);
       if (!cuts.length) break;
@@ -431,7 +473,29 @@ export function generatePlans(room, briefIn, opts = {}) {
     out.push(p);
     if (out.length >= keep) break;
   }
-  return out.map(({ tree, ...rest }) => rest); // eslint-disable-line no-unused-vars
+  const bad = (p) => p.narrow > 0 || p.clashes > 0;
+  const kept = out.some((p) => !bad(p)) ? out.filter((p) => !bad(p)) : out; // when a functional layout exists, the ones that are not are not offered
+  const result = kept.map(({ tree, ...rest }) => ({ ...rest, adjusted: fit.notes })); // eslint-disable-line no-unused-vars
+  // still a room too small or a wall on a window after the whole search: a functional plan with a little less is better than a drawn one that is not. First every wanted area 15 % smaller,
+  // then the least important room left out, at most three steps; the plan says what was changed. The first valid layout wins; if none is found the best effort stays, with its warnings.
+  const depth = opts._depth || 0;
+  if (result.length && bad(result[0]) && depth < 3 && opts.degrade !== false) {
+    const smaller = { ...brief, rooms: brief.rooms.map((r) => ({ ...r, area: Math.max(typeOf(r.type).minArea || 2, +(r.area * 0.85).toFixed(1)) })) };
+    const note = `Every wanted area was reduced by 15 % to get a layout whose rooms are big enough.`;
+    let next = smaller, notes = [note];
+    if (depth >= 1 || JSON.stringify(smaller.rooms) === JSON.stringify(brief.rooms)) { // the areas are at their minimum already, or this is not the first step: leave the least important room out
+      let k = -1, best = 99;
+      brief.rooms.forEach((r, i) => { const rank = DROP_ORDER.indexOf(r.type); if (k < 0 || rank < best || (rank === best && r.area < brief.rooms[k].area)) { best = rank; k = i; } });
+      if (brief.rooms.length > 1) {
+        const id = brief.rooms[k].id;
+        next = { ...brief, rooms: brief.rooms.filter((_, i) => i !== k), links: brief.links.filter((l) => l[0] !== id && l[1] !== id) };
+        notes = [`${typeOf(brief.rooms[k].type).label} left out: no layout with all the rooms had rooms big enough.`];
+      }
+    }
+    const again = generatePlans(room, next, { ...opts, fit: false, _depth: depth + 1 });
+    if (again.length && !bad(again[0])) return again.map((p) => ({ ...p, adjusted: [...fit.notes, ...notes, ...(p.adjusted || [])] }));
+  }
+  return result;
 }
 
 /** Score a layout drawn by hand: `rects` has a rectangle for the hall and for every room of the brief. Returns null until all are placed. */

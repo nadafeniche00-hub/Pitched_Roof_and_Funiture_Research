@@ -44,7 +44,7 @@ while (cases.length < N && tries < N * 6) {
     stair: stairOnGable ? { x: r2(W / 2 - 0.45), y: 0, w: 0.9, d: 2.2 } : { x: 0.3, y: r2(D / 2 - 1.1), w: 0.9, d: 2.2 } });
   const n = 3 + Math.floor(rnd() * 4);
   const rooms = Array.from({ length: n }, (_, i) => { const type = i === 0 ? 'bedroom' : i === 1 ? 'bath' : pick(KINDS); return { id: `${type}${i + 1}`, type, area: r2(ROOM_TYPES[type].area * (0.8 + rnd() * 0.5)) }; });
-  const [plan] = generatePlans(room, { rooms, links: [] }, { seed: Math.floor(rnd() * 1e6), tries: 120, refine: 20, hardTries: 360 });
+  const [plan] = generatePlans(room, { rooms, links: [] }, { seed: Math.floor(rnd() * 1e6), tries: 120, refine: 20, hardTries: 360, slack: process.env.FIT_SLACK ? Number(process.env.FIT_SLACK) : undefined });
   if (!plan) continue;
   const layout = { rooms: plan.rooms, doors: plan.doors || [] };
   const walls = mergeWalls(wallsOf(room, layout, { autoDoors: !layout.doors.length, trimOuter: true }).walls);
@@ -52,10 +52,11 @@ while (cases.length < N && tries < N * 6) {
   cases.push({
     id: `case_${String(cases.length + 1).padStart(3, '0')}`,
     brief: rooms,
+    adjusted: plan.adjusted,
     app_flags: { narrow: plan.narrow, clashes: plan.clashes }, // what the plan builder itself said about this plan: a flagged plan is a brief that did not fit, shown to the user as warnings
     room: { width: room.width, depth: room.depth, kneeWall: room.kneeWall, pitch: room.pitch, windows: room.windows, doors: room.doors, stair: room.stair },
     thickness: { outer: T_OUT, inner: T_IN },
-    types: Object.fromEntries(Object.entries({ ...ROOM_TYPES, hall: HALL }).map(([k, v]) => [k, { min: v.min, minArea: v.minArea, area: v.area }])),
+    types: Object.fromEntries(Object.entries({ ...ROOM_TYPES, hall: HALL }).map(([k, v]) => [k, { min: v.min, minArea: v.minArea, maxAspect: v.maxAspect, area: v.area }])),
     rooms: plan.rooms.map((r) => ({ id: r.id, type: r.type, rect: r.rect.map(r2), counted: r2(r.counted ?? 0) })),
     doors: layout.doors.map((d) => ({ a: d.a, b: d.b, mid: d.mid.map(r2), vertical: !!d.vertical, width: d.width ?? 0.9 })),
     walls: walls.map((w) => ({ p0: w.p0.map(r2), p1: w.p1.map(r2), op: w.op.map((o) => o.slice(0, 2).map(r2)) })),

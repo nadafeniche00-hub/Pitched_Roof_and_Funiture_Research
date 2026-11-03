@@ -49,6 +49,23 @@ on those rectangles. Now `WALLS` (`shared/knowledge.js`) is a shared fact: `netR
 (`shared/furnish.js`) and the engine treats the outer wall as no floor (`shared/engine.js`); doors start inside the clear wall run (`shared/doors.js`); the technical plan stops partitions at the
 inner face of the outer wall (`trimOuter` in `client/src/lib/walls.js`); the plan builder penalises a wall on a window and slides it away when it can (`repairWindows`).
 
+### Functional plans (3 Nov 2026, night): real-plan patterns became rules, and the brief is made to fit
+
+`shared/plans.js` now carries numbers checked on 127,908 real rooms (MSD): `maxAspect` per room type (the 95th percentile of long side over short side: bedroom 1.95, bath 2.2, kitchen 2.46, living 2.45, storage
+2.72, hall 3.96), and minimum widths where an old rule flagged a third of real rooms (kitchen 2.2 to 1.8 m, storage 1.2 to 0.8 m). A room longer than `maxAspect` x 1.3 is too thin (rule `net-aspect`).
+`fitToRoof` makes a brief that asks for more than the roof gives fit it: wanted areas scale down towards the minimum area of their types, and if even the minima do not fit the least important rooms go
+first (storage, study, WC, child room, kitchen, living room, bath, bedroom). `generatePlans` then searches harder when a layout still has a room too small or a wall on a window, and as a last step tries
+every area 15 % smaller and then one room less: every plan carries `adjusted`, a plain sentence for each change, shown in the plan builder. `fit: false, degrade: false` gives the old behaviour.
+
+| Plans with any error (oracle audit) | Share |
+|---|---|
+| at the start of the night (60 plans) | 100 % |
+| after the wall fixes (same 60) | 37 % |
+| after real-plan rules and fitting (120 plans, two seeds, 8 % and 13 %) | **11 %**: furniture in walls 0 %, walls in walls 0 %, a room too small or too thin about 9 %, a wall on a window about 3 % |
+
+The rest are briefs for which no functional layout was found; every one comes with warnings. 26 of 60 plans were changed to be functional (23 rooms left out, 25 area scalings). The cost is honest:
+a plan may have fewer rooms than asked, and it says which.
+
 **Side effect to know before you present:** areas are now counted between the walls (WoFlV § 3 counts clear dimensions; verify). The same attic shows a smaller floor and a smaller counted area than before
 (the small test attic: 43 to 34 m² of floor). The numbers are the honest ones; slides that quote old values have to be checked.
 

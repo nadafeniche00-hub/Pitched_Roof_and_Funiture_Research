@@ -13,7 +13,7 @@ from collections import Counter, defaultdict
 from .rules import RULES, check_case
 
 CLASS = {  # the four things the app was blamed for, and the rule codes that measure each
-    "too small spaces": ("net-width", "net-area"),
+    "too small spaces": ("net-width", "net-area", "net-aspect"),
     "walls that hit windows": ("wall-hits-window", "window-in-corner", "window-overlap"),
     "furniture inside walls": ("furniture-in-wall",),
     "walls inside walls": ("pokes-into-outer-wall", "overlapping-walls"),
@@ -29,7 +29,7 @@ def audit(cases: list[dict]) -> dict:
     for c in cases:
         flagged = (c.get("app_flags") or {}).get("narrow", 0) > 0
         for v in check_case(c):
-            if v.rule in ("net-width", "net-area"):
+            if v.rule in ("net-width", "net-area", "net-aspect"):
                 if flagged:
                     flagged_cases.add(c["id"])
                 else:

@@ -19,6 +19,7 @@ HALL_MIN = 1.2  # m, shared/plans.js HALL.min
 MIN_NET_AREA = {"bedroom": 7.0, "child": 6.0, "living": 12.0, "kitchen": 5.0, "study": 4.0, "bath": 2.5, "wc": 1.2, "storage": 1.0, "hall": 3.0}
 THICKNESS_RANGE = (0.10, 0.40)  # ResPlan: 99.3 % of plans have a wall thickness between 10 and 40 cm
 AREA_SUM_TOL = 0.25  # ResPlan: summed room area within +-25 % of the gross area (98.7 % of plans)
+THIN_FACTOR = 1.3  # a room longer than maxAspect x this is too thin for its kind: maxAspect is the 95th percentile of long / short side of 127,908 real rooms (MSD), plus 30 %
 DOOR_ROOM_GAP = 0.06  # m: MSD joins two areas by a door when the door is within 0.05 m of both (plus 1 cm for rounding)
 
 
@@ -57,6 +58,10 @@ def rule_net_size(case: dict) -> list[Violation]:
         need = case["types"].get(r["type"], {}).get("min", HALL_MIN if r["type"] == "hall" else 1.0)
         if lo < need:
             out.append(Violation("net-width", "error", r["id"], f"{r['type']} {r['id']} is only {lo:.2f} m wide once the walls are taken off (at least {need} m).", {"net_width": round(lo, 3), "need": need, "net": [round(v, 3) for v in net]}, "app"))
+        cap = case["types"].get(r["type"], {}).get("maxAspect")
+        ratio = max(g.w(net), g.h(net)) / lo if lo > 0 else 99.0
+        if cap and ratio > cap * THIN_FACTOR:
+            out.append(Violation("net-aspect", "error", r["id"], f"{r['type']} {r['id']} is {ratio:.1f}:1 between the walls: 95 % of real rooms of its kind are at most {cap}:1.", {"aspect": round(ratio, 2), "max": cap}, "MSD (127,908 real rooms)"))
         floor = case["types"].get(r["type"], {}).get("minArea", MIN_NET_AREA.get(r["type"]))  # the case carries the app's own table; the provisional one here is the fallback
         if floor is not None and g.area(net) < floor:
             out.append(Violation("net-area", "error", r["id"], f"{r['type']} {r['id']} has {g.area(net):.1f} m2 net (provisional minimum {floor} m2).", {"net_area": round(g.area(net), 3), "need": floor}, "app (provisional)"))

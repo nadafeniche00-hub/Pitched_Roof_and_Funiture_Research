@@ -161,6 +161,7 @@ export default function PlanBuilder() {
                 <b className="pb-score">{pct(plan.score)}</b>
                 <label className="inline"><input type="checkbox" checked={routes} onChange={(e) => setRoutes(e.target.checked)} /> escape routes to the stair</label>
               </div>
+              {plan.adjusted?.length > 0 && <div className="hint" style={{ borderLeft: '4px solid #e8452c', paddingLeft: 10 }} role="status"><b>Changed to be a functional plan:</b>{plan.adjusted.map((n, i) => <div key={i}>{n}</div>)}</div>}
               <Plan room={room} plan={plan} routes={routes} onPick={(id) => setFocus(focus === id ? null : id)} picked={focus} />
               {mode !== 'puzzle' && <div className="pb-cands">
                 {plans.map((p, i) => (

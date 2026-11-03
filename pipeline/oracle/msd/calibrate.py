@@ -27,9 +27,9 @@ def percentile(values: list[float], p: float) -> float:
 
 
 def percentiles_by_type(records: list[dict]) -> dict:
-    by: dict[str, dict[str, list[float]]] = defaultdict(lambda: {"net_area": [], "net_width": []})
+    by: dict[str, dict[str, list[float]]] = defaultdict(lambda: {"net_area": [], "net_width": [], "aspect": []})
     for r in records:
-        for k in ("net_area", "net_width"):
+        for k in ("net_area", "net_width", "aspect"):
             if r.get(k) is not None:
                 by[r["type"]][k].append(float(r[k]))
     out = {}

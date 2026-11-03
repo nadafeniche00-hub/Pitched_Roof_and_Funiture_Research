@@ -43,7 +43,7 @@ def main():
         if k == "area":
             from msd.loader import TYPE_OF
             if e["roomtype"] in TYPE_OF:
-                rooms.append({"type": TYPE_OF[e["roomtype"]], "net_area": e["area"], "net_width": e["short"]})
+                rooms.append({"type": TYPE_OF[e["roomtype"]], "net_area": e["area"], "net_width": e["short"], "aspect": (e["long"] / e["short"]) if e["short"] > 0.05 else None})
                 n_rooms_by_plan[e["plan"]] += 1
         elif k == "wall":
             wall_n += 1
@@ -70,6 +70,9 @@ def main():
     for t, v in out["percentiles_by_type"].items():
         ar = v["net_area"]
         print(f"  {t:<8} n={v['n']:>6,}  p1 {ar['p1']:>5}  p5 {ar['p5']:>5}  p25 {ar['p25']:>5}  median {ar['p50']:>5}  p95 {ar['p95']:>5}   | width median {v['net_width']['p50']}  p5 {v['net_width']['p5']}")
+        asp = v.get("aspect")
+        if asp:
+            print(f"           long / short side: median {asp['p50']}  p75 {asp['p75']}  p95 {asp['p95']}")
     print("\nshare of REAL rooms below the app's provisional minimum:")
     for t, v in out["false_alarms"].items():
         print(f"  {t:<8} area < {MIN_NET_AREA.get(t, '-')!s:>4} m2: {v['below_min_area'] * 100:5.1f} %   width < {APP_MIN_WIDTH.get(t, '-')!s:>3} m: {v['below_min_width'] * 100:5.1f} %")
