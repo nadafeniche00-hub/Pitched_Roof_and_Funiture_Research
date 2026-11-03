@@ -40,6 +40,11 @@ and streams 1280x720; it is a guess that has **not been tried**. Streaming this 
 frame rate or an out-of-memory crash if it is too much. Look at `logs\unreal_ElectricDreams.log` before blaming Pixel Streaming: the page says "click to start" as soon as Unreal has joined the server, long before the
 first picture is ready.
 
+**The house in the jungle** (3 Nov 2026): `pipeline\render\unreal\house\` puts the house of the walk view into this level, as one merged mesh of 6,700 vertices and 10 MB of textures and materials,
+with a start place of its own: `run_stream.ps1 -Project ElectricDreams` now starts the map as `/Game/Levels/ElectricDreams_Env#UsableSpace` (the part after `#` is the *portal* of an Unreal URL, the tag of the
+`PlayerStart` to begin at), so the viewer stands 20 m from the house and looks at it. `-SampleStart` begins where Epic's sample does. See `house\README.md` for what it changes in Epic's project.
+Placed by line traces in a headless editor; **not yet seen in the stream**.
+
 What `probe_level.py` found out about the level without opening a window (2 Nov 2026, `UnrealEditor-Cmd -nullrhi`): it loads with this engine (the project's prebuilt modules carry the build id of UE 5.8.4, so no Visual
 Studio is needed); it is a World Partition map with the game mode `GM_AnimSandbox` (a character you walk with W A S D and the mouse, not a free camera); the one `PlayerStart` is at (81188, -14778, 2444) cm, among 87
 cinematic cameras of the sample's beauty shots, so a viewer starts in the part of the jungle Epic composed.

@@ -41,3 +41,7 @@ pipeline/revit/DemoBuild/obj/
 # Pixel Streaming: Epic's web part (downloaded and built by pipeline/render/unreal/pixelstreaming/setup.ps1) and its logs
 pipeline/render/unreal/pixelstreaming/infra/
 pipeline/render/unreal/pixelstreaming/logs/
+
+# the house pack (built by pipeline/render/unreal/house/make_house_pack.py from the UsableSpace project) and the logs of its scripts
+pipeline/render/unreal/house/pack/
+pipeline/render/unreal/house/logs/

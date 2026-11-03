@@ -5,6 +5,7 @@
 # Stop with Ctrl+C: Unreal and the signalling server both stop. Only one stream at a time (the ports and the 8 GB GPU are taken); a second run says so and stops.
 #   UsableSpace     the walk-view house in its forest (pipeline\render\unreal, built by run.ps1), starts outside the house; W A S D and the mouse fly
 #   ElectricDreams  Epic's sample project in Documents\Unreal Projects (43 GB, Lumen, Nanite, ray tracing): needs more than the 8 GB of this laptop's GPU at full quality, see README.md
+#                   With the house in it (pipeline\render\unreal\house\add_house.ps1) the player begins in front of the house; -SampleStart begins where Epic's sample does.
 param(
     [ValidateSet('UsableSpace', 'ElectricDreams')][string]$Project = 'UsableSpace',
     [string]$Map = '',
@@ -12,6 +13,7 @@ param(
     [int]$HttpPort = 8080,
     [int]$StreamerPort = 8888,
     [ValidateSet('', 'H264', 'VP8', 'VP9', 'AV1')][string]$Codec = '',
+    [switch]$SampleStart,   # ElectricDreams: begin at Epic's own start place instead of in front of the house
     [switch]$Mute,     # no sound in the browser: the jungle sample brings its own ambience (birds, crickets, grasshoppers, flies, frogs, monkeys), streamed with the picture
     [switch]$Light,    # a big project on a small GPU (Epic's Electric Dreams sample on 8 GB): no hardware ray tracing, medium scalability, 1280x720 unless -Resolution says otherwise. Not tried yet.
     [string]$Bin = 'C:\Program Files\Epic Games\UE_5.8\Engine\Binaries\Win64'
@@ -20,11 +22,13 @@ $ErrorActionPreference = 'Stop'
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $projects = @{
     UsableSpace    = @{ File = (Join-Path $here '..\UsableSpace\UsableSpace.uproject'); Map = '/Game/UsableSpace/Scene' }
-    ElectricDreams = @{ File = (Join-Path $env:USERPROFILE 'Documents\Unreal Projects\ElectricDreamsEnv\ElectricDreamsEnv.uproject'); Map = '/Game/Levels/ElectricDreams_Env' }
+    ElectricDreams = @{ File = (Join-Path $env:USERPROFILE 'Documents\Unreal Projects\ElectricDreamsEnv\ElectricDreamsEnv.uproject'); Map = '/Game/Levels/ElectricDreams_Env'; Start = 'UsableSpace' }
 }
 $cfg = $projects[$Project]
 $uproject = (Resolve-Path $cfg.File).Path
 $map = if ($Map) { $Map } else { $cfg.Map }
+# the "#name" after a map is the portal: the player begins at the PlayerStart with that tag (house\place_house.py puts one in front of the house). A level without such a start uses its own.
+if ($cfg.Start -and -not $SampleStart -and $map -notmatch '#') { $map = "$map#$($cfg.Start)" }
 
 # the plugin must be on in the project (the .uproject gets one line and a .bak copy of the old file)
 $text = Get-Content $uproject -Raw
@@ -55,7 +59,7 @@ try {
         try { $c = New-Object Net.Sockets.TcpClient; $c.Connect('127.0.0.1', $HttpPort); $c.Close(); $up = $true } catch { }
     }
     Start-Sleep -Milliseconds 700
-    if ($sig.HasExited) { throw "the signalling server stopped right after it opened port ${HttpPort}: read logssignalling.err.log" }
+    if ($sig.HasExited) { throw "the signalling server stopped right after it opened port ${HttpPort}: read logs\signalling.err.log" }
     if (-not $up) { throw "the signalling server did not open port $HttpPort" }
     "signalling server up: http://localhost:$HttpPort  (streamer port $StreamerPort, log: $logs)"
 
