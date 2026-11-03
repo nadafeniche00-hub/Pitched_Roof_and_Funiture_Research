@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RevitAddIns>
+  <AddIn Type="Application">
+    <Name>UsableSpaceSampleExport</Name>
+    <Assembly>SampleExport.dll</Assembly>
+    <AddInId>a3c5f2d1-8b47-4e6a-9d13-7c0e5b2f6a91</AddInId>
+    <FullClassName>SampleExport.App</FullClassName>
+    <VendorId>USPC</VendorId>
+    <VendorDescription>Usable Space (Pitched Roof and Furniture): reads the attic storey of a Revit sample project</VendorDescription>
+  </AddIn>
+</RevitAddIns>

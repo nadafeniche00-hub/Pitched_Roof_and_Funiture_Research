@@ -10,7 +10,7 @@ import { evaluate, solve, sanitizeRoom, sanitizeItems, DEFAULT_RULES } from '../
 import { sanitizeSite } from '../shared/site.js';
 import { sanitizeLph } from '../shared/lph.js';
 import { CATALOG, PROGRAMS } from '../shared/catalog.js';
-import { PRESETS } from '../shared/presets.js';
+import { PRESETS, presetFromTemplate } from '../shared/presets.js';
 import { db, zoneClasses } from './db.js';
 import { windFor, cachedCells } from './wind.js';
 import { searchProducts, getProduct, facets, searchGlossary, upsertProduct, seed } from './library.js';
@@ -135,7 +135,9 @@ const save = (id, c, isNew) => {
 app.get('/api/health', (_q, r) => r.json({ ok: true }));
 app.get('/api/catalog', (_q, r) => r.json({ catalog: CATALOG, programs: PROGRAMS }));
 app.get('/api/rules', (_q, r) => r.json(DEFAULT_RULES));
-app.get('/api/presets', (_q, r) => r.json(PRESETS));
+// the attic storeys read from the Revit samples (pipeline/revit/convert_sample.mjs) join the examples as soon as that file exists
+const sampleTemplates = () => { try { return JSON.parse(fs.readFileSync(new URL('../shared/revit/sampleTemplates.json', import.meta.url), 'utf8')).map(presetFromTemplate); } catch { return []; } };
+app.get('/api/presets', (_q, r) => r.json([...PRESETS, ...sampleTemplates()]));
 
 app.post('/api/evaluate', (req, res) => {
   const { room, items } = clean(req.body || {});

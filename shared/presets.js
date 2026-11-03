@@ -50,3 +50,8 @@ export const PRESETS = [
     items: program(BEDROOM),
   },
 ];
+
+/** An attic storey read from a Revit sample (shared/revit/sampleTemplates.json, written by pipeline/revit/convert_sample.mjs) as an example of the app: the real footprint, knee wall and roof. */
+export function presetFromTemplate(t) {
+  return { id: t.id, name: t.name, note: t.note, room: { ...DEFAULT_ROOM, dormers: [], ...t.room }, items: program(BEDROOM), brief: t.brief };
+}

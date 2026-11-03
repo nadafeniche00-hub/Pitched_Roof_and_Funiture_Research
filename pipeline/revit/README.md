@@ -46,3 +46,24 @@ Warnings (overlapping walls, joins) are dropped and logged; errors fail only the
 whether profile walls with those outlines are accepted, and whether `ExportImage` works inside the `Idling` event. The cap of the app (`maxHeight`) is not reproduced in the Revit roof (the log says so). Read `demo_log.txt` first.
 
 Plan format (`demo.json`): `room` (width, depth, kneeWall, pitch, maxHeight, stair rectangle, windows), `walls` (outer, inner thickness in metres), `partitions` (a line each, with the door openings along it). No geometry: Revit builds its own.
+
+## The architecture samples of Revit as templates, and the rules held against them
+
+The samples that come with Revit 2025 (`C:\Program Files\Autodesk\Revit 2025\Samples`) are real projects: `BIM_Projekt_Golden_Nugget-Architektur_und_Ingenieurbau.rvt` (German),
+`Snowdon Towers Sample Architectural.rvt` and `サンプル意匠.rvt` (Japanese) are the architecture ones; the others are structure, MEP and facade variants of the same buildings (and six `.rfa` families).
+A `.rvt` holds its model in compressed streams that only Revit reads (from outside there is a 128 px preview of one sheet and the version, nothing else), so the same route as for the roof types:
+
+```
+1  pipeline\revit\SampleExport\run.ps1     # builds the add-in, starts Revit, reads the three architecture samples read only (never saved), removes the add-in; writes pipeline\data\revit\samples.json
+2  node pipeline\revit\convert_sample.mjs  # up to three attic storeys with a pitched roof -> shared\revit\sampleTemplates.json (they join the "Examples" list), and pipeline\data\revit\sample_check.json
+```
+
+**Step 1 needs you at the keyboard** (the add-in is unsigned: choose **Load Once**; it takes a few minutes per sample, 131 MB for the German one).
+What is read (`SampleExport/App.cs`, compiled against the Revit 2025 API with 0 errors, never run): every level with the number and area of its rooms, every roof (type, level, extent, the edges that define the slope),
+and on the attic level (a level called Dachgeschoss/DG/attic, else the top level with rooms) the rooms with their boundaries and areas, the walls, floors, doors, windows and stairs.
+
+What the converter does (`shared/sampleCheck.js`, tested on a made-up export in `server/test/sampleCheck.test.js`; no Revit data is in the repository): the footprint, knee wall (the lowest top of the exterior walls) and pitch
+(the ridge above the knee wall over half the span) of the attic become a room of the app, the window and the stair are placed, the real rooms are typed from their names (German, English, Japanese) and kept with
+their polygons. A sample whose roof is flat (under 8°) is reported and not kept. Then the rules of the app are held against every real room: the narrowest clear width and the minimum area of its type, the proportion
+(`maxAspect`), the share of the room that stands 2.0 m / 1 to 2 m / lower under that roof (the counting of the app), and whether its area lies inside the 5th to 95th percentile of the real plans of the training data (MSD).
+Everything the rules flag in a real, built storey is a candidate for a wrong rule or a wrong default, not only for a wrong room: read it that way.
