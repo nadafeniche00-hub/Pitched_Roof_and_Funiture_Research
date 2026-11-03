@@ -1,4 +1,4 @@
-# Reads the architecture samples of Revit 2025 with Revit's own API: levels, rooms and their areas, roofs with their slopes, and the attic storey (Dachgeschoss) in detail.
+﻿# Reads the architecture samples of Revit 2025 with Revit's own API: levels, rooms and their areas, roofs with their slopes, and the attic storey (Dachgeschoss) in detail.
 # RUN THIS YOURSELF (it starts Revit and installs a small add-in for the length of the run):
 #   1. builds the add-in (dotnet), 2. copies it into %APPDATA%\Autodesk\Revit\Addins\2025,
 #   3. starts Revit: when Revit asks about the unsigned add-in "UsableSpaceSampleExport", choose "Load Once" (Einmal laden),
@@ -20,6 +20,7 @@ $work = Join-Path $out '_sample_run'
 $addins = Join-Path $env:APPDATA 'Autodesk\Revit\Addins\2025'
 $revit = 'C:\Program Files\Autodesk\Revit 2025\Revit.exe'
 $found = @($Sample | Where-Object { Test-Path -LiteralPath $_ })
+foreach ($s in $Sample) { if (-not (Test-Path -LiteralPath $s)) { Write-Warning "sample not found, skipped: $s" } }
 if (-not $found.Count) { throw 'none of the samples was found (pass -Sample with the paths of the .rvt files)' }
 New-Item -ItemType Directory -Force -Path $work | Out-Null
 Remove-Item (Join-Path $work '*') -Force -ErrorAction SilentlyContinue
