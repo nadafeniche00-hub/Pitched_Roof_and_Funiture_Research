@@ -5,7 +5,7 @@ import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { spawn } from 'node:child_process';
+import { spawn, execFile } from 'node:child_process';
 import { evaluate, solve, sanitizeRoom, sanitizeItems, DEFAULT_RULES } from '../shared/engine.js';
 import { sanitizeSite } from '../shared/site.js';
 import { sanitizeLph } from '../shared/lph.js';
@@ -56,23 +56,52 @@ app.get('/api/dev/demo', (req, res) => {
   try { log = fs.readFileSync(path.join(demoDir, 'demo_log.txt'), 'utf8').split(/\r?\n/).filter(Boolean).slice(-12); } catch { /* no run yet */ }
   res.json({ plan: has('demo.json'), project: has('DEMO.rvt'), done: has('done.txt'), failed: has('error.txt'), pictures: ['exterior', 'section', 'cutaway', 'plan'].filter((n) => has(`revit_${n}.png`)), log, dir: demoDir });
 });
-// dev only, loopback only: the Unreal level as a Pixel Streaming page (pipeline/render/unreal/pixelstreaming/). GET says whether the page answers; POST starts run_stream.ps1 in a console of its own
-// (Ctrl+C there stops Unreal and the signalling server). One stream at a time: a second start stops with a message about the ports.
+// dev only, loopback only: the Unreal level as a Pixel Streaming page (pipeline/render/unreal/pixelstreaming/). Three facts are kept apart, because the page answers seconds after the start
+// but the picture only exists once Unreal has loaded the level and joined the signalling server as a streamer (minutes): up = the page answers, unreal = the process runs, streaming = a streamer
+// has joined (Wilbur's REST API, --rest_api in run_stream.ps1). GET says which; POST starts run_stream.ps1 in a console of its own (Ctrl+C there stops it) and says at once if it died;
+// DELETE stops Unreal and the signalling server. One stream at a time: a second start stops with a message about the ports.
 const STREAM_URL = 'http://localhost:8080';
-const streamUp = async () => { try { return (await fetch(STREAM_URL, { signal: AbortSignal.timeout(1500) })).ok; } catch { return false; } };
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const run = (cmd, args) => new Promise((ok) => execFile(cmd, args, { windowsHide: true, timeout: 15000 }, (e, out) => ok(String(out || ''))));
+const streamState = async () => {
+  const get = async (p) => { try { const r = await fetch(STREAM_URL + p, { signal: AbortSignal.timeout(1500) }); return r.ok ? r : null; } catch { return null; } };
+  const up = !!(await get(''));
+  let streaming = null; // null = not known (a stream started without the REST API)
+  if (up) {
+    const r = await get('/api/streamers');
+    if (r) { try { const j = await r.json(); streaming = (Array.isArray(j) ? j : j.streamers || []).length > 0; } catch { /* not a list */ } }
+  } else streaming = false;
+  const unreal = /UnrealEditor\.exe/i.test(await run('tasklist', ['/FI', 'IMAGENAME eq UnrealEditor.exe', '/NH']));
+  return { up, unreal, streaming, ready: streaming === true || (streaming === null && up && unreal), url: STREAM_URL };
+};
 app.get('/api/dev/stream', async (req, res) => {
   if (!loopback(req)) return res.status(403).json({ error: 'local only' });
-  res.json({ up: await streamUp(), url: STREAM_URL });
+  res.json(await streamState());
 });
 app.post('/api/dev/stream', async (req, res) => {
   if (!loopback(req)) return res.status(403).json({ error: 'local only' });
-  if (await streamUp()) return res.json({ up: true, started: false, url: STREAM_URL });
-  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-  const script = path.join(root, 'pipeline/render/unreal/pixelstreaming/run_stream.ps1');
+  const st = await streamState();
+  if (st.ready) return res.json({ ...st, started: false });
+  if (st.up && st.unreal) return res.status(202).json({ ...st, started: false, note: 'Unreal is already loading the level' });
+  const script = path.join(repoRoot, 'pipeline/render/unreal/pixelstreaming/run_stream.ps1');
   if (!fs.existsSync(script)) return res.status(404).json({ error: 'run_stream.ps1 not found' });
   const project = req.query.project === 'UsableSpace' ? 'UsableSpace' : 'ElectricDreams';
-  spawn('powershell.exe', ['-NoExit', '-ExecutionPolicy', 'Bypass', '-File', script, '-Project', project, '-Mute'], { cwd: root, detached: true, stdio: 'ignore' }).unref();
-  res.status(202).json({ up: false, started: true, url: STREAM_URL, note: 'Unreal needs a minute or more to load the level' });
+  // cmd /c start opens a console window of its own in the user's session and returns at once. (A PowerShell started "detached" with no console ends at once with exit code 0: found by trying it.)
+  let early = null;
+  const child = spawn('cmd.exe', ['/c', 'start', 'Unreal stream', 'powershell.exe', '-NoExit', '-ExecutionPolicy', 'Bypass', '-File', script, '-Project', project, '-Mute'], { cwd: repoRoot, stdio: 'ignore', windowsHide: false });
+  child.on('error', (e) => { early = `could not open the console: ${e.message}`; });
+  child.unref();
+  await new Promise((ok) => setTimeout(ok, 8000)); // the signalling server answers within a few seconds; a script that dies on a missing file or a taken port has died by then
+  const now = await streamState();
+  if (!early && !now.up && !now.unreal) early = 'nothing is running 8 seconds after the start. Open the PowerShell window called "Unreal stream" (if one opened) and read its last lines.';
+  if (early) return res.status(500).json({ error: early });
+  res.status(202).json({ ...now, started: true, note: 'Unreal needs a minute or more to load the level' });
+});
+app.delete('/api/dev/stream', async (req, res) => {
+  if (!loopback(req)) return res.status(403).json({ error: 'local only' });
+  await run('taskkill', ['/F', '/IM', 'UnrealEditor.exe']);
+  await run('powershell.exe', ['-NoProfile', '-Command', "Get-CimInstance Win32_Process -Filter \"Name='node.exe'\" | Where-Object { $_.CommandLine -match 'SignallingWebServer' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }"]);
+  res.json(await streamState());
 });
 app.use(express.json({ limit: '200kb' }));
 app.get('/api/ai/status', async (_q, res) => res.json(await aiStatus()));

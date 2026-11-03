@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { loadScenario } from '../store/actions.js';
 import { uiActions } from '../store/uiSlice.js';
@@ -9,24 +8,11 @@ import { IconBtn } from './Icon.jsx';
 
 const VIEW_ICON = { planner: 'house', library: 'library', ifc: 'cube', lph5: 'clipboard', knowledge: 'book' };
 
-// The Unreal level in the browser (Pixel Streaming, pipeline/render/unreal/pixelstreaming): opens the page when the stream runs, otherwise asks the local server to start it. Local server only.
-function StreamButton({ onToast }) {
-  const [wait, setWait] = useState(false);
-  const go = async () => {
-    const win = window.open('', '_blank');
-    try {
-      let st = await (await fetch('/api/dev/stream')).json();
-      if (!st.up) {
-        const r = await fetch('/api/dev/stream', { method: 'POST' });
-        if (!r.ok) throw new Error((await r.json()).error || 'could not start');
-        setWait(true); onToast('Starting Unreal: the level takes a minute or more to load');
-        for (let i = 0; i < 40 && !st.up; i++) { await new Promise((ok) => setTimeout(ok, 3000)); st = await (await fetch('/api/dev/stream')).json(); }
-      }
-      if (win) win.location = st.url || 'http://localhost:8080';
-    } catch (e) { win?.close(); onToast(`Stream: ${e.message} (it runs only with the local server)`); }
-    setWait(false);
-  };
-  return <IconBtn icon="stream" label="Walk the house in Unreal in a browser tab (Pixel Streaming). Starts it when it is not running." cap={wait ? 'Starting…' : 'Stream'} disabled={wait} onClick={go} />;
+// The Unreal level in the browser (Pixel Streaming, pipeline/render/unreal/pixelstreaming). The button opens a page of this app at once (no blank tab, no popup blocked): that page asks the local
+// server to start the stream, shows what is happening (stream server, Unreal loading, picture connected) and opens the picture when a streamer has really joined. Local server only.
+function StreamButton() {
+  const go = () => window.open('/stream-wait.html', '_blank');
+  return <IconBtn icon="stream" label="Walk the house in Unreal in a browser tab (Pixel Streaming). Starts it when it is not running and shows the progress." cap="Stream" onClick={go} />;
 }
 
 export default function Toolbar() {
@@ -77,7 +63,7 @@ export default function Toolbar() {
         )}
       </div>
 
-      <StreamButton onToast={(m) => dispatch(uiActions.setToast(m))} />
+      <StreamButton />
 
       <div className="langsw" role="group" aria-label="Language">
         {['en', 'de'].map((l) => <button key={l} className={lang === l ? 'on' : ''} onClick={() => dispatch(uiActions.setLang(l))}>{l.toUpperCase()}</button>)}

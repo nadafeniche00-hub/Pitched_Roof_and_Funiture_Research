@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Unreal stream</title>
+<style>
+  :root { --ink: #0f1217; --paper: #f3efe6; --hot: #ff4d2e; --moss: #2f7d4f; --sun: #ffc533; --mute: #6b6f76; color-scheme: light; }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { height: 100%; background: var(--paper); color: var(--ink); font-family: 'Archivo', 'Segoe UI', system-ui, sans-serif; }
+  body { display: grid; place-items: center; padding: 24px; overflow: hidden; }
+  .card { width: min(720px, 100%); background: #fff; border: 4px solid var(--ink); box-shadow: 14px 14px 0 var(--ink); padding: 36px 40px; }
+  h1 { font-weight: 900; font-size: clamp(28px, 5vw, 44px); line-height: 1; text-transform: uppercase; letter-spacing: -.02em; }
+  p.sub { margin-top: 14px; font-weight: 600; color: var(--mute); font-size: 18px; line-height: 1.35; }
+  ol { list-style: none; padding: 0; margin: 28px 0 8px; display: grid; gap: 14px; }
+  li { display: flex; align-items: center; gap: 16px; font-weight: 800; font-size: 20px; }
+  li i { flex: none; width: 30px; height: 30px; border-radius: 50%; border: 4px solid var(--ink); background: #fff; display: grid; place-items: center; font-style: normal; font-size: 16px; }
+  li.done i { background: var(--moss); border-color: var(--moss); color: #fff; }
+  li.now i { background: var(--sun); animation: pulse 1.2s ease-in-out infinite; }
+  li.wait { color: var(--mute); }
+  @keyframes pulse { 50% { transform: scale(1.18); } }
+  .bar { height: 14px; background: #e6e0d2; margin-top: 22px; }
+  .bar b { display: block; height: 100%; width: 0; background: var(--hot); transition: width 1s linear; }
+  .row { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-top: 18px; flex-wrap: wrap; }
+  .clock { font-weight: 900; font-size: 28px; font-variant-numeric: tabular-nums; }
+  button { font: inherit; font-weight: 800; font-size: 18px; padding: 10px 22px; background: #fff; border: 4px solid var(--ink); box-shadow: 6px 6px 0 var(--ink); cursor: pointer; }
+  button:hover { transform: translate(-2px, -2px); box-shadow: 8px 8px 0 var(--ink); }
+  button.hot { background: var(--hot); color: #fff; }
+  .err { margin-top: 20px; padding: 14px 18px; background: #ffe9e3; border: 4px solid var(--hot); font-weight: 700; font-size: 18px; display: none; }
+  .tip { margin-top: 22px; font-weight: 600; color: var(--mute); font-size: 16px; }
+</style>
+</head>
+<body>
+<main class="card">
+  <h1 id="title">Starting Unreal…</h1>
+  <p class="sub" id="sub">The jungle with your house loads on this computer and is sent to this tab as video. The first start takes a few minutes.</p>
+  <ol>
+    <li id="s1" class="now"><i>1</i>Stream server</li>
+    <li id="s2" class="wait"><i>2</i>Unreal loads the level</li>
+    <li id="s3" class="wait"><i>3</i>The picture connects</li>
+  </ol>
+  <div class="bar"><b id="bar"></b></div>
+  <div class="row"><span class="clock" id="clock">0:00</span><span><button id="stop" type="button">Stop</button></span></div>
+  <div class="err" id="err"></div>
+  <p class="tip" id="tip">Close the other Unreal editors first: the graphics card has 8 GB and the stream needs it.</p>
+</main>
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const t0 = Date.now(), LIMIT = 10 * 60 * 1000, EXPECT = 4 * 60 * 1000; // the bar is an estimate: a first start is about four minutes
+  let started = false, ended = false;
+  const api = async (method) => { const r = await fetch('/api/dev/stream', { method }); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || `the server answered ${r.status}`); return j; };
+  const mark = (id, cls) => { $(id).className = cls; };
+  const fail = (msg) => { ended = true; $('title').textContent = 'The stream did not start'; $('err').style.display = 'block'; $('err').textContent = msg; $('stop').textContent = 'Try again'; $('stop').className = 'hot'; $('stop').dataset.mode = 'retry'; };
+  async function tick() {
+    if (ended) return;
+    const s = Date.now() - t0;
+    $('clock').textContent = `${Math.floor(s / 60000)}:${String(Math.floor(s / 1000) % 60).padStart(2, '0')}`;
+    $('bar').style.width = `${Math.min(96, (s / EXPECT) * 100)}%`;
+    try {
+      let st = await api('GET');
+      if (!st.ready && !started && !(st.up && st.unreal)) { started = true; st = await api('POST'); }
+      mark('s1', st.up ? 'done' : 'now');
+      mark('s2', st.unreal ? (st.ready ? 'done' : 'now') : (st.up ? 'now' : 'wait'));
+      mark('s3', st.ready ? 'done' : (st.unreal ? 'now' : 'wait'));
+      if (st.ready) { ended = true; $('bar').style.width = '100%'; $('title').textContent = 'Ready'; $('sub').textContent = 'Opening the picture…'; location.replace(st.url); return; }
+      if (started && !st.up && !st.unreal && s > 20000) return fail('Nothing is running after 20 seconds. Open the PowerShell window that the start opened and read its last lines, then try again.');
+    } catch (e) {
+      return fail(e.message.includes('Failed to fetch') ? 'The local server does not answer. This button works only when the app runs on your own computer.' : e.message);
+    }
+    if (s > LIMIT) return fail('Unreal has not joined after 10 minutes. The level may have crashed the graphics card: read pipeline/render/unreal/pixelstreaming/logs/unreal_ElectricDreams.log.');
+    setTimeout(tick, 2000);
+  }
+  $('stop').addEventListener('click', async () => {
+    if ($('stop').dataset.mode === 'retry') return location.reload();
+    ended = true; $('title').textContent = 'Stopping…';
+    try { await api('DELETE'); $('title').textContent = 'Stopped'; $('sub').textContent = 'Unreal and the stream server are closed.'; } catch (e) { $('title').textContent = 'Could not stop'; $('err').style.display = 'block'; $('err').textContent = e.message; }
+  });
+  tick();
+})();
+</script>
+</body>
+</html>

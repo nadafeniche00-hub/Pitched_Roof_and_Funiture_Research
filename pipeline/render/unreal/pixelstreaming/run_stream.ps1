@@ -53,7 +53,7 @@ $sw = Join-Path $here 'infra\SignallingWebServer'
 if (-not ((Test-Path (Join-Path $sw 'dist\index.js')) -and (Test-Path (Join-Path $sw 'www\player.html')))) { throw 'the web part is not built yet: run setup.ps1 first' }
 $logs = Join-Path $here 'logs'
 New-Item -ItemType Directory -Force -Path $logs | Out-Null
-$sigArgs = @('dist\index.js', '--serve', '--player_port', $HttpPort, '--streamer_port', $StreamerPort, '--http_root', "`"$(Join-Path $sw 'www')`"", '--homepage', 'player.html', '--console_messages', 'verbose', '--log_config')
+$sigArgs = @('dist\index.js', '--serve', '--rest_api', '--player_port', $HttpPort, '--streamer_port', $StreamerPort, '--http_root', "`"$(Join-Path $sw 'www')`"", '--homepage', 'player.html', '--console_messages', 'verbose', '--log_config')
 $sig = Start-Process -FilePath node -ArgumentList $sigArgs -WorkingDirectory $sw -PassThru -WindowStyle Minimized -RedirectStandardOutput (Join-Path $logs 'signalling.log') -RedirectStandardError (Join-Path $logs 'signalling.err.log')
 try {
     $up = $false
