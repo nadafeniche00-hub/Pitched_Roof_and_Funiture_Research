@@ -4,6 +4,7 @@
 import { defOf } from '@shared/params.js';
 import { itemRects, stairRect } from '@shared/engine.js';
 import { wallsOf, T_IN } from './walls.js';
+import { mergeWalls } from './mergeWalls.js';
 
 export const LAYERS = {
   WAENDE: { color: 7, w: 0.5, name: 'Waende' },
@@ -26,6 +27,7 @@ export function techPrimitives(room, layout, items, meta = {}) {
   const text = (layer, p, h, s, align = 'c') => P.push({ k: 'text', layer, p, h, s, align });
   const arc = (layer, c, r, a0, a1) => P.push({ k: 'arc', layer, c, r, a0, a1 });
 
+  const swings = [];   // the square each door leaf sweeps: [x0, y0, x1, y1] (nothing may stand or be written in it)
   /** one straight wall from p0 to p1: two face lines, end caps at the openings; the openings get their own symbols */
   const wall = (p0, p1, t, openings, kind) => {
     const dx = p1[0] - p0[0], dy = p1[1] - p0[1], len = Math.hypot(dx, dy);
@@ -43,6 +45,9 @@ export function techPrimitives(room, layout, items, meta = {}) {
         const w = b - a, ang = (Math.atan2(dy, dx) * 180) / Math.PI, side = o[2] ?? 1, hinge = o[3] ?? 0;
         const c = at(hinge ? b : a, 0), closed = hinge ? ang + 180 : ang, open = ang + 90 * side, rad = (v) => (v * Math.PI) / 180;
         line('TUEREN', c, [c[0] + Math.cos(rad(open)) * w, c[1] + Math.sin(rad(open)) * w]);
+        const cd = [Math.cos(rad(closed)) * w, Math.sin(rad(closed)) * w], od = [Math.cos(rad(open)) * w, Math.sin(rad(open)) * w];
+        const sx = [c[0], c[0] + cd[0], c[0] + od[0], c[0] + cd[0] + od[0]], sy = [c[1], c[1] + cd[1], c[1] + od[1], c[1] + cd[1] + od[1]];
+        swings.push([Math.min(...sx), Math.min(...sy), Math.max(...sx), Math.max(...sy)]);
         const turn = ((open - closed + 540) % 360) - 180; // +90 or -90: which way the leaf turns from closed to open
         if (turn > 0) arc('TUEREN', c, w, closed, closed + 90); else arc('TUEREN', c, w, closed - 90, closed);
         line('TUEREN', at(a, -t / 2), at(a, t / 2)); line('TUEREN', at(b, -t / 2), at(b, t / 2));
@@ -66,8 +71,15 @@ export function techPrimitives(room, layout, items, meta = {}) {
 
   // partition walls from the layout (doors where the layout has them, a door in the middle of every long wall otherwise)
   const rooms = layout?.rooms || [{ id: 'room', type: 'room', rect: [0, 0, W, D], counted: 0 }];
-  const { walls } = wallsOf(room, layout ? { rooms, doors: layout.doors || [] } : { rooms: [], doors: [] }, { autoDoors: !layout?.doors?.length });
-  for (const w of walls) wall(w.p0, w.p1, T_IN, w.op, { type: 'door' });
+  // the walls two rooms share overlap on their runs (a hall wall is listed once per room behind it): merged, so every wall and every door is drawn once
+  const walls = mergeWalls(wallsOf(room, layout ? { rooms, doors: layout.doors || [] } : { rooms: [], doors: [] }, { autoDoors: !layout?.doors?.length }).walls);
+  const drawn = new Set();   // a wall that the layout lists twice (both rooms of an edge name it) is drawn once: no doubled lines and door arcs in the DXF
+  for (const w of walls) {
+    const key = [w.p0, w.p1].map((q) => q.map((v) => v.toFixed(3)).join(',')).sort().join('|') + JSON.stringify(w.op);
+    if (drawn.has(key)) continue;
+    drawn.add(key);
+    wall(w.p0, w.p1, T_IN, w.op, { type: 'door' });
+  }
 
   // stair
   const sr = stairRect(room);
@@ -79,20 +91,45 @@ export function techPrimitives(room, layout, items, meta = {}) {
   }
 
   // furniture
+  const bodies = [];
   for (const it of items || []) {
     if (!it.placed) continue;
     const b = itemRects(defOf(it), it).body;
     line('MOEBEL', [b[0], b[1]], [b[2], b[1]]); line('MOEBEL', [b[2], b[1]], [b[2], b[3]]); line('MOEBEL', [b[2], b[3]], [b[0], b[3]]); line('MOEBEL', [b[0], b[3]], [b[0], b[1]]);
     line('MOEBEL', [b[0], b[1]], [b[2], b[3]]);
-    text('MOEBEL', [(b[0] + b[2]) / 2, (b[1] + b[3]) / 2 + 0.05], 0.1, String(defOf(it).name || it.type).slice(0, 18));
+    bodies.push({ b, name: String(defOf(it).name || it.type).slice(0, 18) });
   }
 
   // room stamps: name, gross area and the area that counts under the roof (WoFlV: 100 % from 2 m, 50 % from 1 m)
+  const stamps = [];   // the box each stamp takes: [x0, y0, x1, y1]
+  const inter = (a, b) => Math.max(0, Math.min(a[2], b[2]) - Math.max(a[0], b[0])) * Math.max(0, Math.min(a[3], b[3]) - Math.max(a[1], b[1]));
+  const obstacles = [...bodies.map((o) => o.b), ...swings, ...(sr ? [sr] : [])];
   for (const r of rooms) {
-    const [x0, y0, x1, y1] = r.rect, cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
-    text('RAUMSTEMPEL', [cx, cy - 0.12], 0.2, DE[r.type] || String(r.type || r.id));
-    text('RAUMSTEMPEL', [cx, cy + 0.14], 0.15, `A = ${num((x1 - x0) * (y1 - y0))} m2`);
-    if (r.counted) text('RAUMSTEMPEL', [cx, cy + 0.34], 0.13, `anrechenbar ${num(r.counted)} m2`);
+    const [x0, y0, x1, y1] = r.rect, mx = (x0 + x1) / 2, my = (y0 + y1) / 2;
+    const name = DE[r.type] || String(r.type || r.id), a1 = `A = ${num((x1 - x0) * (y1 - y0))} m2`, a2 = r.counted ? `anrechenbar ${num(r.counted)} m2` : '';
+    const bw = Math.max(name.length * 0.2, a1.length * 0.15, a2.length * 0.13) * 0.6 + 0.08, top = -0.34, bot = a2 ? 0.4 : 0.2;   // the box of the three lines round the anchor
+    const pad = T_IN / 2 + 0.04;
+    let best = null;
+    for (let cx = x0 + pad + bw / 2; cx <= x1 - pad - bw / 2 + 1e-6; cx += 0.1) {
+      for (let cy = y0 + pad - top; cy <= y1 - pad - bot + 1e-6; cy += 0.1) {
+        const box = [cx - bw / 2, cy + top, cx + bw / 2, cy + bot];
+        const clash = obstacles.reduce((t, o) => t + inter(box, o), 0) + stamps.reduce((t, o) => t + inter(box, o), 0);
+        const score = clash * 1000 + Math.hypot(cx - mx, cy - my);
+        if (!best || score < best.score) best = { score, cx, cy, box };
+      }
+    }
+    if (meta.centreStamps) best = null;   // the old placement, kept for the test that counts what the free-spot search saves
+    const cx = best ? best.cx : mx, cy = best ? best.cy : my;   // a room too small for its stamp keeps the middle
+    stamps.push(best ? best.box : [cx - bw / 2, cy + top, cx + bw / 2, cy + bot]);
+    text('RAUMSTEMPEL', [cx, cy - 0.12], 0.2, name);
+    text('RAUMSTEMPEL', [cx, cy + 0.14], 0.15, a1);
+    if (a2) text('RAUMSTEMPEL', [cx, cy + 0.34], 0.13, a2);
+  }
+  // furniture names: inside the piece, when they fit there and meet no stamp
+  for (const { b, name } of bodies) {
+    const w = name.length * 0.1 * 0.58 + 0.04, cx = (b[0] + b[2]) / 2, cy = (b[1] + b[3]) / 2 + 0.05;
+    const box = [cx - w / 2, cy - 0.1, cx + w / 2, cy + 0.02];
+    if (b[2] - b[0] >= w && b[3] - b[1] >= 0.2 && !stamps.some((st) => inter(box, st) > 0) && !swings.some((sw) => inter(box, sw) > 0)) text('MOEBEL', [cx, cy], 0.1, name);
   }
 
   // dimension chains: overall and by room breaks along the bottom, overall on the right
@@ -102,11 +139,18 @@ export function techPrimitives(room, layout, items, meta = {}) {
   const chain = (vals, horizontal, off) => {
     const pos = (v) => (horizontal ? [v, D + off] : [W + off, v]);
     line('BEMASSUNG', pos(vals[0]), pos(vals[vals.length - 1]));
+    let flip = false;
     vals.forEach((v, i) => {
       const p = pos(v);
       tick(horizontal ? [p[0] - 0.06, p[1] + 0.06] : [p[0] - 0.06, p[1] - 0.06], horizontal ? [p[0] + 0.06, p[1] - 0.06] : [p[0] + 0.06, p[1] + 0.06]);
       line('BEMASSUNG', horizontal ? [p[0], D + 0.03] : [W + 0.03, p[1]], horizontal ? [p[0], p[1] + 0.1] : [p[0] + 0.1, p[1]]);
-      if (i) text('BEMASSUNG', horizontal ? [(vals[i - 1] + v) / 2, p[1] - 0.1] : [p[0] + 0.12, (vals[i - 1] + v) / 2], 0.13, num(v - vals[i - 1]), horizontal ? 'c' : 'l');
+      if (i) {
+        const seg = v - vals[i - 1], need = num(seg).length * 0.13 * 0.58 + 0.04, short = horizontal ? seg < need : seg < 0.2;
+        if (short) flip = !flip; else flip = false;   // a run of short segments alternates between the two sides, so neighbours never print on each other
+        const mid = (vals[i - 1] + v) / 2;
+        if (horizontal) text('BEMASSUNG', [mid, p[1] + (short && flip ? 0.2 : -0.1)], 0.13, num(seg), 'c');
+        else text('BEMASSUNG', [p[0] + (short && flip ? -0.12 : 0.12), mid], 0.13, num(seg), short && flip ? 'r' : 'l');
+      }
     });
   };
   if (xs.length > 2) chain(xs, true, 0.55);
@@ -125,7 +169,17 @@ export function techPrimitives(room, layout, items, meta = {}) {
   text('RAHMEN', [bx + 5.55, by + 1.1], 0.14, 'Massstab 1:50', 'l');
   text('RAHMEN', [bx + 5.55, by + 1.45], 0.14, `Datum: ${meta.date || new Date().toISOString().slice(0, 10)}`, 'l');
   text('RAHMEN', [bx + 5.55, by + 1.8], 0.14, 'Maße in m, Entwurf', 'l');
-  return { prims: P, W, D, extent: [Math.min(0, bx), -0.2, Math.max(W + 1.6, bx + bw), by + bh] };
+  const overlaps = [];
+  const found = (kind, a, b) => { if (inter(a, b) > 1e-3) overlaps.push(kind); };
+  stamps.forEach((st, i) => {
+    bodies.forEach((o) => found('stamp-furniture', st, o.b));
+    swings.forEach((o) => found('stamp-door', st, o));
+    if (sr) found('stamp-stair', st, sr);
+    stamps.slice(i + 1).forEach((o) => found('stamp-stamp', st, o));
+  });
+  swings.forEach((a, i) => { swings.slice(i + 1).forEach((b) => found('door-door', a, b)); bodies.forEach((o) => found('door-furniture', a, o.b)); });
+  bodies.forEach((a, i) => bodies.slice(i + 1).forEach((o) => found('furniture-furniture', a.b, o.b)));
+  return { prims: P, overlaps, swings, W, D, extent: [Math.min(0, bx), -0.2, Math.max(W + 1.6, bx + bw), by + bh] };
 }
 
 // ---------------------------------------------------------------- DXF (R12, ASCII, millimetres, y up)

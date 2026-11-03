@@ -1,6 +1,7 @@
 // The plan as the Revit demo builder reads it (pipeline/revit/DemoBuild): a small JSON of numbers and no geometry - Revit builds its own walls, floors and roof from them,
 // with the wall thicknesses of the technical plan (lib/techPlan.js) and the partition walls of the layout (lib/walls.js), so the model in Revit is the plan of the app.
-import { stairRect } from '@shared/engine.js';
+import { stairRect, dormerRect } from '@shared/engine.js';
+import { resolveDormer } from '@shared/params.js';
 import { wallsOf, T_IN } from './walls.js';
 import { T_OUT } from './techPlan.js';
 import { mergeWalls } from './mergeWalls.js';
@@ -22,6 +23,9 @@ export function demoJson(room, layout, { name = 'DEMO', storey = 3 } = {}) {
       width: r3(room.width), depth: r3(room.depth), kneeWall: r3(room.kneeWall), pitch: r3(room.pitch), maxHeight: r3(room.maxHeight),
       stair: stairRect(room)?.map(r3) ?? null,
       windows: (room.windows || []).map((w) => ({ wall: w.wall, pos: r3(w.pos), width: r3(w.width) })),
+      // the roof as the app has it: a sculpted mesh (heights above the floor of the attic, plan x and y of the room) when there is one, and the dormers as boxes
+      roofMesh: room.roof?.v && room.roof?.t ? { v: room.roof.v.map((p) => p.map(r3)), t: room.roof.t } : null,
+      dormers: (room.dormers || []).map((d) => ({ rect: dormerRect(room, d).map(r3), height: r3(resolveDormer(room, d).height) })),
     },
     // [start, end] along the wall, in metres: where a door is cut into it
     partitions: walls.map((w) => ({ p0: w.p0.map(r3), p1: w.p1.map(r3), op: w.op.map((o) => [r3(o[0]), r3(o[1])]) })),

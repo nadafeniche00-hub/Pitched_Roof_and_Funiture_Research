@@ -37,3 +37,9 @@ test('vertical walls are merged along y, and a door is cut to the piece it falls
 test('parallel walls on different lines stay apart', () => {
   assert.equal(mergeWalls([{ p0: [0, 4.005], p1: [4.6, 4.005], op: [] }, { p0: [4.6, 4.134], p1: [8, 4.134], op: [] }]).length, 2);
 });
+
+test('a door keeps its side and hinge when walls are joined', () => {
+  const m = mergeWalls([{ p0: [2, 0], p1: [2, 4], op: [[1, 1.9, -1, 1]] }, { p0: [2, 0], p1: [2, 6], op: [[1, 1.9, -1, 1]] }]);
+  assert.equal(m.length, 1);
+  assert.deepEqual(m[0].op, [[1, 1.9, -1, 1]]);
+});

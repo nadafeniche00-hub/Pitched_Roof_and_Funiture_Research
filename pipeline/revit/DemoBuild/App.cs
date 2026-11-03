@@ -78,7 +78,7 @@ public class App : IExternalApplication
         }
     }
 
-    static void Step(Document doc, string what, Action act)
+    static bool Step(Document doc, string what, Action act)
     {
         using var t = new Transaction(doc, what);
         try
@@ -86,11 +86,15 @@ public class App : IExternalApplication
             t.Start();
             var fo = t.GetFailureHandlingOptions(); fo.SetFailuresPreprocessor(new Quiet()); t.SetFailureHandlingOptions(fo);
             act(); t.Commit(); L("ok      " + what);
+            return true;
         }
         catch (Exception ex)
         {
             if (t.GetStatus() == TransactionStatus.Started) t.RollBack();
-            L($"FAILED  {what}: {ex.Message}");
+            // the type, the name of the parameter and the first line of the stack say which call it was
+            var where = (ex.StackTrace ?? "").Split('\n').FirstOrDefault(l => l.Contains("DemoBuild") || l.Contains("Autodesk"))?.Trim();
+            L($"FAILED  {what}: {ex.GetType().Name}: {ex.Message}" + (ex is ArgumentException ae && ae.ParamName != null ? $" [parameter {ae.ParamName}]" : "") + (where != null ? $" at {where}" : ""));
+            return false;
         }
     }
 
@@ -163,38 +167,83 @@ public class App : IExternalApplication
             Slab(doc, type, lvDg!, -c, -c, g.W + c, g.D + c, st);
         });
 
-        Step(doc, "roof of the template (pitch and knee wall of the app, with eaves)", () =>
+        RoofType? roofType = null;
+        double ox = 0.5 + c, oy = 0.3 + c;   // eaves 50 cm, verge 30 cm outside the walls
+        var roofMesh = r.TryGetProperty("roofMesh", out var rm) && rm.ValueKind == JsonValueKind.Object ? rm : (JsonElement?)null;
+        bool roofOk = false;
+        if (roofMesh is JsonElement mesh)
+            roofOk = Step(doc, "roof: the sculpted mesh of the app, as a roof", () => MeshRoof(doc, mesh, g.Storey));
+        bool Extruded(bool capped) => Step(doc, capped ? "roof of the template as an extruded profile (with the height limit of the app)" : "roof of the template as an extruded gable", () =>
         {
-            var types = new FilteredElementCollector(doc).OfClass(typeof(RoofType)).Cast<RoofType>().OrderBy(t => t.Name).ToList();
-            var rt = types.FirstOrDefault(t => t.Name.Contains("Ziegel", StringComparison.OrdinalIgnoreCase)) ?? types.FirstOrDefault(t => t.Name.Contains("Dach", StringComparison.OrdinalIgnoreCase)) ?? types.First();
-            L($"        roof type: {rt.FamilyName} : {rt.Name} ({types.Count} roof types in the template)");
-            double ox = 0.5 + c, oy = 0.3 + c;   // eaves 50 cm, verge 30 cm outside the walls
-            var fp = new CurveArray();
-            fp.Append(Line.CreateBound(P(-ox, -oy, 0), P(g.W + ox, -oy, 0)));
-            fp.Append(Line.CreateBound(P(g.W + ox, -oy, 0), P(g.W + ox, g.D + oy, 0)));
-            fp.Append(Line.CreateBound(P(g.W + ox, g.D + oy, 0), P(-ox, g.D + oy, 0)));
-            fp.Append(Line.CreateBound(P(-ox, g.D + oy, 0), P(-ox, -oy, 0)));
-            var roof = doc.Create.NewFootPrintRoof(fp, lvDg!, rt, out ModelCurveArray map);
-            for (int i = 0; i < map.Size; i++)
-            {
-                bool eave = i == 1 || i == 3;   // the two long sides (x constant) carry the slope
-                roof.set_DefinesSlope(map.get_Item(i), eave);
-                if (eave) roof.set_SlopeAngle(map.get_Item(i), g.Tan);
-            }
-            // the roof's plane runs through the top of the knee wall, so its edge 0.5 m further out lies lower by tan(pitch) * 0.5
-            roof.get_Parameter(BuiltInParameter.ROOF_LEVEL_OFFSET_PARAM)?.Set(Ft(g.Knee - g.Tan * (0.5 + c)));
-            if (g.Cap is double) L($"        note: the app caps the roof at {g.MaxH} m; the Revit roof keeps the slope up to the ridge ({g.Knee + g.Tan * g.W / 2:0.00} m)");
+            // a profile across the width (x, z) in a vertical plane through y = 0, extruded along the depth
+            var view = new FilteredElementCollector(doc).OfClass(typeof(ViewPlan)).Cast<ViewPlan>().FirstOrDefault(v => !v.IsTemplate) ?? throw new InvalidOperationException("no plan view to hold a reference plane");
+            var rp = doc.Create.NewReferencePlane(P(0, 0, 0), P(1, 0, 0), XYZ.BasisZ, view);
+            double zEave = g.Storey + g.Knee - g.Tan * ox, zRidge = g.Storey + g.Knee + g.Tan * g.W / 2;
+            var pts = new List<XYZ> { P(-ox, 0, zEave) };
+            if (capped && g.Cap is double xc) { pts.Add(P(xc, 0, g.Storey + g.MaxH)); pts.Add(P(g.W - xc, 0, g.Storey + g.MaxH)); }
+            else pts.Add(P(g.W / 2, 0, zRidge));
+            pts.Add(P(g.W + ox, 0, zEave));
+            var prof = new CurveArray();
+            for (int i = 0; i + 1 < pts.Count; i++) prof.Append(Line.CreateBound(pts[i], pts[i + 1]));
+            roofType ??= FindRoofType(doc);
+            var er = doc.Create.NewExtrusionRoof(prof, rp, lvDg!, roofType, Ft(-oy), Ft(g.D + oy));
+            if (er == null) throw new InvalidOperationException("Revit returned no extrusion roof");
         });
+        if (!roofOk && g.Cap is double) roofOk = Extruded(true);
+        if (!roofOk)
+            roofOk = Step(doc, "roof of the template (pitch and knee wall of the app, with eaves)", () =>
+            {
+                roofType ??= FindRoofType(doc);
+                var rt = roofType;
+                var fp = new CurveArray();   // the footprint lies in the plane of the attic level
+                fp.Append(Line.CreateBound(P(-ox, -oy, g.Storey), P(g.W + ox, -oy, g.Storey)));
+                fp.Append(Line.CreateBound(P(g.W + ox, -oy, g.Storey), P(g.W + ox, g.D + oy, g.Storey)));
+                fp.Append(Line.CreateBound(P(g.W + ox, g.D + oy, g.Storey), P(-ox, g.D + oy, g.Storey)));
+                fp.Append(Line.CreateBound(P(-ox, g.D + oy, g.Storey), P(-ox, -oy, g.Storey)));
+                ModelCurveArray map = new ModelCurveArray();
+                var roof = doc.Create.NewFootPrintRoof(fp, lvDg!, rt, out map) ?? throw new InvalidOperationException("Revit returned no roof for the footprint");
+                for (int i = 0; i < map.Size; i++)
+                {
+                    bool eave = i == 1 || i == 3;   // the two long sides (x constant) carry the slope
+                    roof.set_DefinesSlope(map.get_Item(i), eave);
+                    if (eave) roof.set_SlopeAngle(map.get_Item(i), g.Tan);
+                }
+                // the roof's plane runs through the top of the knee wall, so its edge 0.5 m further out lies lower by tan(pitch) * 0.5
+                roof.get_Parameter(BuiltInParameter.ROOF_LEVEL_OFFSET_PARAM)?.Set(Ft(g.Knee - g.Tan * (0.5 + c)));
+            });
+        if (!roofOk) Extruded(false);
+        if (r.TryGetProperty("dormers", out var dms) && dms.ValueKind == JsonValueKind.Array && dms.GetArrayLength() > 0)
+            Step(doc, $"dormers of the app ({dms.GetArrayLength()}): boxes in the category Roofs", () =>
+            {
+                foreach (var d in dms.EnumerateArray())
+                {
+                    var rc = d.GetProperty("rect"); double hgt = Num(d, "height", 2);
+                    Box(doc, rc[0].GetDouble(), rc[1].GetDouble(), rc[2].GetDouble(), rc[3].GetDouble(), g.Storey + g.Knee, g.Storey + hgt, BuiltInCategory.OST_Roofs, "US Gaube");
+                }
+            });
 
+        var doorSym = LoadSymbol(doc, BuiltInCategory.OST_Doors, DoorFamily);
+        var winSym = LoadSymbol(doc, BuiltInCategory.OST_Windows, WindowFamily);
+        L($"        families: door {(doorSym == null ? "none (openings are cut instead)" : doorSym.FamilyName + " : " + doorSym.Name)}, window {(winSym == null ? "none (openings are cut instead)" : winSym.FamilyName + " : " + winSym.Name)}");
         Step(doc, "openings: doors of the partitions, windows of the facade", () =>
         {
             doc.Regenerate();
+            int fam = 0, cut = 0;
+            void Place(Wall wall, FamilySymbol? sym, XYZ a, XYZ b, Level lv)
+            {
+                if (sym != null)
+                {
+                    try { doc.Create.NewFamilyInstance((a + b) / 2, sym, wall, lv, Autodesk.Revit.DB.Structure.StructuralType.NonStructural); fam++; return; }
+                    catch (Exception ex) { L("        family not placed (" + ex.GetType().Name + ": " + ex.Message + "), an opening is cut instead"); }
+                }
+                doc.Create.NewOpening(wall, a, b); cut++;
+            }
             foreach (var (wall, len, x0, y0, ux, uy, ops) in partitions)
                 foreach (var o in ops.EnumerateArray())
                 {
                     double a = Math.Max(0, o[0].GetDouble()), b = Math.Min(len, o[1].GetDouble());
                     if (b - a < 0.4) continue;
-                    doc.Create.NewOpening(wall, P(x0 + ux * a, y0 + uy * a, g.Storey), P(x0 + ux * b, y0 + uy * b, g.Storey + DoorH));
+                    Place(wall, doorSym, P(x0 + ux * a, y0 + uy * a, g.Storey), P(x0 + ux * b, y0 + uy * b, g.Storey + DoorH), lvDg!);
                 }
             foreach (var w in r.TryGetProperty("windows", out var ws) && ws.ValueKind == JsonValueKind.Array ? ws.EnumerateArray() : Enumerable.Empty<JsonElement>())
             {
@@ -204,12 +253,13 @@ public class App : IExternalApplication
                 if (host == null) continue;
                 double top = Math.Min(2.1, g.H(pos) - 0.1);
                 if (top - Sill < 0.3) continue;
-                doc.Create.NewOpening(host, P(pos - wd / 2, y, g.Storey + Sill), P(pos + wd / 2, y, g.Storey + top));
+                Place(host, winSym, P(pos - wd / 2, y, g.Storey + Sill), P(pos + wd / 2, y, g.Storey + top), lvDg!);
             }
             if (lower.Count == 4)
                 foreach (var k in new[] { 0.28, 0.72 })
                     foreach (var (wall, y) in new[] { (lower[0], -c), (lower[2], g.D + c) })
-                        doc.Create.NewOpening(wall, P(g.W * k - 0.55, y, 0.95), P(g.W * k + 0.55, y, 2.25));
+                        Place(wall, winSym, P(g.W * k - 0.55, y, 0.95), P(g.W * k + 0.55, y, 2.25), lvEg!);
+            L($"        {fam} family instances, {cut} cut openings");
         });
 
         Step(doc, "views: plan with black cut walls, 3D outside, roof off, section", () => MakeViews(doc, g, lvDg!));
@@ -234,6 +284,76 @@ public class App : IExternalApplication
             L("copy in " + docs);
         }
         catch (Exception ex) { L("no copy in Documents: " + ex.Message); }
+    }
+
+    // ------------------------------------------------------------------------------------------------------ BIM components
+    const string Library = @"C:\ProgramData\Autodesk\RVT 2025\Libraries\German\";
+    static readonly string DoorFamily = Library + @"Architektur - Tür\1-teilig\TU DF 1 - Rahmenstock Falztüre.rfa";
+    static readonly string WindowFamily = Library + @"Architektur - Fenster\1-teilig\FE 1 tlg - DrehKipp.rfa";
+
+    /// <summary>a type of the family in the project: the template's own when it has one, else the family of the German BIM library of Revit (loaded in its own transaction)</summary>
+    static FamilySymbol? LoadSymbol(Document doc, BuiltInCategory cat, string rfa)
+    {
+        FamilySymbol? Find() => new FilteredElementCollector(doc).OfCategory(cat).OfClass(typeof(FamilySymbol)).Cast<FamilySymbol>().OrderBy(s => s.Name).FirstOrDefault();
+        var sym = Find();
+        if (sym == null && File.Exists(rfa))
+        {
+            using var t = new Transaction(doc, "load " + Path.GetFileName(rfa));
+            try { t.Start(); doc.LoadFamily(rfa, out Family _); t.Commit(); }
+            catch (Exception ex) { if (t.GetStatus() == TransactionStatus.Started) t.RollBack(); L($"FAILED  family {Path.GetFileName(rfa)}: {ex.Message}"); }
+            sym = Find();
+        }
+        if (sym == null) return null;
+        if (!sym.IsActive)
+        {
+            using var t = new Transaction(doc, "activate " + sym.Name);
+            try { t.Start(); sym.Activate(); doc.Regenerate(); t.Commit(); } catch { if (t.GetStatus() == TransactionStatus.Started) t.RollBack(); }
+        }
+        return sym;
+    }
+
+    static RoofType FindRoofType(Document doc)
+    {
+        var types = new FilteredElementCollector(doc).OfClass(typeof(RoofType)).Cast<RoofType>().OrderBy(t => t.Name).ToList();
+        var rt = types.FirstOrDefault(t => t.Name.Contains("Ziegel", StringComparison.OrdinalIgnoreCase)) ?? types.FirstOrDefault(t => t.Name.Contains("Dach", StringComparison.OrdinalIgnoreCase)) ?? types.First();
+        L($"        roof type: {rt.FamilyName} : {rt.Name} ({types.Count} roof types in the template)");
+        return rt;
+    }
+
+    /// <summary>the sculpted roof of the app (vertices x, y, height above the attic floor; triangles) as one shape in the category Roofs</summary>
+    static void MeshRoof(Document doc, JsonElement mesh, double storey)
+    {
+        var v = mesh.GetProperty("v").EnumerateArray().Select(p => P(p[0].GetDouble(), p[1].GetDouble(), storey + p[2].GetDouble())).ToList();
+        var b = new TessellatedShapeBuilder { Target = TessellatedShapeBuilderTarget.Mesh, Fallback = TessellatedShapeBuilderFallback.Salvage };
+        b.OpenConnectedFaceSet(false);
+        foreach (var t in mesh.GetProperty("t").EnumerateArray())
+        {
+            var f = new List<XYZ> { v[t[0].GetInt32()], v[t[1].GetInt32()], v[t[2].GetInt32()] };
+            if ((f[1] - f[0]).CrossProduct(f[2] - f[0]).GetLength() < 1e-6) continue;
+            b.AddFace(new TessellatedFace(f, ElementId.InvalidElementId));
+        }
+        b.CloseConnectedFaceSet(); b.Build();
+        var ds = DirectShape.CreateElement(doc, new ElementId(BuiltInCategory.OST_Roofs));
+        ds.Name = "US Dach (Skulptur der App)";
+        ds.SetShape(b.GetBuildResult().GetGeometricalObjects());
+    }
+
+    /// <summary>a closed box between two heights, as a shape of the given category</summary>
+    static void Box(Document doc, double x0, double y0, double x1, double y1, double z0, double z1, BuiltInCategory cat, string name)
+    {
+        var b = new TessellatedShapeBuilder { Target = TessellatedShapeBuilderTarget.Solid, Fallback = TessellatedShapeBuilderFallback.Abort };
+        void Quad(XYZ p, XYZ q, XYZ r, XYZ s) => b.AddFace(new TessellatedFace(new List<XYZ> { p, q, r, s }, ElementId.InvalidElementId));
+        b.OpenConnectedFaceSet(true);
+        Quad(P(x0, y0, z0), P(x0, y1, z0), P(x1, y1, z0), P(x1, y0, z0));
+        Quad(P(x0, y0, z1), P(x1, y0, z1), P(x1, y1, z1), P(x0, y1, z1));
+        Quad(P(x0, y0, z0), P(x1, y0, z0), P(x1, y0, z1), P(x0, y0, z1));
+        Quad(P(x1, y0, z0), P(x1, y1, z0), P(x1, y1, z1), P(x1, y0, z1));
+        Quad(P(x1, y1, z0), P(x0, y1, z0), P(x0, y1, z1), P(x1, y1, z1));
+        Quad(P(x0, y1, z0), P(x0, y0, z0), P(x0, y0, z1), P(x0, y1, z1));
+        b.CloseConnectedFaceSet(); b.Build();
+        var ds = DirectShape.CreateElement(doc, new ElementId(cat));
+        ds.Name = name;
+        ds.SetShape(b.GetBuildResult().GetGeometricalObjects());
     }
 
     // ------------------------------------------------------------------------------------------------------ pieces
@@ -311,6 +431,8 @@ public class App : IExternalApplication
         plan.Name = "US Grundriss DG"; plan.Scale = 50; plan.DetailLevel = ViewDetailLevel.Fine;
         var vr = plan.GetViewRange(); vr.SetOffset(PlanViewPlane.CutPlane, Ft(Math.Max(0.5, Math.Min(1.0, g.Knee - 0.1)))); plan.SetViewRange(vr);   // cut low enough to cut the knee walls
         plan.SetCategoryOverrides(walls, cut);
+        plan.CropBoxActive = true; plan.CropBoxVisible = false;   // the template's elevation markers stand far outside the house: the crop keeps them, and the empty page, out of the picture
+        plan.CropBox = new BoundingBoxXYZ { Min = new XYZ(Ft(-1.8), Ft(-1.8), 0), Max = new XYZ(Ft(g.W + 1.8), Ft(g.D + 1.8), 0) };
 
         View3D View3(string name, XYZ eye, XYZ look)
         {

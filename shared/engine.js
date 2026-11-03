@@ -216,8 +216,11 @@ export function cellRange(r, res) {
   ];
 }
 
-function markRect(arr, g, r) {
-  const [i0, i1, j0, j1] = cellRange(r, g.res);
+function markRect(arr, g, r, cover = false) {
+  // cover: every cell the rectangle touches, not only the cells whose centre lies inside it (a piece may not reach 5 cm into a door swing)
+  const [i0, i1, j0, j1] = cover
+    ? [Math.floor(r[0] / g.res + EPS), Math.ceil(r[2] / g.res - EPS) - 1, Math.floor(r[1] / g.res + EPS), Math.ceil(r[3] / g.res - EPS) - 1]
+    : cellRange(r, g.res);
   for (let j = Math.max(0, j0); j <= Math.min(g.ny - 1, j1); j++)
     for (let i = Math.max(0, i0); i <= Math.min(g.nx - 1, i1); i++) arr[j * g.nx + i] = 1;
 }
@@ -246,7 +249,7 @@ export function buildGrid(room, res = 0.05) {
   const sr = stairRect(room);
   if (sr) markRect(g.stair, g, sr);
   for (const d of room.doors) markRect(g.door, g, doorRect(room, d));
-  for (const r of room.swings || []) markRect(g.door, g, r); // the swing of the doors of a layout (shared/doors.js): kept free of furniture
+  for (const r of room.swings || []) markRect(g.door, g, r, true); // the swing of the doors of a layout (shared/doors.js): kept free of furniture
   for (const d of room.windows) markRect(g.win, g, windowRect(room, d));
   return g;
 }

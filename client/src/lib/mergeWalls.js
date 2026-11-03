@@ -5,7 +5,7 @@ const union = (spans) => {
   const out = [];
   for (const s of spans.slice().sort((p, q) => p[0] - q[0])) {
     const last = out[out.length - 1];
-    if (last && s[0] <= last[1] + 0.02) last[1] = Math.max(last[1], s[1]); else out.push([s[0], s[1]]);
+    if (last && s[0] <= last[1] + 0.02) last[1] = Math.max(last[1], s[1]); else out.push(s.slice());   // anything after the interval (a door's side and hinge) stays with the first of a joined group
   }
   return out;
 };
@@ -21,7 +21,7 @@ export function mergeWalls(walls) {
     const k = vertical ? 1 : 0, a = Math.min(w.p0[k], w.p1[k]), b = Math.max(w.p0[k], w.p1[k]);
     const key = `${vertical ? 'v' : 'h'}${c.toFixed(2)}`, g = lines.get(key) || { vertical, c, spans: [], ops: [] };
     g.spans.push([a, b]);
-    for (const o of w.op) g.ops.push([a + o[0], a + o[1]]);
+    for (const o of w.op) g.ops.push([a + o[0], a + o[1], ...o.slice(2)]);
     lines.set(key, g);
   }
   const out = [];
@@ -31,7 +31,7 @@ export function mergeWalls(walls) {
       out.push({
         p0: g.vertical ? [g.c, a] : [a, g.c],
         p1: g.vertical ? [g.c, b] : [b, g.c],
-        op: ops.filter(([s, e]) => e > a && s < b).map(([s, e]) => [Math.max(s, a) - a, Math.min(e, b) - a]),
+        op: ops.filter(([s, e]) => e > a && s < b).map(([s, e, ...rest]) => [Math.max(s, a) - a, Math.min(e, b) - a, ...rest]),
       });
     }
   }
