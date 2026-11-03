@@ -1,0 +1,111 @@
+/* The guided view: one step per screen, as big as the window, never a vertical scrollbar. Same game look as the rest (chunky borders, hard shadows). */
+.gd { height: 100dvh; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; overflow: hidden; background: var(--paper); }
+.gd button:not(.ib):not(.mini):not(.gd-mode):not(.gd-step):not(.gd-go):not(.gd-back):not(.gd-action):not(.cand) { box-shadow: 3px 3px 0 var(--ink); }
+.gd .card:hover { transform: none; box-shadow: 6px 6px 0 var(--ink); }
+
+.gd ~ .toast { bottom: 96px; } /* above the bar at the bottom, which says what comes next */
+
+/* top: brand, the five steps, the way to the full planner */
+.gd-top { display: flex; align-items: center; gap: 12px 24px; padding: 10px 20px; background: #fff; border-bottom: 3px solid var(--ink); }
+.gd-top h1 { margin: 0; font-size: 17px; white-space: nowrap; }
+.gd-top .ib { white-space: nowrap; }
+.gd-top .ib .cap { white-space: nowrap; }
+.gd-steps { display: flex; gap: 8px; list-style: none; margin: 0 auto; padding: 0; }
+.gd-step { display: flex; align-items: center; gap: 8px; padding: 6px 12px; font-size: 13px; box-shadow: none; }
+.gd-step .n { display: grid; place-items: center; width: 22px; height: 22px; border: 2px solid var(--ink); font-size: 12px; line-height: 1; }
+.gd-step .t { white-space: nowrap; }
+.gd-step.done .n { background: #2f7d4f; border-color: #2f7d4f; color: #fff; }
+.gd-step.on { background: var(--ink); color: #fff; box-shadow: 3px 3px 0 var(--hot); }
+.gd-step.on .n { background: var(--hot); border-color: var(--hot); color: #fff; }
+.gd-step:disabled { opacity: 0.4; }
+
+/* the stage: whatever the step shows fills what is left between top and bottom */
+.gd-stage { min-height: 0; padding: 16px 22px; display: grid; grid-template-rows: minmax(0, 1fr); }
+.gd-panel { border: 3px solid var(--ink); background: #fff; box-shadow: 6px 6px 0 var(--ink); padding: 12px 16px; min-height: 0; }
+.gd-panel h2 { margin: 0 0 10px; font-size: 18px; }
+
+/* the bar at the bottom: where you came from, what comes next, the button */
+.gd-next { display: grid; grid-template-columns: minmax(120px, auto) minmax(0, 1fr) auto; align-items: center; gap: 20px; padding: 12px 22px; background: #fff; border-top: 3px solid var(--ink); }
+.gd-what { margin: 0; font-size: 14px; line-height: 1.35; color: var(--muted); }
+.gd-what b { color: var(--ink); font-size: 16px; }
+.gd-block { color: var(--hot); font-weight: 600; }
+.gd-go, .gd-back { display: inline-flex; align-items: center; gap: 10px; font-size: 17px; padding: 11px 22px; }
+.gd-go { background: var(--hot); color: #fff; box-shadow: 5px 5px 0 var(--ink); }
+.gd-go:hover:not(:disabled) { box-shadow: 7px 7px 0 var(--ink); }
+.gd-go:disabled { background: #d9d6cc; color: #77746b; box-shadow: none; }
+.gd-back { box-shadow: 4px 4px 0 var(--ink); }
+
+/* step 1: the choice */
+.gd-choose { display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 18px; min-height: 0; }
+.gd-choose h2 { margin: 6px 0 0; text-align: center; font-size: clamp(22px, 3.6vh, 34px); }
+.gd-modes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 22px; align-content: center; min-height: 0; }
+.gd-mode { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; height: min(100%, 380px); min-height: 0; padding: 18px; text-align: center; box-shadow: 6px 6px 0 var(--ink); border-width: 3px; }
+.gd-mode:hover:not(:disabled) { box-shadow: 9px 9px 0 var(--hot); }
+.gd-mode .ico { width: clamp(44px, 10vh, 92px); height: clamp(44px, 10vh, 92px); }
+.gd-mode b { font-size: clamp(18px, 3vh, 26px); }
+.gd-mode span { font-weight: 500; color: var(--muted); font-size: clamp(12px, 1.8vh, 15px); line-height: 1.35; }
+
+/* step 1: describe on the left, the plan that comes out on the right */
+.gd-split { display: grid; grid-template-columns: minmax(320px, 5fr) minmax(0, 6fr); gap: 22px; min-height: 0; }
+.gd-in { display: flex; flex-direction: column; gap: 10px; min-height: 0; overflow: hidden; }
+.gd-out { display: flex; flex-direction: column; gap: 8px; }
+.gd-in .bubbles, .gd-in .puzzle { margin-bottom: 0; min-height: 0; }
+.gd-in .bub-svg { max-height: calc(100dvh - 420px); min-height: 150px; }
+.gd-in .pz-svg { max-height: calc(100dvh - 380px); }
+.gd-ptop { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.gd-cap { font-size: 12px; color: var(--muted); }
+.gd-plan { flex: 1; min-height: 0; display: grid; grid-template-rows: minmax(0, 1fr); }
+.gd .gd-plan .pb-svg { width: 100%; height: 100%; max-height: none; }
+.gd-cands { display: flex; gap: 10px; flex-wrap: nowrap; overflow: hidden; }
+.gd .gd-cands .cand { width: 112px; flex: none; padding: 4px; }
+.gd .gd-cands .pb-svg.small { width: 100%; height: 64px; max-height: none; }
+.gd-empty { flex: 1; display: grid; place-content: center; justify-items: center; gap: 12px; text-align: center; color: var(--muted); }
+.gd-empty p { max-width: 32ch; margin: 0; font-weight: 600; }
+.gd-say { margin: 0; padding: 8px 12px; border: 2px solid var(--ink); border-left-width: 8px; font-size: 13px; }
+.gd-say.ok { border-left-color: #2f7d4f; } .gd-say.bad { border-left-color: var(--hot); }
+.gd-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.gd-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.gd-text { display: flex; flex-direction: column; gap: 10px; flex: 1; min-height: 0; }
+.gd-text textarea { flex: 1; min-height: 110px; resize: none; padding: 12px; font: 600 17px/1.4 var(--body); border: 3px solid var(--ink); background: #fff; }
+.gd-sketch { display: flex; flex-direction: column; gap: 10px; flex: 1; min-height: 0; }
+.gd-drop { flex: 1; min-height: 0; display: grid; place-content: center; justify-items: center; gap: 8px; border: 3px dashed var(--ink); background: #fff; cursor: pointer; text-align: center; color: var(--muted); overflow: hidden; }
+.gd-drop:hover, .gd-drop:focus-visible { border-color: var(--hot); color: var(--ink); }
+.gd-drop img { max-width: 100%; max-height: 100%; object-fit: contain; display: block; }
+.gd-drop b { color: var(--ink); font-size: 17px; }
+
+/* steps 2 and 3 reuse the planner's views: they fill the stage instead of their usual height */
+.gd-fill { min-height: 0; display: grid; grid-template-rows: minmax(0, 1fr); }
+.gd-fill > .card { display: flex; flex-direction: column; min-height: 0; height: 100%; }
+.gd-fill .planSvg { flex: 1 1 0; min-height: 0; max-height: none; width: 100%; }
+.gd-fill .scene3d { flex: 1 1 0; height: auto; min-height: 0; }
+.gd-fill .legend, .gd-fill .unplaced { flex: none; }
+
+/* step 4: Revit */
+.gd-two { display: grid; grid-template-columns: minmax(320px, 4fr) minmax(0, 7fr); gap: 22px; min-height: 0; }
+.gd-actions { display: flex; flex-direction: column; gap: 12px; overflow: hidden; }
+.gd-action { display: flex; align-items: center; gap: 16px; text-align: left; padding: 12px 16px; font-weight: 500; font-size: 13px; line-height: 1.35; box-shadow: 4px 4px 0 var(--ink); }
+.gd-action b { display: block; font-size: 17px; margin-bottom: 2px; }
+.gd-action .ico { flex: none; }
+.gd-action.hot { background: var(--ink); color: #fff; }
+.gd-sheet { overflow: hidden; display: grid; }
+.gd .gd-sheet .sheetprev { min-height: 0; height: 100%; display: grid; }
+.gd .gd-sheet .sheetprev svg { width: 100%; height: 100%; }
+.gd-ticks { list-style: none; margin: auto 0 0; padding: 0; display: grid; gap: 8px; font-weight: 600; font-size: 14px; }
+.gd-ticks li { display: flex; align-items: center; gap: 10px; color: var(--muted); }
+.gd-ticks li.on { color: var(--ink); }
+.gd-ticks li.bad { color: var(--hot); }
+.gd-ticks i { flex: none; display: grid; place-items: center; width: 24px; height: 24px; border: 2px solid var(--ink); font-style: normal; font-size: 13px; background: #fff; }
+.gd-ticks li.on i { background: #2f7d4f; border-color: #2f7d4f; color: #fff; }
+.gd-ticks li.bad i { background: var(--hot); border-color: var(--hot); color: #fff; }
+
+/* step 5: Unreal */
+.gd-unreal { display: grid; place-content: center; justify-items: center; gap: 16px; text-align: center; }
+.gd-unreal p { max-width: 54ch; margin: 0; color: var(--muted); font-size: 15px; line-height: 1.45; }
+.gd-unreal .gd-ticks { margin: 8px 0 0; justify-items: start; }
+
+@media (max-width: 1000px) {
+  .gd-modes { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .gd-split, .gd-two { grid-template-columns: minmax(0, 1fr); overflow: auto; }
+  .gd-step .t { display: none; } .gd-step.on .t { display: inline; }
+  .gd-next { grid-template-columns: auto minmax(0, 1fr); } .gd-what { grid-column: 1 / -1; order: -1; }
+}

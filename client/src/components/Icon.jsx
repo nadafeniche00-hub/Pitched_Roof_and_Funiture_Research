@@ -84,6 +84,11 @@ const P = {
   wardrobe: 'M5 3h14v18H5zM12 3v18M9.5 12h.01M14.5 12h.01',
   basin: 'M3 11h18c0 4-3 6-9 6s-9-2-9-6zM12 17v3M8 20h8M9 7V4h6',
   desk: 'M3 8h18M5 8v12M19 8v12M8 8v6h8V8',
+  chat: 'M4 5h16v11H10l-5 4v-4H4zM8 9h8M8 12h5',
+  pencil: 'M14 4l6 6L9 21H3v-6zM12 6l6 6',
+  next: 'M4 12h15M13 6l6 6-6 6',
+  back: 'M20 12H5M11 6l-6 6 6 6',
+  revit: 'M4 20V9l7-5 9 4v12zM11 4v16M4 14h7M11 12h9',
 };
 
 export function Icon({ name, size = 20 }) {

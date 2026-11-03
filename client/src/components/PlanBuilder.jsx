@@ -18,7 +18,7 @@ import { EXAMPLE_BRIEF, ROOM_TYPES, capacity, generatePlans, hallRect, planFromR
 const COLOR = { hall: '#14161c', bedroom: '#1f4e8c', child: '#2b63a8', living: '#7a2f6b', kitchen: '#8a6038', study: '#1f6b45', bath: '#1d5c70', wc: '#144a5c', storage: '#5a3d22' };
 const pct = (v) => `${Math.round(v * 100)}`;
 
-function Plan({ room, plan, routes, small, onPick, picked }) {
+export function Plan({ room, plan, routes, small, onPick, picked }) {
   const W = room.width, D = room.depth, sr = stairRect(room);
   return (
     <svg className={small ? 'pb-svg small' : 'pb-svg'} viewBox={`-0.3 -0.3 ${W + 0.6} ${D + 0.6}`} role="img" aria-label="Room layout under the roof">

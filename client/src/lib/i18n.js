@@ -3,6 +3,7 @@ import { useSelector } from 'react-redux';
 // UI strings for the views that exist for LPH 5 work (library, IFC, room book, schedules). German is the working
 // language of LPH 5 deliverables; the planner side keeps its English labels.
 const D = {
+  tab_guided: { en: 'Guided', de: 'Geführt' },
   tab_planner: { en: 'Planner', de: 'Planer' },
   tab_library: { en: 'Library', de: 'Bibliothek' },
   tab_ifc: { en: 'IFC viewer', de: 'IFC-Viewer' },

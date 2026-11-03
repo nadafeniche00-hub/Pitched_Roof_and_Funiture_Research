@@ -4,7 +4,8 @@ import { loadScenario } from './actions.js';
 const slice = createSlice({
   name: 'ui',
   initialState: {
-    view: 'planner', // planner | library | ifc | lph5
+    view: 'guided', // guided | planner | library | ifc | lph5 | knowledge
+    guidedStep: 0, // 0 describe | 1 technical plan | 2 3D | 3 Revit | 4 Unreal (the guided view)
     centerTab: 'plan', // plan | 3d | section | site (workspace in the planner view)
     lang: 'en', // en | de
     selectedId: null,
@@ -21,6 +22,7 @@ const slice = createSlice({
     select: (s, { payload }) => { s.selectedId = payload; },
     setView: (s, { payload }) => { s.view = payload; },
     setCenterTab: (s, { payload }) => { s.centerTab = payload; },
+    setGuidedStep: (s, { payload }) => { s.guidedStep = payload; },
     setLang: (s, { payload }) => { s.lang = payload; },
     setSectionY: (s, { payload }) => { s.sectionY = payload; },
     toggle: (s, { payload }) => { s[payload] = !s[payload]; },

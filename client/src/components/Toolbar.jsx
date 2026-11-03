@@ -6,7 +6,7 @@ import { autoPlace, saveProject, loadProject, deleteProject } from '../store/thu
 import { useT, useLang } from '../lib/i18n.js';
 import { IconBtn } from './Icon.jsx';
 
-const VIEW_ICON = { planner: 'house', library: 'library', ifc: 'cube', lph5: 'clipboard', knowledge: 'book' };
+const VIEW_ICON = { guided: 'wand', planner: 'house', library: 'library', ifc: 'cube', lph5: 'clipboard', knowledge: 'book' };
 
 // The Unreal level in the browser (Pixel Streaming, pipeline/render/unreal/pixelstreaming). The button opens a page of this app at once (no blank tab, no popup blocked): that page asks the local
 // server to start the stream, shows what is happening (stream server, Unreal loading, picture connected) and opens the picture when a streamer has really joined. Local server only.
@@ -29,7 +29,7 @@ export default function Toolbar() {
       </div>
 
       <nav className="tabs icontabs" aria-label="Views">
-        {['planner', 'library', 'ifc', 'lph5', 'knowledge'].map((v) => (
+        {['guided', 'planner', 'library', 'ifc', 'lph5', 'knowledge'].map((v) => (
           <IconBtn key={v} icon={VIEW_ICON[v]} label={t(`tab_${v}`)} cap={t(`tab_${v}`)} size={22} active={view === v} onClick={() => dispatch(uiActions.setView(v))} />
         ))}
       </nav>

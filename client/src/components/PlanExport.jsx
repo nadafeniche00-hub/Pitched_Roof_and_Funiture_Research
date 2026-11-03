@@ -3,7 +3,7 @@ import { useSelector } from 'react-redux';
 import { IconBtn } from './Icon.jsx';
 import { techPrimitives, toDxf, toSheetSvg } from '../lib/techPlan.js';
 
-const save = (name, text, type) => {
+export const save = (name, text, type) => {
   const url = URL.createObjectURL(new Blob([text], { type }));
   const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 2000);

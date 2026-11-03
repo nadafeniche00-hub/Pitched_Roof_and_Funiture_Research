@@ -16,15 +16,18 @@ const RES = 0.1;
 
 // min = narrowest clear width (m), area = default counted area (m2), share = needed counted/gross share, light = needs daylight, sleep = a pass-through is unwelcome
 export const ROOM_TYPES = {
-  bedroom: { label: 'Bedroom', min: 2.4, minArea: 7, maxAspect: 2.0, area: 12, share: 0.6, light: true, sleep: true },
-  child: { label: 'Child room', min: 2.4, minArea: 6, maxAspect: 2.0, area: 10, share: 0.6, light: true, sleep: true },
-  living: { label: 'Living room', min: 3.0, minArea: 12, maxAspect: 2.5, area: 18, share: 0.6, light: true, sleep: false },
-  kitchen: { label: 'Kitchen', min: 1.8, minArea: 5, maxAspect: 2.5, area: 9, share: 0.6, light: true, sleep: false },
-  study: { label: 'Study', min: 2.0, minArea: 4, maxAspect: 2.2, area: 8, share: 0.55, light: true, sleep: false },
-  bath: { label: 'Bathroom', min: 1.5, minArea: 2.5, maxAspect: 2.2, area: 5, share: 0.5, light: false, sleep: false },
-  wc: { label: 'WC', min: 0.9, minArea: 1.2, maxAspect: 2.5, area: 2.5, share: 0.5, light: false, sleep: false },
-  storage: { label: 'Storage', min: 0.8, minArea: 1, maxAspect: 2.8, area: 4, share: 0, light: false, sleep: false },
+  bedroom: { label: 'Bedroom', min: 2.4, minArea: 7, maxAspect: 2.0, area: 14, share: 0.6, light: true, sleep: true },
+  child: { label: 'Child room', min: 2.4, minArea: 6, maxAspect: 2.0, area: 12, share: 0.6, light: true, sleep: true },
+  living: { label: 'Living room', min: 3.0, minArea: 12, maxAspect: 2.5, area: 28, share: 0.6, light: true, sleep: false },
+  kitchen: { label: 'Kitchen', min: 1.8, minArea: 5, maxAspect: 2.5, area: 8, share: 0.6, light: true, sleep: false },
+  study: { label: 'Study', min: 2.0, minArea: 4, maxAspect: 2.2, area: 10, share: 0.55, light: true, sleep: false },
+  bath: { label: 'Bathroom', min: 1.5, minArea: 2.5, maxAspect: 2.2, area: 4, share: 0.5, light: false, sleep: false },
+  wc: { label: 'WC', min: 0.9, minArea: 1.2, maxAspect: 2.5, area: 1.5, share: 0.5, light: false, sleep: false },
+  storage: { label: 'Storage', min: 0.8, minArea: 1, maxAspect: 2.8, area: 2.2, share: 0, light: false, sleep: false },
 };
+// area (the size a new room starts with) is the median of the real rooms of its kind, Modified Swiss Dwellings, net m2 (pipeline/oracle/msd/calibration_results.json): bedroom 14.3, kitchen 8.0, living room 27.6
+// (a Swiss living room often includes the dining area), bath 3.8, storage 2.2. The data has no child room, study or WC: a child room is a bedroom of the lower quartile (12.1), a study is no smaller than the
+// smallest real bedrooms (5th percentile, 10.0), a WC is the smallest real bathrooms (5th percentile, 1.5). Rounded. A study of 4 m2 or a bedroom of 8 m2 exists in no real plan of the data (bedroom 1st percentile 8.7).
 // min (narrowest clear width) and maxAspect (longest proportion, long side over short side) are checked against 127,908 real rooms of 5,372 plans (Modified Swiss Dwellings, pipeline/oracle/msd):
 // the old kitchen width of 2.2 m flagged 31 % of real kitchens and the old storage width of 1.2 m 48 % of real storerooms (now 1.8 and 0.8 m); maxAspect is the 95th percentile of real rooms
 // (bedroom 1.95, bath 2.2, kitchen 2.46, living 2.45, storage 2.72, hall 3.96), rounded up. Swiss flats, not attics: the lower end of what real plans contain, not a design target.
@@ -35,10 +38,10 @@ export const typeOf = (t) => (t === 'hall' ? HALL : ROOM_TYPES[t] || ROOM_TYPES.
 
 export const EXAMPLE_BRIEF = {
   rooms: [
-    { id: 'bed', type: 'bedroom', area: 8 },
-    { id: 'kid', type: 'child', area: 5 },
-    { id: 'bath', type: 'bath', area: 3 },
-    { id: 'study', type: 'study', area: 4 },
+    { id: 'bed', type: 'bedroom', area: 14 },
+    { id: 'kid', type: 'child', area: 12 },
+    { id: 'bath', type: 'bath', area: 4 },
+    { id: 'study', type: 'study', area: 10 },
   ],
   links: [['bath', 'bed', 'near']],
 };

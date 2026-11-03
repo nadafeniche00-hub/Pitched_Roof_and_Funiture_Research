@@ -16,6 +16,23 @@ export const shrink = (file, max = 1600) => new Promise((resolve, reject) => {
   img.src = url;
 });
 
+/** The words of the user turned into a brief by the server: { brief, engine, model, ms, understood, ignored, note }. Throws with the server's message. */
+export async function askBrief(text) {
+  const r = await fetch('/api/ai/brief', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) });
+  const j = await r.json();
+  if (!r.ok) throw new Error(j.error);
+  return j;
+}
+
+/** A sketch or photo of a floor plan read by the server's vision model: { plan, model, ms }. Throws with the server's message. */
+export async function askSketch(file) {
+  const image = await shrink(file);
+  const r = await fetch('/api/ai/sketch', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image }) });
+  const j = await r.json();
+  if (!r.ok) throw new Error(j.error);
+  return j;
+}
+
 export default function AiAssist({ onBrief, onPlan }) {
   const [status, setStatus] = useState(null);
   const [text, setText] = useState('');
@@ -27,9 +44,7 @@ export default function AiAssist({ onBrief, onPlan }) {
   const describe = async () => {
     setBusy('brief'); setMsg(null);
     try {
-      const r = await fetch('/api/ai/brief', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) });
-      const j = await r.json();
-      if (!r.ok) throw new Error(j.error);
+      const j = await askBrief(text);
       onBrief(j.brief);
       setMsg({ ok: true, short: `${j.engine === 'llm' ? j.model : 'rules'} · ${(j.ms / 1000).toFixed(1)} s${j.note ? ' · model failed' : ''}`, text: `${j.engine === 'llm' ? `Read by ${j.model} on the server` : 'Read by the built-in rules'} in ${(j.ms / 1000).toFixed(1)} s: ${j.understood.join(', ')}.${j.ignored?.length ? ` Not understood: ${j.ignored.join(', ')}.` : ''}${j.note ? ' ' + j.note : ''}` });
     } catch (e) { setMsg({ ok: false, short: 'failed', text: e.message }); } finally { setBusy(''); }
@@ -38,10 +53,7 @@ export default function AiAssist({ onBrief, onPlan }) {
     if (!f) return;
     setBusy('sketch'); setMsg(null);
     try {
-      const image = await shrink(f);
-      const r = await fetch('/api/ai/sketch', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image }) });
-      const j = await r.json();
-      if (!r.ok) throw new Error(j.error);
+      const j = await askSketch(f);
       onPlan(j.plan, f.name);
       setMsg({ ok: true, short: `${j.plan.rooms.length} rooms · ${(j.ms / 1000).toFixed(1)} s`, text: `Sketch read by ${j.model} on the server in ${(j.ms / 1000).toFixed(1)} s: ${j.plan.rooms.length} rooms. Check the types and sizes.` });
     } catch (e) { setMsg({ ok: false, short: 'failed', text: e.message }); } finally { setBusy(''); if (file.current) file.current.value = ''; }

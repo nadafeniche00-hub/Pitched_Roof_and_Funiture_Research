@@ -15,6 +15,7 @@ import LibraryView from './components/LibraryView.jsx';
 import IfcViewer from './components/IfcViewer.jsx';
 import Lph5View from './components/Lph5View.jsx';
 import KnowledgeView from './components/KnowledgeView.jsx';
+import Guided from './components/Guided.jsx';
 import { fetchPresets, fetchProjects, fetchWind } from './store/thunks.js';
 import { itemsActions } from './store/itemsSlice.js';
 import { uiActions } from './store/uiSlice.js';
@@ -57,6 +58,8 @@ export default function App() {
     const t = setTimeout(() => dispatch(uiActions.setToast(null)), 4500);
     return () => clearTimeout(t);
   }, [toast, dispatch]);
+
+  if (view === 'guided') return <><Guided />{toast && <div className="toast">{toast}</div>}</>;
 
   return (
     <div className="app">
