@@ -37,6 +37,9 @@ pipeline/revit/TemplateExport/obj/
 pipeline/data/revit/_rte/
 pipeline/revit/DemoBuild/bin/
 pipeline/revit/DemoBuild/obj/
+pipeline/revit/SampleExport/bin/
+pipeline/revit/SampleExport/obj/
+pipeline/data/revit/_sample_run/
 
 # Pixel Streaming: Epic's web part (downloaded and built by pipeline/render/unreal/pixelstreaming/setup.ps1) and its logs
 pipeline/render/unreal/pixelstreaming/infra/
