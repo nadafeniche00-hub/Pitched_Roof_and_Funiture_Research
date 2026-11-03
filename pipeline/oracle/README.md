@@ -55,11 +55,36 @@ inner face of the outer wall (`trimOuter` in `client/src/lib/walls.js`); the pla
 **Not fixed:** a brief that cannot fit the roof still produces a plan; it comes with warnings and the audit counts it. The remaining step is to refuse it, or to propose fewer rooms (`capacity()`).
 The Revit export keeps its numbers: `wallsOf` still runs to the footprint line unless `trimOuter` is asked for.
 
-## The real plans (MSD, ResPlan): ready for the data
+## The real plans: MSD (Modified Swiss Dwellings, Kaggle), integrated
 
-`msd/inspect_dataset.py <folder>` shows files, columns and first rows without assuming a schema. `msd/calibrate.py` turns one record per room into percentiles and into the share of
-**real** rooms that the provisional minima would call too small (a rule that fires on most real plans is a bad rule). The adapter from the dataset to those records is written after the inspector
-has shown the columns of the Kaggle files. Put the data in `pipeline/oracle/data/` (git-ignored) or pass its path.
+The Kaggle archive (`archive.zip`, 5 GB, 16 GB unpacked) holds `mds_V2_5.372k.csv` (383 MB: **1,086,846 entities of 5,372 plans and 18,903 units**, one WKT polygon in metres per row) and about 21,000
+`.npy` / `.pickle` files (image tensors and graphs for training models, **not used here**). Only the CSV is unpacked, to `pipeline/oracle/data/msd/` (git-ignored). The room polygons are the areas
+between the walls, so they compare directly with the "net" rooms of the rules.
+
+```
+python msd/inspect_dataset.py data/msd           # files, columns, first rows
+python msd/scan_dataset.py data/msd/mds_V2_5.372k.csv      # which categories exist (6 s)
+python msd/run_calibration.py data/msd/mds_V2_5.372k.csv   # percentiles and false alarms (40 s) -> msd/calibration_results.json
+```
+
+**What 127,908 real rooms say about the app's provisional minima** (residential units; MSD has no child room, study or WC, and its "bathrooms" include WCs):
+
+| Type | real net area: 5th percentile / median | share of real rooms BELOW the app's minimum (area) | (width) | Reading |
+|---|---|---|---|---|
+| bedroom | 10.0 / 14.3 m² | 0.1 % (min 7 m²) | 3.8 % (min 2.4 m) | the minima check what they should |
+| living | 16.4 / 27.6 m² | 0.4 % (min 12 m²) | 0.7 % (min 3.0 m) | fine |
+| kitchen | 4.5 / 8.0 m² | 7.5 % (min 5 m²) | **31 %** (min 2.2 m) | the width rule is too strict: real kitchens are often 1.6 to 2.2 m wide |
+| bath | 1.5 / 3.8 m² | **21 %** (min 2.5 m²) | **29 %** (min 1.5 m) | too strict for what MSD calls bathrooms, but MSD lumps WCs in: the data cannot settle it |
+| hall | 2.1 / 7.6 m² | 12 % (min 3 m²) | 8.8 % (min 1.2 m) | borderline |
+| storage | 0.5 / 2.2 m² | 13 % (min 1 m²) | **48 %** (min 1.2 m) | the width rule is wrong for storerooms: half the real ones are narrower |
+
+Real **openings and walls** against the app's assumptions: doors median 0.84 m wide (5th to 95th percentile 0.65 to 1.66: the app's 0.9 m is a normal door); windows median 1.40 m (0.58 to 2.78 m: wider
+than the 0.9 to 1.6 m the audit generates); wall pieces median 0.175 m thick (0.07 to 0.45 m: the app's 11.5 cm partition is at the thin end, the 36.5 cm outer wall is normal).
+
+**What follows, and what does not.** A rule that flags a large share of real rooms is a bad rule, so the kitchen and storage width minima should come down (to about 1.6 m and 0.8 m); the bath rule
+needs a dataset that separates WCs. **These are recommendations: the app's minima are not changed yet**, because the plans are Swiss apartment buildings, not German attics, and a lower end of
+real rooms is not a design target. Bedroom and living-room minima are validated as safe, not as right.
+**ResPlan** (arXiv:2508.14006, 17,000 plans) is not loaded: it is a second dataset with the same purpose and would give a check on these numbers from a different country.
 
 ## Status
 
@@ -69,5 +94,5 @@ has shown the columns of the Kaggle files. Put the data in `pipeline/oracle/data
 | fixes in the app | built and measured (table above) |
 | `semantic/to_case.py` | built and tested on synthetic extractions |
 | `semantic/gx10_extract.py` | **written, not run**: needs the GX10; zero-shot, never measured on line drawings |
-| MSD / ResPlan calibration | the tools are built; **the data has not arrived** (a 5 GB download was still running) |
+| MSD calibration | **built and run** on 127,908 real rooms (results above, `msd/calibration_results.json`); 35 Python tests. ResPlan not loaded |
 | Python rules inside the app | no: the app checks in JavaScript (`shared/`) for the browser; the Python rules audit and gate the pipeline. The two agree on windows (15 of 15 plans the JS flagged were found by the Python rule) |
