@@ -1,0 +1,60 @@
+{
+ "graphs": 5372,
+ "rooms": {
+  "bedroom": 42584,
+  "bath": 28276,
+  "corridor": 25738,
+  "balcony": 19783,
+  "kitchen": 18000,
+  "living": 13492,
+  "stairs": 9561,
+  "storeroom": 7367,
+  "dining": 540
+ },
+ "edge_kinds": {
+  "door": 126114,
+  "entrance": 20492,
+  "passage": 21564
+ },
+ "door_edges_by_pair": {
+  "bedroom-corridor": 36880,
+  "bath-corridor": 24826,
+  "balcony-living": 11918,
+  "balcony-bedroom": 9615,
+  "corridor-kitchen": 8720,
+  "corridor-living": 6194,
+  "corridor-storeroom": 4768,
+  "balcony-kitchen": 3710,
+  "bedroom-living": 3423,
+  "kitchen-living": 2811,
+  "corridor-corridor": 1650,
+  "bath-bedroom": 1588,
+  "bath-living": 1440,
+  "stairs-stairs": 1276,
+  "bedroom-bedroom": 1273
+ },
+ "share_of_rooms_with_a_DOOR_to": {
+  "bath -> kitchen": 0.013,
+  "bath -> living": 0.051,
+  "bath -> bedroom": 0.054,
+  "bath -> corridor": 0.878,
+  "bedroom -> corridor": 0.861,
+  "bedroom -> bath": 0.036,
+  "bedroom -> living": 0.08
+ },
+ "share_of_rooms_CONNECTED_to": {
+  "kitchen -> living": 0.498,
+  "kitchen -> dining": 0.019,
+  "kitchen -> corridor": 0.597,
+  "living -> kitchen": 0.665,
+  "bedroom -> bedroom": 0.059
+ },
+ "bedrooms_checked_for_a_way_through": 38029,
+ "bedrooms_that_are_a_way_through": 0.053,
+ "bedroom_depth_from_the_entrance": {
+  "1": 28877,
+  "2": 6017,
+  "3": 3011,
+  "4": 124
+ }
+}

@@ -86,6 +86,32 @@ needs a dataset that separates WCs. **These are recommendations: the app's minim
 real rooms is not a design target. Bedroom and living-room minima are validated as safe, not as right.
 **ResPlan** (arXiv:2508.14006, 17,000 plans) is not loaded: it is a second dataset with the same purpose and would give a check on these numbers from a different country.
 
+### The training files of the archive: graphs used, image tensors not (yet)
+
+The archive's other 21,488 files are the ML-ready form of the same 5,372 plans: per plan an access graph in (`graph_in`, 1 KB) and out (`graph_out`, about 16 KB), and two 512-px images
+(`struct_in`: the structure to start from; `full_out`: the finished plan; 1.5 MB each; 14 GB in all). Train 4,572 plans, test 800.
+
+* **Graphs: used, and safely.** A `.pickle` is a program. The files import only NetworkX `Graph`, `dict`, `OrderedDict` and torch tensor rebuilders, one of which unpickles more data inside it, so
+  `msd/safe_graphs.py` never imports networkx or torch: every allowed class is a stand-in, tensors become None, anything else is refused (a test feeds it a pickle that would run `os.system`).
+  `msd/graph_stats.py` reads them straight from the zip (2 seconds). The room-type codes are the order of `ROOM_NAMES` in the MSD repository, **checked** by matching graph polygons to the CSV
+  (graph file name = `floor_id`; 100 % agreement on 17,130 rooms).
+* **Image tensors: not put on the GX10, for four reasons.** (1) They train plan *generators* for Swiss apartment buildings; they contain no roofs and no heights, so a model trained on them cannot learn
+  the thing this product is about (the usable floor under a slope). (2) The server is shared: the language model and the GPU memory are one pool for the team, and a training job would take it from them.
+  (3) Training would turn "nothing is trained" (what the deck and the guide say, truthfully) into a trained model that has to be evaluated and licensed: the dataset page says only "code and data are open", and the
+  licence has not been checked. (4) The server was not reachable from here (no sign-in). **What would change this:** a training task that serves the product, for example a model that proposes
+  room adjacencies, evaluated against the oracle, run in a night the team agrees to. The data is ready (`archive.zip` stays where it is; nothing needs unpacking until then).
+
+**What real access graphs say about the app's hand-written graph rules** (`msd/adjacency_results.json`; 5,372 graphs, 165,341 rooms; edges: 126,114 door, 21,564 passage, 20,492 entrance):
+
+| Rule in `shared/knowledge.js` | Real flats | Reading |
+|---|---|---|
+| unwelcome: a bath or WC door straight into the kitchen | 1.3 % of bathrooms have a door to a kitchen | confirmed: rare |
+| unwelcome: a bath door straight into the living room | 5.1 % | confirmed: rare |
+| no walk through a bedroom | **5.3 %** of 38,029 bedrooms are a way through to another room (closing the bedroom cuts a room off) | confirmed: 95 % of real bedrooms are dead ends |
+| wanted: kitchen with the living room | 49.8 % of kitchens and 66.5 % of living rooms are connected (door or open passage) | common, not universal: right as a soft wish (`info`), wrong as a hard rule |
+| sleeping rooms at most 2 doors from the entrance | 76 % of bedrooms are 1 connection from the entrance room, 16 % 2, 8 % deeper | consistent |
+| wanted: a bath next to the bedrooms | not testable: it is about a shared wall (one plumbing stack), an access graph knows only doors; 87.8 % of baths and 86.1 % of bedrooms both hang on a corridor | needs the CSV geometry |
+
 ## Status
 
 | Piece | Status |
