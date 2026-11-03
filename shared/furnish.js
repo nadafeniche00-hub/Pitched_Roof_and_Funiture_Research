@@ -3,6 +3,7 @@
 // Pure functions of plain data (browser, Node, tests). The programmes are rules of thumb for exploration.
 import { runLoop } from './iterate.js';
 import { swingRects } from './doors.js';
+import { netRect } from './plans.js';
 
 // [catalogue type, anchor] per room type. Kitchens have no catalogue pieces yet, so they stay empty.
 const PROGRAMME = {
@@ -17,13 +18,13 @@ const PROGRAMME = {
 };
 
 /** Items for the rooms of one plan, each limited to its own rectangle. */
-export function programmeFor(plan) {
+export function programmeFor(plan, room) {
   const items = [];
   for (const r of plan.rooms) {
     const make = PROGRAMME[r.type];
     if (!make) continue;
     make(r.counted).forEach(([type, anchor], k) => {
-      const spec = { within: r.rect, room: r.id };
+      const spec = { within: room ? netRect(room, r.rect) : r.rect, room: r.id }; // between the walls: nothing stands in a wall
       if (anchor === 'light') spec.near = 'light'; else spec.backTo = anchor;
       items.push({ id: `${r.id}-${type}-${k}`, type, x: 0, y: 0, rot: 0, placed: false, spec });
     });
@@ -33,7 +34,7 @@ export function programmeFor(plan) {
 
 /** Furnish a whole plan. Returns { items, placed, total, byRoom } (byRoom: room id -> { placed, total }). */
 export function furnishPlan(room, plan, opts = {}) {
-  const items = programmeFor(plan);
+  const items = programmeFor(plan, room);
   if (!items.length) return { items: [], placed: 0, total: 0, byRoom: {} };
   // the swing of every door of the plan stays free: it is part of the room for the engine (room.swings)
   const swings = swingRects(plan);

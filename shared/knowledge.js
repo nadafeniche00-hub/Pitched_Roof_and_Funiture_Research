@@ -33,6 +33,15 @@ export const LBO = {
   source: 'MBO §§ 33, 34, 47 (typical)', verify: true,
 };
 
+// ---------------------------------------------------------------- walls
+
+/**
+ * Wall thickness of the plans, in metres. The outer wall (36.5 cm) lies INSIDE the footprint: its outer face is the footprint line. A partition (11.5 cm) is centred on the edge between two
+ * rooms. The rooms of a layout are rectangles on these lines, so a room as a person can use it is smaller (netRect in shared/plans.js): sizes, furniture and areas are judged on that.
+ * WoFlV § 3 counts floor area by the clear dimensions between the walls (verify). The two thicknesses are the common German masonry ones, not a requirement.
+ */
+export const WALLS = { outer: 0.365, inner: 0.115, source: 'common German masonry thicknesses; WoFlV § 3 (clear dimensions)', verify: true };
+
 // ---------------------------------------------------------------- standard (Neufert and DIN, rounded)
 
 /**

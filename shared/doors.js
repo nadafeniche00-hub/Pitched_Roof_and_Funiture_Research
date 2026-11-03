@@ -4,20 +4,37 @@
 //
 // The rule (Neufert, circulation): a door opens into the room behind it, is hinged next to a wall end so that the open leaf lies against that wall, and nothing
 // stands inside its swing. A door in the middle of a wall, opening into the hall, leaves a pocket on each side of the leaf and takes the hall away.
-import { NEUFERT } from './knowledge.js';
+import { NEUFERT, WALLS } from './knowledge.js';
 
 export const DOOR_WIDTH = NEUFERT.doorLeaf;
 const END_GAP = 0.25; // the opening starts at least this far from the end of the wall run: the frame and a strip of wall beside it
 
-/** The run of the wall two rooms share, along the wall: [lo, hi] (y for a vertical wall, x for a horizontal one). */
-export const sharedRun = (ra, rb, vertical) => (vertical ? [Math.max(ra[1], rb[1]), Math.min(ra[3], rb[3])] : [Math.max(ra[0], rb[0]), Math.min(ra[2], rb[2])]);
+const EDGE = 0.02;
+
+/** The footprint of a plan, [x0, y0, x1, y1]: the rectangles of all its rooms together. */
+export const boundsOf = (rects) => {
+  const v = Object.values(rects);
+  return v.length ? [Math.min(...v.map((r) => r[0])), Math.min(...v.map((r) => r[1])), Math.max(...v.map((r) => r[2])), Math.max(...v.map((r) => r[3]))] : null;
+};
+
+/**
+ * The run of the wall two rooms share, along the wall: [lo, hi] (y for a vertical wall, x for a horizontal one). With `bounds` (boundsOf) it is the CLEAR run: an end on the footprint
+ * line loses the outer wall (WALLS.outer), every other end half a partition wall, so a door never starts inside a wall.
+ */
+export const sharedRun = (ra, rb, vertical, bounds = null) => {
+  const lo = vertical ? Math.max(ra[1], rb[1]) : Math.max(ra[0], rb[0]);
+  const hi = vertical ? Math.min(ra[3], rb[3]) : Math.min(ra[2], rb[2]);
+  if (!bounds) return [lo, hi];
+  const [bmin, bmax] = vertical ? [bounds[1], bounds[3]] : [bounds[0], bounds[2]];
+  return [lo + (lo <= bmin + EDGE ? WALLS.outer : WALLS.inner / 2), hi - (hi >= bmax - EDGE ? WALLS.outer : WALLS.inner / 2)];
+};
 
 /**
  * The centre of a door on the wall two rooms share (`edge` = sharedEdge() of the plan builder). A door goes close to the end of the wall that is farther from
  * `away` (the stair), so its leaf can lie against the wall behind it; a wall too short for that keeps the door in the middle.
  */
-export function placeDoor(edge, ra, rb, width = DOOR_WIDTH, away = null) {
-  const [lo, hi] = sharedRun(ra, rb, edge.vertical);
+export function placeDoor(edge, ra, rb, width = DOOR_WIDTH, away = null, bounds = null) {
+  const [lo, hi] = sharedRun(ra, rb, edge.vertical, bounds);
   if (hi - lo < width + 2 * END_GAP) return edge.mid;
   const pt = (s) => (edge.vertical ? [edge.mid[0], s] : [s, edge.mid[1]]);
   const a = pt(lo + END_GAP + width / 2), b = pt(hi - END_GAP - width / 2);
@@ -35,7 +52,7 @@ export function placeDoor(edge, ra, rb, width = DOOR_WIDTH, away = null) {
  */
 export function doorSwing(door, rects) {
   const w = door.width || DOOR_WIDTH, ra = rects[door.a], rb = rects[door.b];
-  const [lo, hi] = sharedRun(ra, rb, door.vertical);
+  const [lo, hi] = sharedRun(ra, rb, door.vertical, boundsOf(rects));
   const along = door.vertical ? door.mid[1] : door.mid[0], c = door.vertical ? door.mid[0] : door.mid[1];
   const s0 = along - w / 2, s1 = along + w / 2;
   const hinge = s0 - lo <= hi - s1 ? 0 : 1;

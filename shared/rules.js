@@ -9,6 +9,7 @@
 import { CATALOG } from './catalog.js';
 import { defOf } from './params.js';
 import { dormerRect, roofHeight, stairRect, windowRect } from './engine.js';
+import { WALLS } from './knowledge.js';
 
 const TOL = 0.1; // "touching a wall" - the 10 cm placement lattice
 const cm = (v) => Math.round(v * 100);
@@ -20,12 +21,15 @@ export const overlaps = (a, b) => a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b
 export const rectGap = (a, b) => Math.hypot(Math.max(0, a[0] - b[2], b[0] - a[2]), Math.max(0, a[1] - b[3], b[1] - a[3]));
 const grow = (r, m) => [r[0] - m, r[1] - m, r[2] + m, r[3] + m];
 
+/** The attic as a person can use it: the footprint minus the outer wall (WALLS.outer, shared/knowledge.js). The walls a piece stands against are its faces. */
+export const clearRoom = (room) => [WALLS.outer, WALLS.outer, room.width - WALLS.outer, room.depth - WALLS.outer];
+
 /**
  * Distance from the back of a piece (the side opposite its front) to the wall behind it. `within` = the rectangle of the room the piece stands in (a plan from the
  * plan builder): its partition walls are walls too. Without it the walls are the outline of the attic.
  */
 export function backGap(room, b, rot, within) {
-  const r = within || [0, 0, room.width, room.depth];
+  const r = within || clearRoom(room);
   switch (rot) {
     case 0: return b[1] - r[1];
     case 1: return r[2] - b[2];
@@ -34,7 +38,7 @@ export function backGap(room, b, rot, within) {
   }
 }
 export const wallGap = (room, b, within) => {
-  const r = within || [0, 0, room.width, room.depth];
+  const r = within || clearRoom(room);
   return Math.min(b[0] - r[0], b[1] - r[1], r[2] - b[2], r[3] - b[3]);
 };
 

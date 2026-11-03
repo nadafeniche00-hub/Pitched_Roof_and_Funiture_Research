@@ -8,24 +8,24 @@
 //
 // Pure functions of plain data (browser, Node, tests). Thresholds are planning rules of thumb for exploration, not code requirements.
 import { getGrid, mulberry32, stairRect, dormerRect, DEFAULT_RULES } from './engine.js';
-import { ADJACENCY, LBO } from './knowledge.js';
-import { DOOR_WIDTH, placeDoor, swingConflicts } from './doors.js';
+import { ADJACENCY, LBO, WALLS } from './knowledge.js';
+import { DOOR_WIDTH, placeDoor, swingConflicts, boundsOf } from './doors.js';
 
 const EPS = 1e-6;
 const RES = 0.1;
 
 // min = narrowest clear width (m), area = default counted area (m2), share = needed counted/gross share, light = needs daylight, sleep = a pass-through is unwelcome
 export const ROOM_TYPES = {
-  bedroom: { label: 'Bedroom', min: 2.4, area: 12, share: 0.6, light: true, sleep: true },
-  child: { label: 'Child room', min: 2.4, area: 10, share: 0.6, light: true, sleep: true },
-  living: { label: 'Living room', min: 3.0, area: 18, share: 0.6, light: true, sleep: false },
-  kitchen: { label: 'Kitchen', min: 2.2, area: 9, share: 0.6, light: true, sleep: false },
-  study: { label: 'Study', min: 2.0, area: 8, share: 0.55, light: true, sleep: false },
-  bath: { label: 'Bathroom', min: 1.5, area: 5, share: 0.5, light: false, sleep: false },
-  wc: { label: 'WC', min: 0.9, area: 2.5, share: 0.5, light: false, sleep: false },
-  storage: { label: 'Storage', min: 1.2, area: 4, share: 0, light: false, sleep: false },
+  bedroom: { label: 'Bedroom', min: 2.4, minArea: 7, area: 12, share: 0.6, light: true, sleep: true },
+  child: { label: 'Child room', min: 2.4, minArea: 6, area: 10, share: 0.6, light: true, sleep: true },
+  living: { label: 'Living room', min: 3.0, minArea: 12, area: 18, share: 0.6, light: true, sleep: false },
+  kitchen: { label: 'Kitchen', min: 2.2, minArea: 5, area: 9, share: 0.6, light: true, sleep: false },
+  study: { label: 'Study', min: 2.0, minArea: 4, area: 8, share: 0.55, light: true, sleep: false },
+  bath: { label: 'Bathroom', min: 1.5, minArea: 2.5, area: 5, share: 0.5, light: false, sleep: false },
+  wc: { label: 'WC', min: 0.9, minArea: 1.2, area: 2.5, share: 0.5, light: false, sleep: false },
+  storage: { label: 'Storage', min: 1.2, minArea: 1, area: 4, share: 0, light: false, sleep: false },
 };
-export const HALL = { label: 'Stair hall', min: 1.2, area: 4, share: 0.4, light: false, sleep: false };
+export const HALL = { label: 'Stair hall', min: 1.2, minArea: 3, area: 4, share: 0.4, light: false, sleep: false };
 
 export const typeOf = (t) => (t === 'hall' ? HALL : ROOM_TYPES[t] || ROOM_TYPES.storage);
 
@@ -90,6 +90,31 @@ export function shareAbove(room, r, h) {
 }
 
 /** Counted and gross area of a rectangle, by roof height (same rule as the furniture engine). */
+const EDGE = 0.02; // a room edge or wall end within 2 cm of the footprint line is on it
+
+/** The room as a person can use it: the layout rectangle minus the outer wall on a footprint edge and half a partition wall on every other edge (WALLS, shared/knowledge.js). */
+export function netRect(room, r) {
+  const { outer: to, inner: ti } = WALLS;
+  return [r[0] + (r[0] <= EDGE ? to : ti / 2), r[1] + (r[1] <= EDGE ? to : ti / 2), r[2] - (r[2] >= room.width - EDGE ? to : ti / 2), r[3] - (r[3] >= room.depth - EDGE ? to : ti / 2)];
+}
+
+/** Where partition walls end on the outer wall: [{ side: 'N' | 'S' | 'W' | 'E', c }], c = position of the partition along that outer wall. */
+export function junctions(room, rects) {
+  const seen = new Set(), out = [];
+  const add = (side, c) => { const k = side + c.toFixed(2); if (!seen.has(k)) { seen.add(k); out.push({ side, c }); } };
+  for (const [x0, y0, x1, y1] of Object.values(rects)) {
+    for (const x of [x0, x1]) if (x > EDGE && x < room.width - EDGE) { if (y0 <= EDGE) add('N', x); if (y1 >= room.depth - EDGE) add('S', x); }
+    for (const y of [y0, y1]) if (y > EDGE && y < room.depth - EDGE) { if (x0 <= EDGE) add('W', y); if (x1 >= room.width - EDGE) add('E', y); }
+  }
+  return out;
+}
+
+/** The junctions that fall inside a window opening: the partition would end on the window. `clear` = extra distance kept from the opening, in metres. */
+export function windowClashes(room, rects, clear = 0.05) {
+  const half = WALLS.inner / 2 + clear;
+  return junctions(room, rects).filter((j) => (room.windows || []).some((w) => w.wall === j.side && j.c + half > w.pos - w.width / 2 && j.c - half < w.pos + w.width / 2));
+}
+
 export function countedArea(room, r, rules = DEFAULT_RULES) {
   // each grid cell counts by its own height, weighted by how much of the cell lies inside the rectangle: walls that are not on the 10 cm grid
   // no longer move area from one room to its neighbour (found by comparing with Shapely, COMPAS, TopologicPy and IfcOpenShell)
@@ -163,9 +188,9 @@ export function scorePlan(room, brief, rects, opts = {}) {
   const label = (id) => (id === 'hall' ? 'Stair hall' : `${typeOf(kind[id]).label} (${id})`);
   const findings = [];
   const rooms = ids.map((id) => {
-    const rect = rects[id];
-    const { counted, gross } = countedArea(room, rect, rules);
-    return { id, type: kind[id], rect, counted, gross, share: gross > 0 ? counted / gross : 0, w: rect[2] - rect[0], d: rect[3] - rect[1] };
+    const rect = rects[id], net = netRect(room, rect); // judged on the room between the walls, not on the rectangle that includes them
+    const { counted, gross } = countedArea(room, net, rules);
+    return { id, type: kind[id], rect, net, counted, gross, share: gross > 0 ? counted / gross : 0, w: net[2] - net[0], d: net[3] - net[1] };
   });
 
   // 1 area: counted against wanted
@@ -177,13 +202,14 @@ export function scorePlan(room, brief, rects, opts = {}) {
   }
   areaS /= rooms.length;
 
-  // 2 shape: not too narrow, not a corridor
-  let shapeS = 0;
+  // 2 shape: not too narrow between the walls, not a corridor
+  let shapeS = 0, narrowN = 0;
   for (const r of rooms) {
     const t = typeOf(r.type), lo = Math.min(r.w, r.d), hi = Math.max(r.w, r.d);
     const narrow = Math.min(1, lo / t.min), aspect = hi / lo <= 2.5 ? 1 : Math.max(0, 1 - (hi / lo - 2.5) / 2.5);
     shapeS += narrow * narrow * 0.6 + aspect * 0.4;
-    if (lo < t.min * 0.9) findings.push({ room: r.id, severity: 'warn', msg: `${label(r.id)} is only ${lo.toFixed(2)} m wide (rule of thumb: at least ${t.min} m).` });
+    if (lo < t.min || (t.minArea && r.w * r.d < t.minArea)) narrowN += 1; // narrower than the rule, or smaller than the provisional minimum area (a planning rule of thumb), between the walls
+    if (lo < t.min * 0.9) findings.push({ room: r.id, severity: 'warn', msg: `${label(r.id)} is only ${lo.toFixed(2)} m wide between the walls (rule of thumb: at least ${t.min} m).` });
     else if (hi / lo > 3) findings.push({ room: r.id, severity: 'info', msg: `${label(r.id)} is long and thin (${hi.toFixed(1)} × ${lo.toFixed(1)} m).` });
   }
   shapeS /= rooms.length;
@@ -213,7 +239,7 @@ export function scorePlan(room, brief, rects, opts = {}) {
   const sr = stairRect(room), away = sr ? [(sr[0] + sr[2]) / 2, (sr[1] + sr[3]) / 2] : null;
   const doors = Object.keys(parent).map((id) => {
     const e = edge(parent[id], id), width = Math.min(DOOR_WIDTH, e.len);
-    return { a: parent[id], b: id, mid: placeDoor(e, rects[parent[id]], rects[id], width, away), vertical: e.vertical, width };
+    return { a: parent[id], b: id, mid: placeDoor(e, rects[parent[id]], rects[id], width, away, boundsOf(rects)), vertical: e.vertical, width };
   });
   for (const r of rooms) {
     if (r.id === 'hall') continue;
@@ -260,7 +286,7 @@ export function scorePlan(room, brief, rects, opts = {}) {
   // 7 building code and layout graph (shared/knowledge.js): the height rule of a habitable attic room, wanted and unwelcome neighbours, doors that fight over a corner
   for (const r of rooms) {
     if (!typeOf(r.type).light) continue; // bedroom, child room, living room, kitchen, study
-    const sh = shareAbove(room, r.rect, LBO.atticHeight);
+    const sh = shareAbove(room, r.net, LBO.atticHeight);
     if (sh < LBO.atticShare) findings.push({ room: r.id, severity: 'warn', rule: 'lbo-height', msg: `${label(r.id)}: only ${Math.round(sh * 100)} % of the floor is ${LBO.atticHeight.toFixed(2)} m or higher (typical attic rule: ${Math.round(LBO.atticShare * 100)} %; check the Landesbauordnung of your state).` });
   }
   const typed = (t) => ids.filter((id) => kind[id] === t);
@@ -274,10 +300,13 @@ export function scorePlan(room, brief, rects, opts = {}) {
 
   const parts = { area: areaS, shape: shapeS, headroom: headS, access: accessS, links: linkS, light: lightS };
   const W = { area: 0.22, shape: 0.18, headroom: 0.14, access: 0.18, links: 0.18, light: 0.1 };
+  // a partition wall that ends on a window cannot be built as drawn: the opening would meet the wall
+  const clashes = windowClashes(room, rects);
+  for (const c of clashes) findings.push({ room: ids[0], severity: 'warn', rule: 'wall-window', msg: `A partition wall meets the ${c.side} wall at ${c.c.toFixed(2)} m, inside a window.` });
   const warns = findings.filter((f) => f.severity === 'warn').length;
-  const score = Math.max(0, Object.keys(W).reduce((s, k) => s + W[k] * parts[k], 0) - 0.03 * warns);
+  const score = Math.max(0, Object.keys(W).reduce((s, k) => s + W[k] * parts[k], 0) - 0.03 * warns - 0.06 * narrowN - 0.08 * clashes.length);
   findings.sort((a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity]);
-  return { score, parts, findings, routes, doors, rooms };
+  return { score, parts, findings, routes, doors, rooms, narrow: narrowN, clashes: clashes.length };
 }
 
 /** What the brief asks for against what the roof can give: counted m2 of the whole floor. */
@@ -312,6 +341,46 @@ function place(room, brief, tree, target) {
  * Generate layouts for a brief. Returns the best `keep` different plans, best first:
  * [{ score, parts, findings, routes, rooms }]. Seeded, so the same inputs give the same plans.
  */
+/**
+ * A partition wall that ends on a window is slid along the outer wall to the nearer edge of the window (plus the wall's half thickness and a clearance), all the rooms on that wall line
+ * moving with it, as long as every room stays at least 0.8 m wide and the stair is not cut. Returns the plan scored again (the first one when nothing can be moved).
+ */
+function repairWindows(room, brief, cur, opts) {
+  let rects = Object.fromEntries(cur.rooms.map((r) => [r.id, r.rect.slice()]));
+  let res = cur;
+  const st = stairRect(room);
+  const half = WALLS.inner / 2 + 0.07;
+  for (let it = 0; it < 6; it++) {
+    const clash = windowClashes(room, rects)[0];
+    if (!clash) break;
+    const win = (room.windows || []).find((w) => w.wall === clash.side && clash.c + half > w.pos - w.width / 2 && clash.c - half < w.pos + w.width / 2);
+    if (!win) break;
+    const vertical = clash.side === 'N' || clash.side === 'S'; // the wall line runs along y at x = c (or along x at y = c)
+    const [k0, k1] = vertical ? [0, 2] : [1, 3];
+    const options = [win.pos - win.width / 2 - half, win.pos + win.width / 2 + half].sort((a, b) => Math.abs(a - clash.c) - Math.abs(b - clash.c));
+    let moved = null;
+    for (const c2 of options) {
+      const next = {};
+      let ok = true;
+      for (const [id, r] of Object.entries(rects)) {
+        const n = r.slice();
+        for (const k of [k0, k1]) if (Math.abs(n[k] - clash.c) < 0.011) n[k] = c2;
+        if (n[2] - n[0] < 0.8 || n[3] - n[1] < 0.8) ok = false;
+        if (st && id !== 'hall' && n[0] < st[2] - EPS && st[0] < n[2] - EPS && n[1] < st[3] - EPS && st[1] < n[3] - EPS) ok = false; // never through the stair
+        next[id] = n;
+      }
+      if (ok) { moved = next; break; }
+    }
+    if (!moved) break;
+    rects = moved;
+    res = scorePlan(room, brief, rects, opts);
+  }
+  return res;
+}
+
+/** Sort order of the generator: a layout with no room too small and no wall on a window comes first; among equals the better score. */
+const byValidity = (a, b) => (a.narrow > 0 || a.clashes > 0) - (b.narrow > 0 || b.clashes > 0) || b.score - a.score;
+
 export function generatePlans(room, briefIn, opts = {}) {
   const brief = sanitizeBrief(briefIn);
   if (!brief.rooms.length) return [];
@@ -321,14 +390,19 @@ export function generatePlans(room, briefIn, opts = {}) {
   for (const r of brief.rooms) target[r.id] = r.area / 0.8; // gross a little above counted
   const ids = ['hall', ...brief.rooms.map((r) => r.id)];
   const pool = [];
-  for (let i = 0; i < tries; i++) {
-    const order = [...ids].sort(() => rng() - 0.5);
-    const tree = buildTree(order, rng);
-    const rects = place(room, brief, tree, target);
-    if (!rects) continue;
-    pool.push({ tree, ...scorePlan(room, brief, rects, opts) });
-  }
-  pool.sort((a, b) => b.score - a.score);
+  const sample = (n) => {
+    for (let i = 0; i < n; i++) {
+      const order = [...ids].sort(() => rng() - 0.5);
+      const tree = buildTree(order, rng);
+      const rects = place(room, brief, tree, target);
+      if (!rects) continue;
+      pool.push({ tree, ...scorePlan(room, brief, rects, opts) });
+    }
+  };
+  sample(tries);
+  // no layout without a too-small room or a wall on a window yet: look harder before giving up (a brief that cannot fit stays flagged: the findings say which room)
+  if (!pool.some((p) => !(p.narrow > 0 || p.clashes > 0))) sample(opts.hardTries ?? tries * 4);
+  pool.sort(byValidity);
   const best = pool.slice(0, Math.max(keep * 4, 8));
   for (let k = 0; k < best.length; k++) {
     let cur = best[k];
@@ -341,11 +415,12 @@ export function generatePlans(room, briefIn, opts = {}) {
       const rects = place(room, brief, tree, target);
       if (!rects) continue;
       const next = { tree, ...scorePlan(room, brief, rects, opts) };
-      if (next.score > cur.score) cur = next;
+      if (byValidity(next, cur) < 0) cur = next;
     }
-    best[k] = cur;
+    const fixed = repairWindows(room, brief, cur, opts);
+    best[k] = byValidity(fixed, cur) < 0 ? fixed : cur;
   }
-  best.sort((a, b) => b.score - a.score);
+  best.sort(byValidity);
   const out = [];
   const sig = (p) => p.rooms.map((r) => centre(r.rect).map((v) => Math.round(v)).join(',')).join('|');
   const seen = new Set();

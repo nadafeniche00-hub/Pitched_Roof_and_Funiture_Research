@@ -3,6 +3,7 @@
 import * as THREE from 'three';
 import { roofHeight } from '@shared/engine.js';
 import { doorSwing } from '@shared/doors.js';
+import { WALLS } from '@shared/knowledge.js';
 
 export const DOOR_H = 2.05, WALL_MAX = 8; // walls rise all the way to the roof
 
@@ -10,13 +11,16 @@ export const DOOR_H = 2.05, WALL_MAX = 8; // walls rise all the way to the roof
  * Walls of a layout: unique inner edges with their door openings, and thin rectangles for collision.
  * `autoDoors`: where the layout has no door data (rooms drawn or split by hand), every wall longer than 1.8 m gets a door in the middle.
  */
-export function wallsOf(room, layout, { autoDoors = false } = {}) {
+export function wallsOf(room, layout, { autoDoors = false, trimOuter = false } = {}) {
   const W = room.width, D = room.depth, seen = new Set(), walls = [], colliders = [];
   if (!layout) return { walls, colliders };
   const doors = layout.doors || [];
   const rectOf = Object.fromEntries((layout.rooms || []).map((r) => [r.id, r.rect]));
   const onOuter = (c, lim) => Math.abs(c) < 0.02 || Math.abs(c - lim) < 0.02;
-  const add = (vertical, c, a, b) => {
+  const add = (vertical, c, a0, b0) => {
+    let a = a0, b = b0;
+    // trimOuter: a partition stops at the inner face of the outer wall (WALLS.outer) instead of running through it (the technical plan draws the outer wall itself)
+    if (trimOuter) { const lim = vertical ? D : W; if (a < 0.02) a = WALLS.outer; if (b > lim - 0.02) b = lim - WALLS.outer; }
     if (b - a < 0.05) return;
     const key = [vertical, c.toFixed(2), a.toFixed(2), b.toFixed(2)].join('|');
     if (seen.has(key)) return;
@@ -64,7 +68,7 @@ export function wallStrip(room, p0, p1, openings) {
   return g;
 }
 
-export const T_IN = 0.115; // thickness of a partition: the inner wall of the technical plan (shared with lib/techPlan.js)
+export const T_IN = WALLS.inner; // thickness of a partition: the inner wall of the technical plan (shared with lib/techPlan.js)
 
 /**
  * The same wall with thickness (T_IN, as in the technical plan): both faces, the jambs of the door openings and the underside of the lintel in group 0, the cut face

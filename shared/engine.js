@@ -4,6 +4,7 @@
 // Plan coordinates: x to the right, y downwards, metres. Room = [0,W] x [0,D].
 // Gable roof, ridge parallel to y at x = W/2, eaves (knee walls) on x = 0 and x = W.
 import { CATALOG } from './catalog.js';
+import { WALLS } from './knowledge.js';
 import { defOf, resolveDormer, DORMER_DEFAULTS, DORMER_FIELDS } from './params.js';
 
 import { meshHeight, sanitizeMesh } from './roofMesh.js';
@@ -172,10 +173,11 @@ export function doorRect(room, d) {
   const { width: W, depth: D } = room;
   const h = d.width / 2;
   switch (d.wall) {
-    case 'N': return [d.pos - h, 0, d.pos + h, d.width];
-    case 'S': return [d.pos - h, D - d.width, d.pos + h, D];
-    case 'W': return [0, d.pos - h, d.width, d.pos + h];
-    default: return [W - d.width, d.pos - h, W, d.pos + h];
+    // the swing of a door in an outer wall starts at the inner face of the wall (WALLS.outer), not at the footprint line
+    case 'N': return [d.pos - h, WALLS.outer, d.pos + h, WALLS.outer + d.width];
+    case 'S': return [d.pos - h, D - WALLS.outer - d.width, d.pos + h, D - WALLS.outer];
+    case 'W': return [WALLS.outer, d.pos - h, WALLS.outer + d.width, d.pos + h];
+    default: return [W - WALLS.outer - d.width, d.pos - h, W - WALLS.outer, d.pos + h];
   }
 }
 
@@ -184,10 +186,10 @@ export function windowRect(room, d) {
   const h = d.width / 2;
   const t = 0.3; // strip in front of the window that tall furniture must not block
   switch (d.wall) {
-    case 'N': return [d.pos - h, 0, d.pos + h, t];
-    case 'S': return [d.pos - h, D - t, d.pos + h, D];
-    case 'W': return [0, d.pos - h, t, d.pos + h];
-    default: return [W - t, d.pos - h, W, d.pos + h];
+    case 'N': return [d.pos - h, WALLS.outer, d.pos + h, WALLS.outer + t];
+    case 'S': return [d.pos - h, D - WALLS.outer - t, d.pos + h, D - WALLS.outer];
+    case 'W': return [WALLS.outer, d.pos - h, WALLS.outer + t, d.pos + h];
+    default: return [W - WALLS.outer - t, d.pos - h, W - WALLS.outer, d.pos + h];
   }
 }
 
@@ -233,7 +235,7 @@ export function buildGrid(room, res = 0.05) {
   const nx = Math.round(room.width / res);
   const ny = Math.round(room.depth / res);
   const n = nx * ny;
-  const g = { nx, ny, res, h: new Float32Array(n), stair: new Uint8Array(n), door: new Uint8Array(n), win: new Uint8Array(n) };
+  const g = { nx, ny, res, h: new Float32Array(n), stair: new Uint8Array(n), door: new Uint8Array(n), win: new Uint8Array(n), wall: new Uint8Array(n) };
   const tan = Math.tan((room.pitch * Math.PI) / 180);
   const dorms = room.dormers.map((d) => ({ r: dormerRect(room, d), h: resolveDormer(room, d).height }));
   const custom = room.roof || null;
@@ -245,6 +247,11 @@ export function buildGrid(room, res = 0.05) {
       for (const d of dorms) if (x >= d.r[0] && x <= d.r[2] && y >= d.r[1] && y <= d.r[3]) hh = Math.max(hh, d.h);
       g.h[j * nx + i] = Math.min(hh, room.maxHeight);
     }
+  }
+  // the outer wall is not floor: nothing stands in it (its inner face is WALLS.outer from the footprint line). Partition walls of a layout are kept out by the rectangle of the room (shared/furnish.js)
+  for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
+    const x = (i + 0.5) * res, y = (j + 0.5) * res;
+    if (x < WALLS.outer || x > room.width - WALLS.outer || y < WALLS.outer || y > room.depth - WALLS.outer) g.wall[j * nx + i] = 1;
   }
   const sr = stairRect(room);
   if (sr) markRect(g.stair, g, sr);
@@ -281,19 +288,20 @@ export function headStrip(b, rot, len) {
 
 function evalOne(g, occ, selfMarked, def, item, rules, wantAccess) {
   const rects = itemRects(def, item);
-  const { nx, ny, res, h, stair, door, win } = g;
+  const { nx, ny, res, h, stair, door, win, wall } = g;
   const occLimit = selfMarked ? 1 : 0; // occ > occLimit  => someone else is there too
   const issues = [];
 
   const [i0, i1, j0, j1] = cellRange(rects.body, res);
   const total = Math.max(0, (i1 - i0 + 1) * (j1 - j0 + 1));
-  let out = 0, low = 0, st = 0, dr = 0, wn = 0, ov = 0;
+  let out = 0, low = 0, st = 0, dr = 0, wn = 0, ov = 0, wl = 0;
   for (let j = j0; j <= j1; j++) {
     for (let i = i0; i <= i1; i++) {
       if (i < 0 || j < 0 || i >= nx || j >= ny) { out++; continue; }
       const k = j * nx + i;
       if (h[k] < def.bodyH - EPS) low++;
       if (stair[k]) st++;
+      if (wall[k]) wl++;
       if (door[k]) dr++;
       if (win[k] && def.h > 0.9) wn++;
       if (occ[k] > occLimit) ov++;
@@ -307,6 +315,7 @@ function evalOne(g, occ, selfMarked, def, item, rules, wantAccess) {
     for (let j = hj0; j <= hj1; j++) for (let i = hi0; i <= hi1; i++) if (i >= 0 && j >= 0 && i < nx && j < ny && h[j * nx + i] < def.headH - EPS) tooLow++;
     if (tooLow) issues.push({ code: 'head', msg: `Too low to sit up: the head end needs ${def.headH.toFixed(2)} m over its first ${def.headLen.toFixed(1)} m` });
   }
+  if (wl) issues.push({ code: 'wall', msg: 'Stands inside a wall' });
   if (st) issues.push({ code: 'stair', msg: 'Blocks the stair opening' });
   if (dr) issues.push({ code: 'door', msg: 'Blocks a door swing' });
   if (wn) issues.push({ code: 'window', msg: 'Blocks a window' });
@@ -386,7 +395,7 @@ export function evaluate(room, items, opts = {}) {
   const rules = { ...DEFAULT_RULES, ...(opts.rules || {}) };
   const res = opts.res ?? 0.05;
   const g = getGrid(room, res);
-  const { nx, ny, h, stair } = g;
+  const { nx, ny, h, stair, wall } = g;
   const n = nx * ny;
   const occ = new Uint8Array(n);
 
@@ -408,7 +417,7 @@ export function evaluate(room, items, opts = {}) {
 
   // circulation: walkable cells, eroded by half the passage width, flood-filled from the entries
   const rr = Math.max(1, Math.round(rules.passage / 2 / res));
-  const blocked = (k) => h[k] < rules.walkH - EPS || occ[k] > 0 || stair[k] === 1;
+  const blocked = (k) => h[k] < rules.walkH - EPS || occ[k] > 0 || stair[k] === 1 || wall[k] === 1;
   const sBlocked = sat(nx, ny, blocked);
   const E = new Uint8Array(n);
   for (let j = rr; j < ny - rr; j++)
@@ -463,8 +472,9 @@ export function evaluate(room, items, opts = {}) {
 
   // area metrics
   const cell = res * res;
-  let nStair = 0, counted = 0, walkBase = 0, freeWalk = 0, freeReach = 0, tall = 0, noCount = 0;
+  let nStair = 0, nWall = 0, counted = 0, walkBase = 0, freeWalk = 0, freeReach = 0, tall = 0, noCount = 0;
   for (let k = 0; k < n; k++) {
+    if (wall[k]) { nWall++; continue; } // the outer wall is not floor: no area, no walking, no height to count (WoFlV counts the clear floor)
     if (stair[k]) { nStair++; continue; }
     const hh = h[k];
     counted += hh >= rules.fullH - EPS ? 1 : hh >= rules.halfH - EPS ? rules.halfFactor : 0;
@@ -475,11 +485,11 @@ export function evaluate(room, items, opts = {}) {
       if (occ[k] === 0) { freeWalk++; if (touched(k)) freeReach++; }
     }
   }
-  const gross = (n - nStair) * cell;
+  const gross = (n - nStair - nWall) * cell;
   const countedArea = counted * cell;
   const usableRatio = gross > 0 ? countedArea / gross : 0;
   const connectivity = freeWalk > 0 ? freeReach / freeWalk : 0;
-  const tallShare = n - nStair > 0 ? tall / (n - nStair) : 0;
+  const tallShare = n - nStair - nWall > 0 ? tall / (n - nStair - nWall) : 0;
 
   const score = { ok: 1, warn: 0.5, fail: 0, unplaced: 0 };
   const furnish = per.length ? per.reduce((a, p) => a + score[p.status], 0) / per.length : 1;
@@ -539,7 +549,7 @@ export function candidatesFor(g, occ, room, it, rules, opts = {}) {
         const [i0, i1, j0, j1] = cellRange(b, g.res);
         let sum = 0, cnt = 0, walk = 0;
         for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { const hh = g.h[j * g.nx + i]; sum += hh; cnt++; if (hh >= rules.walkH) walk++; }
-        const touch = (b[0] < 0.06) + (b[1] < 0.06) + (b[2] > room.width - 0.06) + (b[3] > room.depth - 0.06);
+        const t0 = WALLS.outer + 0.06, touch = (b[0] < t0) + (b[1] < t0) + (b[2] > room.width - t0) + (b[3] > room.depth - t0); // a piece against the inner face of the outer wall
         const cost = 0.4 * (sum / cnt) + walk / cnt - 0.3 * Math.min(touch, 2) + (opts.jitter ? opts.jitter() : 0);
         cands.push({ cost, cand });
       }

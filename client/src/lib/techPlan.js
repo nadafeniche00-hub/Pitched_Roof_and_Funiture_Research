@@ -3,6 +3,8 @@
 // German layer names) for CAD and Revit, or as a printable A3 sheet at 1:50 (SVG). Plan coordinates: x right, y down, metres.
 import { defOf } from '@shared/params.js';
 import { itemRects, stairRect } from '@shared/engine.js';
+import { WALLS } from '@shared/knowledge.js';
+import { netRect } from '@shared/plans.js';
 import { wallsOf, T_IN } from './walls.js';
 import { mergeWalls } from './mergeWalls.js';
 
@@ -16,7 +18,7 @@ export const LAYERS = {
   BEMASSUNG: { color: 4, w: 0.18, name: 'Bemassung' },
   RAHMEN: { color: 7, w: 0.35, name: 'Rahmen und Schriftfeld' },
 };
-export const T_OUT = 0.365;
+export const T_OUT = WALLS.outer;
 const DE = { bedroom: 'Schlafen', child: 'Kind', living: 'Wohnen', kitchen: 'Kueche', study: 'Arbeiten', bath: 'Bad', wc: 'WC', storage: 'Abstellraum', hall: 'Flur', room: 'Raum' };
 const num = (v, d = 2) => v.toFixed(d).replace('.', ',');
 
@@ -72,7 +74,7 @@ export function techPrimitives(room, layout, items, meta = {}) {
   // partition walls from the layout (doors where the layout has them, a door in the middle of every long wall otherwise)
   const rooms = layout?.rooms || [{ id: 'room', type: 'room', rect: [0, 0, W, D], counted: 0 }];
   // the walls two rooms share overlap on their runs (a hall wall is listed once per room behind it): merged, so every wall and every door is drawn once
-  const walls = mergeWalls(wallsOf(room, layout ? { rooms, doors: layout.doors || [] } : { rooms: [], doors: [] }, { autoDoors: !layout?.doors?.length }).walls);
+  const walls = mergeWalls(wallsOf(room, layout ? { rooms, doors: layout.doors || [] } : { rooms: [], doors: [] }, { autoDoors: !layout?.doors?.length, trimOuter: true }).walls);
   const drawn = new Set();   // a wall that the layout lists twice (both rooms of an edge name it) is drawn once: no doubled lines and door arcs in the DXF
   for (const w of walls) {
     const key = [w.p0, w.p1].map((q) => q.map((v) => v.toFixed(3)).join(',')).sort().join('|') + JSON.stringify(w.op);
@@ -106,7 +108,8 @@ export function techPrimitives(room, layout, items, meta = {}) {
   const obstacles = [...bodies.map((o) => o.b), ...swings, ...(sr ? [sr] : [])];
   for (const r of rooms) {
     const [x0, y0, x1, y1] = r.rect, mx = (x0 + x1) / 2, my = (y0 + y1) / 2;
-    const name = DE[r.type] || String(r.type || r.id), a1 = `A = ${num((x1 - x0) * (y1 - y0))} m2`, a2 = r.counted ? `anrechenbar ${num(r.counted)} m2` : '';
+    // the area printed is the one between the walls (netRect), like the counted area
+    const name = DE[r.type] || String(r.type || r.id), a1 = `A = ${num(((nr) => (nr[2] - nr[0]) * (nr[3] - nr[1]))(netRect(room, r.rect)))} m2`, a2 = r.counted ? `anrechenbar ${num(r.counted)} m2` : '';
     const bw = Math.max(name.length * 0.2, a1.length * 0.15, a2.length * 0.13) * 0.6 + 0.08, top = -0.34, bot = a2 ? 0.4 : 0.2;   // the box of the three lines round the anchor
     const pad = T_IN / 2 + 0.04;
     let best = null;
