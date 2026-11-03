@@ -13,6 +13,8 @@
 // ---------------------------------------------------------------- statute
 
 /** Wohnflächenverordnung (WoFlV), § 4: how a floor area counts as living area by the clear height above it. */
+import { wallShare, doorShare, roomWallShare, pct, FLATS } from './links.js';
+
 export const WOFLV = { fullFrom: 2.0, halfFrom: 1.0, halfFactor: 0.5, winterGarden: 0.5, balcony: 0.25, source: 'WoFlV § 4 Nr. 1-4', verify: false };
 
 /**
@@ -73,13 +75,17 @@ export const NEUFERT = {
  * Wanted and unwelcome neighbours between room types, the way layouts are described as graphs (nodes = rooms, edges = shared wall or door).
  * kind 'want': the two should share a wall (finding if not); 'avoid': no door should lead straight from one into the other.
  */
+// Every rule carries its evidence, measured on the real flats of the Modified Swiss Dwellings (shared/links.js): a 'want' needs at least half of the flats that have both rooms to do it, an 'avoid' at most a
+// tenth of the real rooms to have such a door (server/test/links.test.js holds the rules to that). MSD has no child room (a bedroom there) and no WC (a small bath there).
+const wantEvidence = (a, b) => { const w = wallShare(a, b); return { share: w.share, flats: w.flats, measure: 'of the flats that have both, they share a wall of 0.9 m' }; };
+const avoidEvidence = (a, b) => ({ share: doorShare(a, b), flats: FLATS, measure: 'of the real rooms, a door straight into the other' });
 export const ADJACENCY = [
-  { a: 'bath', b: 'bedroom', kind: 'want', why: 'Bathroom next to the sleeping rooms: short night-time way, one plumbing stack.' },
-  { a: 'bath', b: 'child', kind: 'want', why: 'Bathroom next to the children\'s room.' },
-  { a: 'kitchen', b: 'living', kind: 'want', why: 'Kitchen and living room belong together: food and company.' },
-  { a: 'bath', b: 'kitchen', kind: 'avoid', why: 'Bathroom door straight into the kitchen: hygiene and noise.' },
-  { a: 'bath', b: 'living', kind: 'avoid', why: 'Bathroom door straight into the living room.' },
-  { a: 'wc', b: 'kitchen', kind: 'avoid', why: 'WC door straight into the kitchen.' },
+  { a: 'bath', b: 'bedroom', kind: 'want', evidence: wantEvidence('bath', 'bedroom'), why: `Bathroom next to the sleeping rooms (one plumbing stack, a short night-time way): in ${pct(wantEvidence('bath', 'bedroom').share)} of real flats a bath shares a wall with a bedroom.` },
+  { a: 'bath', b: 'child', kind: 'want', evidence: wantEvidence('bath', 'child'), why: `Bathroom next to the children's room: in ${pct(wantEvidence('bath', 'child').share)} of real flats a bath shares a wall with a bedroom.` },
+  { a: 'kitchen', b: 'living', kind: 'want', evidence: wantEvidence('kitchen', 'living'), why: `Kitchen and living room belong together: in ${pct(wantEvidence('kitchen', 'living').share)} of real flats they share a wall.` },
+  { a: 'bath', b: 'kitchen', kind: 'avoid', evidence: avoidEvidence('bath', 'kitchen'), why: `Bathroom door straight into the kitchen (hygiene and noise): only ${pct(avoidEvidence('bath', 'kitchen').share)} of real baths have one.` },
+  { a: 'bath', b: 'living', kind: 'avoid', evidence: avoidEvidence('bath', 'living'), why: `Bathroom door straight into the living room: only ${pct(avoidEvidence('bath', 'living').share)} of real baths have one.` },
+  { a: 'wc', b: 'kitchen', kind: 'avoid', evidence: avoidEvidence('wc', 'kitchen'), why: `WC door straight into the kitchen: only ${pct(avoidEvidence('wc', 'kitchen').share)} of real baths and WCs have one.` },
 ];
 
 /** Circulation: space syntax reads a plan as a justified graph from the entrance; depth = doors to pass. */
@@ -105,7 +111,7 @@ export function rulebook() {
     `- A bed needs ${NEUFERT.headSit} m clear height over its head end (to sit up) and ${NEUFERT.bedFoot} m over the rest, ${NEUFERT.sideOfBed} m free floor beside it. Put the head against a partition or gable wall, not under the low knee wall.`,
     `- Wardrobes and WC need ${NEUFERT.standing} m to stand in front; a basin ${NEUFERT.basinStanding} m; a shower ${NEUFERT.showerStanding} m inside. Wet pieces stand together in the high part of the bathroom.`,
     '- Doors open into the room behind them, hinged next to a wall end so the open leaf lies against the wall; no furniture inside the swing.',
-    '- Graph rules: bathroom next to the bedrooms, kitchen next to the living room, no bathroom door straight into kitchen or living room, no bedroom you must walk through, every room one or two doors from the stair hall.',
+    `- Graph rules, measured on ${FLATS.toLocaleString('en')} real flats: a bathroom next to the bedrooms (it shares a wall with one in ${pct(wallShare('bath', 'bedroom').share)} of the flats), the kitchen next to the living room (${pct(wallShare('kitchen', 'living').share)}), no bathroom door straight into the kitchen or the living room (${pct(doorShare('bath', 'kitchen'))} and ${pct(doorShare('bath', 'living'))} of real baths have one), no bedroom you must walk through, every room one or two doors from the stair hall (${pct(roomWallShare('bath', 'hall'))} of real baths and ${pct(roomWallShare('bedroom', 'hall'))} of real bedrooms share a wall with the hall).`,
   ].join('\n');
 }
 

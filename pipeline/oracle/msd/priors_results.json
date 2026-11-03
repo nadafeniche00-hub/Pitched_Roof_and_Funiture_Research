@@ -389,6 +389,246 @@
     "living": 0.071,
     "storeroom": 0.013
    }
+  },
+  "shares_wall_09": {
+   "bath": {
+    "balcony": 0.033,
+    "bath": 0.349,
+    "bedroom": 0.546,
+    "corridor": 0.916,
+    "dining": 0.004,
+    "kitchen": 0.373,
+    "living": 0.248,
+    "storeroom": 0.084
+   },
+   "bedroom": {
+    "balcony": 0.299,
+    "bath": 0.396,
+    "bedroom": 0.675,
+    "corridor": 0.896,
+    "dining": 0.007,
+    "kitchen": 0.214,
+    "living": 0.277,
+    "storeroom": 0.067
+   },
+   "corridor": {
+    "balcony": 0.019,
+    "bath": 0.901,
+    "bedroom": 0.847,
+    "corridor": 0.169,
+    "dining": 0.02,
+    "kitchen": 0.628,
+    "living": 0.694,
+    "storeroom": 0.198
+   },
+   "dining": {
+    "balcony": 0.376,
+    "bath": 0.173,
+    "bedroom": 0.434,
+    "corridor": 0.695,
+    "kitchen": 0.795,
+    "living": 0.536,
+    "storeroom": 0.094
+   },
+   "kitchen": {
+    "balcony": 0.289,
+    "bath": 0.536,
+    "bedroom": 0.448,
+    "corridor": 0.714,
+    "dining": 0.024,
+    "kitchen": 0.001,
+    "living": 0.594,
+    "storeroom": 0.058
+   },
+   "living": {
+    "balcony": 0.801,
+    "bath": 0.435,
+    "bedroom": 0.651,
+    "corridor": 0.942,
+    "dining": 0.021,
+    "kitchen": 0.785,
+    "living": 0.005,
+    "storeroom": 0.1
+   },
+   "storeroom": {
+    "balcony": 0.076,
+    "bath": 0.409,
+    "bedroom": 0.475,
+    "corridor": 0.782,
+    "dining": 0.011,
+    "kitchen": 0.203,
+    "living": 0.268,
+    "storeroom": 0.077
+   }
+  },
+  "shares_wall_05": {
+   "bath": {
+    "balcony": 0.034,
+    "bath": 0.355,
+    "bedroom": 0.555,
+    "corridor": 0.921,
+    "dining": 0.004,
+    "kitchen": 0.381,
+    "living": 0.271,
+    "storeroom": 0.086
+   },
+   "bedroom": {
+    "balcony": 0.319,
+    "bath": 0.402,
+    "bedroom": 0.676,
+    "corridor": 0.905,
+    "dining": 0.007,
+    "kitchen": 0.216,
+    "living": 0.283,
+    "storeroom": 0.068
+   },
+   "corridor": {
+    "balcony": 0.02,
+    "bath": 0.905,
+    "bedroom": 0.859,
+    "corridor": 0.178,
+    "dining": 0.021,
+    "kitchen": 0.683,
+    "living": 0.701,
+    "storeroom": 0.202
+   },
+   "dining": {
+    "balcony": 0.388,
+    "bath": 0.197,
+    "bedroom": 0.438,
+    "corridor": 0.713,
+    "kitchen": 0.807,
+    "living": 0.544,
+    "storeroom": 0.112
+   },
+   "kitchen": {
+    "balcony": 0.303,
+    "bath": 0.544,
+    "bedroom": 0.45,
+    "corridor": 0.767,
+    "dining": 0.024,
+    "kitchen": 0.001,
+    "living": 0.597,
+    "storeroom": 0.061
+   },
+   "living": {
+    "balcony": 0.805,
+    "bath": 0.472,
+    "bedroom": 0.654,
+    "corridor": 0.946,
+    "dining": 0.022,
+    "kitchen": 0.789,
+    "living": 0.005,
+    "storeroom": 0.109
+   },
+   "storeroom": {
+    "balcony": 0.079,
+    "bath": 0.417,
+    "bedroom": 0.483,
+    "corridor": 0.795,
+    "dining": 0.013,
+    "kitchen": 0.21,
+    "living": 0.293,
+    "storeroom": 0.078
+   }
+  },
+  "flats_with_both_that_share_a_wall": {
+   "bath-bath": {
+    "flats": 7969,
+    "share": 0.542
+   },
+   "bath-bedroom": {
+    "flats": 16075,
+    "share": 0.712
+   },
+   "bath-corridor": {
+    "flats": 15997,
+    "share": 0.98
+   },
+   "bath-dining": {
+    "flats": 498,
+    "share": 0.173
+   },
+   "bath-kitchen": {
+    "flats": 16430,
+    "share": 0.536
+   },
+   "bath-living": {
+    "flats": 12417,
+    "share": 0.435
+   },
+   "bath-storeroom": {
+    "flats": 4332,
+    "share": 0.45
+   },
+   "bedroom-bedroom": {
+    "flats": 12846,
+    "share": 0.791
+   },
+   "bedroom-corridor": {
+    "flats": 15447,
+    "share": 0.95
+   },
+   "bedroom-dining": {
+    "flats": 474,
+    "share": 0.456
+   },
+   "bedroom-kitchen": {
+    "flats": 15777,
+    "share": 0.467
+   },
+   "bedroom-living": {
+    "flats": 11748,
+    "share": 0.689
+   },
+   "bedroom-storeroom": {
+    "flats": 4234,
+    "share": 0.508
+   },
+   "corridor-corridor": {
+    "flats": 2987,
+    "share": 0.514
+   },
+   "corridor-dining": {
+    "flats": 497,
+    "share": 0.696
+   },
+   "corridor-kitchen": {
+    "flats": 15770,
+    "share": 0.744
+   },
+   "corridor-living": {
+    "flats": 12015,
+    "share": 0.973
+   },
+   "corridor-storeroom": {
+    "flats": 4257,
+    "share": 0.843
+   },
+   "dining-kitchen": {
+    "flats": 498,
+    "share": 0.795
+   },
+   "dining-living": {
+    "flats": 385,
+    "share": 0.694
+   },
+   "kitchen-living": {
+    "flats": 12343,
+    "share": 0.791
+   },
+   "kitchen-storeroom": {
+    "flats": 4253,
+    "share": 0.225
+   },
+   "living-storeroom": {
+    "flats": 3655,
+    "share": 0.343
+   },
+   "storeroom-storeroom": {
+    "flats": 486,
+    "share": 0.323
+   }
   }
  },
  "entrance_opens_into": {

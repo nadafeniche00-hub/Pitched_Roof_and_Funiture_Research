@@ -110,6 +110,37 @@ def min_rect(points):
     return (best[1], best[2], best[3]) if best else (0.0, 0.0, 0.0)
 
 
+def _seg_dist2(px, py, ax, ay, bx, by):
+    dx, dy = bx - ax, by - ay
+    L2 = dx * dx + dy * dy
+    t = 0.0 if L2 < 1e-12 else max(0.0, min(1.0, ((px - ax) * dx + (py - ay) * dy) / L2))
+    qx, qy = ax + t * dx - px, ay + t * dy - py
+    return qx * qx + qy * qy
+
+
+def _boundary_near(a, b, gap=0.45, step=0.3):
+    """Length of the boundary of ring a that lies within `gap` metres of the boundary of ring b: the wall the two rooms share (the polygons are the rooms between the walls, so there is a wall's thickness between them)."""
+    segs = [(b[i], b[(i + 1) % len(b)]) for i in range(len(b))]
+    g2, total = gap * gap, 0.0
+    for i in range(len(a)):
+        (x0, y0), (x1, y1) = a[i], a[(i + 1) % len(a)]
+        L = math.hypot(x1 - x0, y1 - y0)
+        if L < 0.05:
+            continue
+        n = max(1, int(L / step))
+        for k in range(n):
+            t = (k + 0.5) / n
+            px, py = x0 + (x1 - x0) * t, y0 + (y1 - y0) * t
+            if any(_seg_dist2(px, py, p[0], p[1], q[0], q[1]) <= g2 for p, q in segs):
+                total += L / n
+    return total
+
+
+def shared_wall(a, b):
+    """Length of the wall two room polygons share: the mean of both directions."""
+    return 0.5 * (_boundary_near(a, b) + _boundary_near(b, a))
+
+
 def share(counter, key, n):
     return round(counter[key] / n, 4) if n else 0.0
 
@@ -125,6 +156,8 @@ def distil(graphs):
     conn, door = collections.defaultdict(collections.Counter), collections.defaultdict(collections.Counter)
     n_of_type = collections.Counter()
     entrance_into = collections.Counter()
+    wall = {0.5: collections.defaultdict(collections.Counter), 0.9: collections.defaultdict(collections.Counter)}  # min shared length -> type -> neighbour type -> rooms
+    flats_with, flats_wall = collections.Counter(), collections.Counter()  # (type, type) -> flats that have both, flats where one touches the other for 0.9 m
     for split, floor, g in graphs:
         n_floors += 1
         rooms = rooms_of(g)
@@ -165,6 +198,34 @@ def distil(graphs):
                     door[t][u] += 1
             for k in fl["entrance"]:
                 entrance_into[rooms[k][0]] += 1
+            # which rooms share a wall: 0.5 m is the "near" of the app's wishes, 0.9 m a wall in which a door fits (the app's access graph)
+            box = {k: (min(p[0] for p in rooms[k][1]), min(p[1] for p in rooms[k][1]), max(p[0] for p in rooms[k][1]), max(p[1] for p in rooms[k][1])) for k in nodes}
+            touch = {0.5: {k: set() for k in nodes}, 0.9: {k: set() for k in nodes}}
+            pairs09 = set()
+            for ii, ka in enumerate(nodes):
+                for kb in nodes[ii + 1:]:
+                    ba, bb2 = box[ka], box[kb]
+                    if math.hypot(max(bb2[0] - ba[2], ba[0] - bb2[2], 0), max(bb2[1] - ba[3], ba[1] - bb2[3], 0)) > 0.45:
+                        continue
+                    L = shared_wall(rooms[ka][1], rooms[kb][1])
+                    for th in (0.5, 0.9):
+                        if L >= th:
+                            touch[th][ka].add(rooms[kb][0])
+                            touch[th][kb].add(rooms[ka][0])
+                    if L >= 0.9:
+                        pairs09.add(tuple(sorted((rooms[ka][0], rooms[kb][0]))))
+            for th in (0.5, 0.9):
+                for k in nodes:
+                    for u in touch[th][k]:
+                        wall[th][rooms[k][0]][u] += 1
+            kinds = sorted(set(types))
+            for i1, t1 in enumerate(kinds):
+                for t2 in kinds[i1:]:
+                    if t1 == t2 and cnt[t1] < 2:
+                        continue
+                    flats_with[(t1, t2)] += 1
+                    if (t1, t2) in pairs09:
+                        flats_wall[(t1, t2)] += 1
             # the flat as an exemplar candidate: the rooms turned so that the long side lies along x, moved to the origin, in metres to 1 cm
             pts = [p for k in nodes for p in rooms[k][1]]
             long_s, short_s, ang = min_rect(pts)
@@ -200,6 +261,10 @@ def distil(graphs):
         "connected_to": {t: {u: round(conn[t][u] / n_of_type[t], 3) for u in sorted(NET | {"balcony"}) if conn[t][u]} for t in sorted(NET)},
         "door_to": {t: {u: round(door[t][u] / n_of_type[t], 3) for u in sorted(NET | {"balcony"}) if door[t][u]} for t in sorted(NET)},
     }
+    adjacency["shares_wall_09"] = {t: {u: round(wall[0.9][t][u] / n_of_type[t], 3) for u in sorted(NET | {"balcony"}) if wall[0.9][t][u]} for t in sorted(NET)}
+    adjacency["shares_wall_05"] = {t: {u: round(wall[0.5][t][u] / n_of_type[t], 3) for u in sorted(NET | {"balcony"}) if wall[0.5][t][u]} for t in sorted(NET)}
+    # of the flats that have both kinds of room: in how many does one share a wall of 0.9 m with the other (the question "does the bath sit next to a bedroom")
+    adjacency["flats_with_both_that_share_a_wall"] = {f"{a}-{b}": {"flats": flats_with[(a, b)], "share": round(flats_wall[(a, b)] / flats_with[(a, b)], 3)} for (a, b) in sorted(flats_with) if flats_with[(a, b)] >= 200 and a != "balcony" and b != "balcony"}
     total_ent = sum(entrance_into.values())
     return {
         "floors_read": n_floors, "flats_used": n_flats,
