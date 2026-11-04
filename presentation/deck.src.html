@@ -41,6 +41,19 @@ img.shot { display: block; border: 4px solid #fff; box-shadow: 14px 14px 0 var(-
 .slide:not(.dark) .row .track { background: var(--line); }
 .node { position: absolute; padding: 18px 30px; font-weight: 900; font-size: 38px; text-transform: uppercase; border: 4px solid var(--ink); background: #fff; }
 .rfig { position: relative; margin: 0; }
+/* the bridge (slides 13b, 13c) */
+.bcol { padding: 26px 30px 28px; } .bcol .tag { font-size: 20px; margin-bottom: 8px; }
+.bcol h3 { font-weight: 900; font-size: 52px; line-height: 1; text-transform: uppercase; letter-spacing: -.02em; margin-bottom: 14px; }
+.bcol li { list-style: none; font-weight: 700; font-size: 27px; line-height: 1.2; margin-top: 11px; padding-left: 26px; position: relative; }
+.bcol li::before { content: ""; position: absolute; left: 0; top: 11px; width: 13px; height: 13px; background: var(--c, #fff); }
+.bcol li small { display: block; font-weight: 700; font-size: 21px; color: #9aa1ab; }
+.bridge-arrow { stroke: #fff; stroke-width: 6; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.st { display: inline-block; padding: 2px 14px; border: 3px solid currentColor; border-radius: 999px; font-weight: 900; font-size: 20px; letter-spacing: .1em; text-transform: uppercase; vertical-align: middle; margin-left: 10px; }
+.st.built { color: #2f7d4f; } .st.design { color: #c98a00; } .st.road { color: #ff4d2e; }
+.stepc { padding: 24px 28px 26px; } .stepc b.n { display: block; font-weight: 900; font-size: 84px; line-height: 1; color: var(--hot); }
+.stepc h3 { font-weight: 900; font-size: 40px; line-height: 1.02; text-transform: uppercase; margin: 6px 0 10px; }
+.stepc p { font-weight: 700; font-size: 25px; line-height: 1.22; margin-top: 10px; }
+
 /* real plans and the papers (slides 6b to 6d) */
 .stat { padding: 22px 28px; } .stat b { display: block; font-size: 88px; line-height: 1; font-weight: 900; } .stat span { font-weight: 800; font-size: 26px; color: var(--mute); }
 .dark .stat span { color: #9aa1ab; }
@@ -474,6 +487,58 @@ img.shot { display: block; border: 4px solid #fff; box-shadow: 14px 14px 0 var(-
     <div class="card orb hot pop" style="--i:5" data-tip="More cities|Next: 16 states of surveyed roofs."><svg viewBox="0 0 24 24"><circle cx="6" cy="8" r="2.4"/><circle cx="17" cy="6" r="2.4"/><circle cx="14" cy="17" r="2.4"/><path d="M8 8.5l7-2M7 10l5.5 6M16 8l-1.5 7"/></svg><b>More cities</b></div>
     <div class="card orb hot pop" style="--i:6" data-tip="Real plans|Next: test on real plans from architects."><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4zM4 11h8V4M12 14h8"/></svg><b>Real plans</b></div>
     <div class="card orb hot pop" style="--i:7" data-tip="Second opinion|Next: plug into the floor-plan generator as a second opinion."><svg viewBox="0 0 24 24"><path d="M3 12h6l2-5 3 10 2-5h5"/></svg><b>Second opinion</b></div>
+  </div>
+</section>
+
+
+<!-- 13b the vision: a bridge between real plans and real roofs -->
+<section class="slide dark" data-step="6" id="s13b">
+  <div class="tag">The vision</div>
+  <h2 class="pop" style="font-size: 88px">A bridge between real plans and real roofs</h2>
+  <div class="abs" style="left: 96px; top: 330px; width: 1730px; display: grid; grid-template-columns: 1fr 120px 1.05fr 120px 1fr; align-items: stretch">
+    <div class="card bcol pop" style="--i:2"><div class="tag">Existing training material</div><h3>Plans</h3>
+      <ul style="--c:#9aa1ab">
+        <li>MSD: 5,372 plans<small>imported, calibrates our rules</small></li>
+        <li>ResPlan: 17,000 plans<small>its checks are our rules, data not loaded</small></li>
+        <li>RPLAN, 2026 paper<small>80,788 plans, RL with verifiable rewards</small></li>
+        <li>COMPAS (ETH)<small>the geometry and graph toolkit to build on</small></li>
+      </ul></div>
+    <svg class="pop" style="--i:4; align-self:center" width="120" height="60" viewBox="0 0 120 60"><path class="bridge-arrow" d="M8 30h96M80 10l24 20-24 20"/></svg>
+    <div class="card bcol pop" style="--i:5; border-color:#ff4d2e; box-shadow: 14px 14px 0 #ff4d2e"><div class="tag">The deliverable</div><h3>Tensors and weights</h3>
+      <ul style="--c:#ff4d2e">
+        <li>One tensor format<small>rooms, walls, openings, roof height field, furniture footprints</small></li>
+        <li>Weights that carry both<small>learned on real plans, tuned to roofs and furniture</small></li>
+        <li>The oracle as the judge<small>heights, ergonomics, circulation decide; a model proposes</small></li>
+      </ul></div>
+    <svg class="pop" style="--i:6; align-self:center" width="120" height="60" viewBox="0 0 120 60"><path class="bridge-arrow" d="M112 30H16M40 10L16 30l24 20"/></svg>
+    <div class="card bcol pop" style="--i:3"><div class="tag">Our data</div><h3>Roofs and furniture</h3>
+      <ul style="--c:#55d68a">
+        <li>10,949 surveyed buildings<small>NRW LoD2, 1,379 gabled dwellings in Detmold</small></li>
+        <li>Roof patterns by state<small>from OpenStreetMap and LoD2</small></li>
+        <li>Furniture with heights<small>body and use height, Neufert clearances, Revit families</small></li>
+        <li>Attic storeys of real Revit models<small>exporter built</small></li>
+      </ul></div>
+  </div>
+  <div class="abs pop" style="--i:8; left: 96px; top: 930px; width: 1730px; padding: 22px 34px; background: #ffc533; color: #0f1217; font-weight: 800; font-size: 34px; line-height: 1.2">The gap: no dataset holds plan, roof and furniture together. MSD and ResPlan have no heights. That is exactly what the bridge has to supply.</div>
+</section>
+
+<!-- 13c how the bridge gets built, and what is real today -->
+<section class="slide" data-step="6" id="s13c">
+  <div class="tag">The vision, step by step</div>
+  <h2 class="pop" style="font-size: 88px">How we would build it</h2>
+  <div class="abs" style="left: 96px; top: 330px; width: 1730px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 36px">
+    <div class="card stepc pop" style="--i:2"><b class="n">1</b><h3>One format</h3><span class="st design">design</span>
+      <p>Plans from MSD, ResPlan and the app in one tensor: rooms, walls, openings, plus a roof height channel and furniture channels.</p></div>
+    <div class="card stepc pop" style="--i:3"><b class="n">2</b><h3>Make the missing pairs</h3><span class="st design">design</span>
+      <p>The app already generates attic plans, furnishes them and scores them. The oracle labels each one: the roof and furniture data real plans lack.</p></div>
+    <div class="card stepc pop" style="--i:4"><b class="n">3</b><h3>Train small</h3><span class="st road">roadmap</span>
+      <p>First on real plans, then on attic pairs. The reward is our oracle, the recipe of the 2026 paper. On the team GPU, in a night the team agrees to.</p></div>
+    <div class="card stepc pop" style="--i:5"><b class="n">4</b><h3>Test on real attics</h3><span class="st road">roadmap</span>
+      <p>Held-out attic plans from office Revit models, judged by the oracle, against the same pipeline without weights. If it does not beat it, we say so.</p></div>
+  </div>
+  <div class="abs pop" style="--i:7; left: 96px; top: 800px; width: 1730px; display: grid; grid-template-columns: 1fr 1fr; gap: 36px">
+    <div class="card" style="padding: 22px 28px"><div class="tag" style="font-size:20px">Real today</div><p style="font-weight:700; font-size:27px; line-height:1.22">The oracle and its tests, the plan generator, MSD loaded and measured on 127,908 rooms, the Revit exporter, the data on roofs and furniture.</p></div>
+    <div class="card" style="padding: 22px 28px; border-color:#ff4d2e; box-shadow: 14px 14px 0 #ff4d2e"><div class="tag" style="font-size:20px">Not yet</div><p style="font-weight:700; font-size:27px; line-height:1.22">Nothing is trained. No weights, no accuracy figures. The licences of the datasets are to be checked before any release.</p></div>
   </div>
 </section>
 
