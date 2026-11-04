@@ -41,6 +41,19 @@ img.shot { display: block; border: 4px solid #fff; box-shadow: 14px 14px 0 var(-
 .slide:not(.dark) .row .track { background: var(--line); }
 .node { position: absolute; padding: 18px 30px; font-weight: 900; font-size: 38px; text-transform: uppercase; border: 4px solid var(--ink); background: #fff; }
 .rfig { position: relative; margin: 0; }
+/* real plans and the papers (slides 6b to 6d) */
+.stat { padding: 22px 28px; } .stat b { display: block; font-size: 88px; line-height: 1; font-weight: 900; } .stat span { font-weight: 800; font-size: 26px; color: var(--mute); }
+.dark .stat span { color: #9aa1ab; }
+.rrow { display: grid; grid-template-columns: 500px 1fr 270px; align-items: center; gap: 20px; height: 76px; font-weight: 800; font-size: 28px; white-space: nowrap; }
+.rrow .tr { position: relative; height: 40px; background: var(--line); } .dark .rrow .tr { background: rgba(255,255,255,.1); }
+.rrow .tr + .tr { margin-top: 8px; }
+.rrow .val { font-size: 30px; } .rrow .val small { font-weight: 700; font-size: 22px; color: var(--mute); }
+.dark .rrow .val small { color: #9aa1ab; }
+.pcard { padding: 28px 32px 30px; } .pcard .tag { font-size: 20px; margin-bottom: 10px; }
+.pcard h3 { font-weight: 900; font-size: 54px; line-height: 1; text-transform: uppercase; letter-spacing: -.02em; margin-bottom: 14px; }
+.pcard p { font-weight: 700; font-size: 27px; line-height: 1.22; margin-top: 12px; } .pcard p.cite { font-size: 21px; color: var(--mute); letter-spacing: .02em; }
+.pcard p b { color: var(--hot); }
+
 .fadeloop { position: relative; }
 .fadeloop img { position: absolute; left: 0; top: 0; width: 100%; height: 100%; object-fit: cover; }
 .fadeloop .b { animation: fadeab 8s ease-in-out infinite; }
@@ -186,6 +199,60 @@ img.shot { display: block; border: 4px solid #fff; box-shadow: 14px 14px 0 var(-
     <p class="big pop" style="--i:8">Our default roof: <b class="hot">38°</b>, a fairly typical one.</p>
   </div>
   <span class="hint-i mute" style="left: 96px; top: 996px" data-tip="Source|3D building models of NRW (LoD2), 11 map squares of 1 km, 10,949 buildings, 1,379 gabled dwellings.">i</span>
+</section>
+
+
+<!-- 6b real plans: MSD -->
+<section class="slide" data-step="3" id="s6b">
+  <div class="tag">Evidence 3: real plans from Switzerland</div>
+  <h2 class="pop" style="font-size: 88px">127,908 real rooms test our rules</h2>
+  <div class="abs" style="left: 96px; top: 360px; width: 560px; display: grid; gap: 30px">
+    <div class="card stat pop" style="--i:2" data-tip="Modified Swiss Dwellings|van Engelenburg et al., ECCV 2024, arXiv:2407.10121. One CSV of 1,086,846 entities (walls, doors, windows, rooms), one polygon in metres each. The room polygons are the area between the walls, so they compare directly with our net rooms."><b>5,372</b><span>plans, 18,903 flats (MSD)</span></div>
+    <div class="card stat pop" style="--i:3" data-tip="Measured, not assumed|Percentiles of net area and width for six room types, the share of real rooms below each of our minima, and door, window and wall sizes."><b>127,908</b><span>rooms measured</span></div>
+    <div class="card stat pop" style="--i:4" data-tip="Access graphs|The training files hold a door and passage graph per plan. They are read without running the pickles (a safe reader that refuses everything else), and the room codes were checked against the CSV: 100 % on 17,130 rooms."><b>165,341</b><span>rooms in door graphs</span></div>
+  </div>
+  <div class="abs" style="left: 700px; top: 340px; width: 1130px">
+    <div class="pop" style="--i:2; font-weight:800; font-size:24px; letter-spacing:.14em; text-transform:uppercase; color:var(--mute); margin-bottom:6px">Real rooms below our old minimum</div>
+    <div class="rrow pop" style="--i:3"><span>Storerooms under 1.2 m wide</span><div class="tr"><div class="bar" data-w="48" style="background:#ff4d2e"></div></div><span class="val">48 % <small>were wrong</small></span></div>
+    <div class="rrow pop" style="--i:4"><span>Kitchens under 2.2 m wide</span><div class="tr"><div class="bar" data-w="31" style="background:#ff4d2e"></div></div><span class="val">31 % <small>were wrong</small></span></div>
+    <div class="rrow pop" style="--i:5"><span>Baths under 1.5 m wide</span><div class="tr"><div class="bar" data-w="29" style="background:#ff4d2e"></div></div><span class="val">29 % <small>MSD lumps in WCs</small></span></div>
+    <div class="rrow pop" style="--i:6"><span>Baths under 2.5 m²</span><div class="tr"><div class="bar" data-w="21" style="background:#ff4d2e"></div></div><span class="val">21 % <small>MSD lumps in WCs</small></span></div>
+    <div class="rrow pop" style="--i:7"><span>Bedrooms under 7 m²</span><div class="tr"><div class="bar" data-w="0.1" style="background:#2f7d4f"></div></div><span class="val">0.1 % <small>rule is safe</small></span></div>
+    <div class="rrow pop" style="--i:8"><span>Living rooms under 12 m²</span><div class="tr"><div class="bar" data-w="0.4" style="background:#2f7d4f"></div></div><span class="val">0.4 % <small>rule is safe</small></span></div>
+    <p class="pop mute" style="--i:9; margin-top:22px; font-size:27px; font-weight:700; line-height:1.25; white-space:normal">So we lowered the kitchen minimum from 2.2 to 1.8 m and storage from 1.2 to 0.8 m, and took the longest-to-shortest side limit of every room type from the 95th percentile of real rooms.</p>
+  </div>
+  <span class="hint-i mute" style="left: 96px; top: 996px" data-tip="Honest limits|Swiss apartment buildings, not German attics: real rooms set the lower end of what is normal, not a design target. Nothing here is trained on them; they calibrate rules.">i</span>
+</section>
+
+<!-- 6c the oracle: found, fixed at the cause, measured again -->
+<section class="slide dark" data-step="3" id="s6c">
+  <div class="tag">Evidence 4: an independent checker</div>
+  <h2 class="pop" style="font-size: 88px">Real-plan rules found our own bugs</h2>
+  <div class="abs" style="left: 96px; top: 350px; width: 1730px">
+    <div class="pop" style="--i:2; display:flex; gap:34px; font-weight:800; font-size:24px; letter-spacing:.12em; text-transform:uppercase; color:#9aa1ab; margin-bottom:10px"><span><i style="display:inline-block;width:26px;height:16px;background:#ff4d2e;margin-right:10px"></i>before the fixes</span><span><i style="display:inline-block;width:26px;height:16px;background:#55d68a;margin-right:10px"></i>after</span></div>
+    <div class="rrow pop" style="--i:3; height:92px"><span>Furniture inside walls</span><div><div class="tr"><div class="bar" data-w="100" style="background:#ff4d2e"></div></div><div class="tr"><div class="bar" data-w="0.6" style="background:#55d68a"></div></div></div><span class="val">100 % <small>to</small> 0 %</span></div>
+    <div class="rrow pop" style="--i:4; height:92px"><span>Walls inside walls</span><div><div class="tr"><div class="bar" data-w="100" style="background:#ff4d2e"></div></div><div class="tr"><div class="bar" data-w="0.6" style="background:#55d68a"></div></div></div><span class="val">100 % <small>to</small> 0 %</span></div>
+    <div class="rrow pop" style="--i:5; height:92px"><span>Walls ending on a window</span><div><div class="tr"><div class="bar" data-w="75" style="background:#ff4d2e"></div></div><div class="tr"><div class="bar" data-w="2" style="background:#55d68a"></div></div></div><span class="val">75 % <small>to</small> 2 %</span></div>
+    <div class="rrow pop" style="--i:6; height:92px"><span>Rooms too small</span><div><div class="tr"><div class="bar" data-w="87" style="background:#ff4d2e"></div></div><div class="tr"><div class="bar" data-w="35" style="background:#55d68a"></div></div></div><span class="val">87 % <small>to</small> 35 %</span></div>
+    <div class="rrow pop" style="--i:7; height:92px"><span>Plans with any error</span><div><div class="tr"><div class="bar" data-w="100" style="background:#ff4d2e"></div></div><div class="tr"><div class="bar" data-w="37" style="background:#55d68a"></div></div></div><span class="val">100 % <small>to</small> 37 %</span></div>
+    <p class="pop mute" style="--i:9; margin-top:26px; font-size:27px; font-weight:700; line-height:1.25; max-width:1500px">Same 60 plans of the app, checked by a pure-Python rule system that no model writes or judges. Cause: rooms were measured to the wall line, not between the walls. After the real-plan rules and the brief fitting the roof: 11 % of 120 plans still carry an error, each with a warning.</p>
+  </div>
+  <span class="hint-i" style="left: 96px; top: 996px" data-tip="Source|pipeline/oracle (usable_oracle, standard library only), measured on 3 Nov 2026. Remaining errors are briefs that ask for more than the roof gives: the app says so and does not claim to have solved them.">i</span>
+</section>
+
+<!-- 6d reading: ResPlan, MSD and the 2026 paper -->
+<section class="slide" data-step="3" id="s6d">
+  <div class="tag">Reading, 2024 to 2026</div>
+  <h2 class="pop" style="font-size: 88px">What the datasets and the new paper say</h2>
+  <div class="abs" style="left: 96px; top: 340px; width: 1730px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 44px">
+    <div class="card pcard pop" style="--i:2" data-tip="ResPlan|Abouagour and Garyfallidis, arXiv:2508.14006, v1 Aug 2025, v2 Aug 2026. 17,000 residential plans, vector geometry in metres, a 17-class taxonomy, graphs with four edge types (door 54 %, adjacency 35 %, direct 8 %, window 3 %). CC BY 4.0."><div class="tag">Dataset, 2025</div><h3>ResPlan</h3>
+      <p>17,000 flats as vectors and room graphs, in metres.</p><p>Its own checks became our rules: windows on a wall band <b>99.98 %</b>, walls 10 to 40 cm <b>99.3 %</b>.</p><p class="cite">arXiv:2508.14006 · v2, Aug 2026 · CC BY 4.0</p><p class="mute" style="font-size:24px">The checks are used; the dataset itself is not loaded yet.</p></div>
+    <div class="card pcard pop" style="--i:3" data-tip="MSD|van Engelenburg et al., ECCV 2024, arXiv:2407.10121. 5,372 plans of building complexes, 18.9k apartments, CC BY 4.0."><div class="tag">Dataset, 2024</div><h3>MSD</h3>
+      <p>5,372 plans of Swiss apartment buildings.</p><p><b>Imported:</b> rooms, openings and door graphs, read safely, to calibrate sizes and neighbour rules.</p><p class="cite">arXiv:2407.10121 · ECCV 2024</p><p class="mute" style="font-size:24px">No roofs and no heights in it: it cannot teach what is usable under a slope.</p></div>
+    <div class="card pcard pop" style="--i:4" data-tip="Lara et al., Findings of ACL 2026|Llama-3.3-70B-Instruct, LoRA fine-tuning, then GRPO, on RPLAN (80,788 plans from Asia). Reward: a gate for invalid or overlapping output, plus the mean of a connectivity score and a total-area score. 8-room task: Compatibility 0.15 against 2.5 for HouseDiffusion (a 94 % relative reduction); realism from 40 volunteers. Stated limits: one dataset, no multi-seed runs, and the results are no evidence of code compliance."><div class="tag">Paper, May 2026</div><h3>Rewards you can verify</h3>
+      <p>An LLM writes the plan as text; code checks it and rewards it: <b>0.15</b> against <b>2.5</b> for the diffusion baseline.</p><p class="cite">Lara et al. · arXiv:2605.14117 · Findings of ACL 2026</p><p class="mute" style="font-size:24px">Its limits: no code compliance, nothing about roofs.</p></div>
+  </div>
+  <div class="abs pop" style="--i:6; left: 96px; top: 940px; width: 1730px; padding: 22px 34px; background: var(--ink); color:#fff; font-weight:800; font-size:34px; line-height:1.2">Same idea as the paper: a model proposes, code decides. <span style="color:#ffc533">Ours runs as a check, without training, and covers what their reward leaves out: heights under a roof, ergonomics, circulation.</span></div>
 </section>
 
 <!-- 7 decision tree -->
@@ -384,7 +451,7 @@ img.shot { display: block; border: 4px solid #fff; box-shadow: 14px 14px 0 var(-
 <!-- 12 tools -->
 <section class="slide" data-step="4" id="s12">
   <div class="tag">Built on open source</div>
-  <h2 class="pop" style="font-size: 88px">Standing on giants</h2>
+  <h2 class="pop" style="font-size: 88px">Tools and frameworks</h2>
   <div class="abs logos" id="logos" style="left: 96px; top: 320px; width: 1730px"></div>
 </section>
 
