@@ -151,10 +151,30 @@ A **flat** is a connected group of rooms: entrance edges and the public stairs a
 | Bedrooms by size | 28 m² median: 70 % have one; 73 m²: 2 bedrooms 52 %; 89 m²: 2 bedrooms 49 %, 3 bedrooms 37 %; 109 m²: 3 bedrooms 64 %; 143 m²: 4 or more 71 % |
 | Share of a flat's net area (65 to 80 m²) | bedrooms 43 %, living 26 %, hall 12 %, kitchen 12 %, bath 7 % |
 | Where the front door opens | corridor 92 %, living room 4 %, bedroom 2 % |
-| A bath is connected to | the corridor 89 %, a bedroom **5 %** (by a door: 5.2 %), the living room 5 %: baths open into the corridor, not into the bedroom |
+| A bath is connected (door or open passage) to | the corridor 89 %, a bedroom **5 %**, the living room 5 %: baths have their door on the corridor, almost never into a bedroom. This is about DOORS: whether the two share a WALL is measured below |
 | A bedroom is connected to | the corridor 89 %, a balcony 22 %, another bedroom 6 %, the living room 9 % |
 | Kitchen and living room | connected in 50 % to 66 % of the flats, mostly by an open passage |
 
 **Caution.** In MSD 34,379 of the 42,584 rooms typed Bedroom are the generic type ROOM (the CSV maps ROOM to Bedroom): "bedrooms" means habitable rooms that are not the living room, kitchen or bath, and the counts above are an upper bound
 (26 % of the flats of 65 to 80 m² have no room that the data calls a living room). The exemplars are therefore taken only from flats of 40 m² and more that name a bedroom, a kitchen and a living room, no room over half of the flat,
 a compact outline: 50 per size band, the ones furthest apart in size, bedrooms and proportion. Each carries its source (split, floor id). `server/test/msdPriors.test.js` checks the files against what the script promises.
+
+#### Which rooms share a wall (the neighbour wishes, measured instead of written by hand)
+
+The access graphs know doors, not walls, and the plan builder's wishes ("the bath next to the bedroom") are about shared walls. So `distill.py` also measures, from the room polygons, which rooms of a flat share a wall:
+the boundary of one lies within 0.45 m of the other's for at least 0.9 m (a door fits; 2.5 minutes over 16,744 flats). Of the real flats that have both kinds of room, one room of the first kind shares a wall with one of the second kind in:
+
+| Pair | Flats | Share a wall | Door of the rooms of the first kind (for comparison) |
+|---|---|---|---|
+| bath and a bedroom | 16,075 | **71 %** | 5 % of baths have a door into a bedroom |
+| kitchen and living room | 12,343 | **79 %** | 21 % of kitchens have a door, 50 % are connected (open passage included) |
+| bath and kitchen | 16,430 | 54 % | **1 %** of baths have a door into the kitchen |
+| bath and living room | 12,417 | 44 % | 5 % |
+| bath and corridor (the hall) | 15,997 | 98 % | 89 % |
+| bedroom and corridor | 15,447 | 95 % | 87 % |
+
+So the hand-written wishes were right, and they are now measured: the bath next to the sleeping rooms and the kitchen next to the living room are what most real flats do, and a door from the bath straight into the kitchen or the living room is what almost none do.
+(My first reading, "a bath next to a bedroom is not how real flats connect", mixed the two questions: it is true for doors and false for walls.) What changed in the code: `shared/links.js` holds the measured shares; every rule of
+`ADJACENCY` (`shared/knowledge.js`) carries its evidence and quotes it in its finding; the example brief and the question tree take their links from `defaultLinks` (only neighbours that at least half of the real flats have, one pair each),
+and the rulebook sent to the language model quotes the numbers. `server/test/links.test.js` fails when a "want" rule is followed by less than half of the real flats or an "avoid" rule by more than a tenth of the real rooms.
+A rule of the app that the data does not support can no longer be added without saying so. Rule audit after the change: 12 of 120 generated plans with any error (10 %), as before.

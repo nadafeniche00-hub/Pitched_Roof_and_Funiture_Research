@@ -9,6 +9,7 @@
 // Pure functions of plain data (browser, Node, tests). Thresholds are planning rules of thumb for exploration, not code requirements.
 import { getGrid, mulberry32, stairRect, dormerRect, DEFAULT_RULES } from './engine.js';
 import { ADJACENCY, LBO, WALLS } from './knowledge.js';
+import { defaultLinks } from './links.js';
 import { DOOR_WIDTH, placeDoor, swingConflicts, boundsOf } from './doors.js';
 
 const EPS = 1e-6;
@@ -36,15 +37,13 @@ export const THIN = 1.3; // a room longer than maxAspect x THIN is too thin to b
 
 export const typeOf = (t) => (t === 'hall' ? HALL : ROOM_TYPES[t] || ROOM_TYPES.storage);
 
-export const EXAMPLE_BRIEF = {
-  rooms: [
-    { id: 'bed', type: 'bedroom', area: 14 },
-    { id: 'kid', type: 'child', area: 12 },
-    { id: 'bath', type: 'bath', area: 4 },
-    { id: 'study', type: 'study', area: 10 },
-  ],
-  links: [['bath', 'bed', 'near']],
-};
+const EXAMPLE_ROOMS = [
+  { id: 'bed', type: 'bedroom', area: 14 },
+  { id: 'kid', type: 'child', area: 12 },
+  { id: 'bath', type: 'bath', area: 4 },
+  { id: 'study', type: 'study', area: 10 },
+];
+export const EXAMPLE_BRIEF = { rooms: EXAMPLE_ROOMS, links: defaultLinks(EXAMPLE_ROOMS) }; // the wishes that most real flats have (shared/links.js), not one written by hand
 
 /** Keep a brief inside sane ranges. */
 export function sanitizeBrief(b = {}) {

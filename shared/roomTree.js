@@ -1,5 +1,6 @@
 // A small decision tree for the rooms of a roof storey: a few questions end in a brief (rooms and wanted areas).
 // Pure data and functions (browser, Node, tests). The areas are rules of thumb for exploration.
+import { defaultLinks } from './links.js';
 
 export const TREE = {
   who: { q: 'Who lives here?', options: [
@@ -39,8 +40,7 @@ export function briefFromPath(path) {
   rooms.push({ id: 'bath', type: 'bath', area: bath === 'two' ? 4.5 : 4 });
   if (bath === 'two') rooms.push({ id: 'wc', type: 'wc', area: 2 });
   if (living === 'yes') rooms.push({ id: 'liv', type: 'living', area: 12 });
-  const links = [['bed', 'bath', 'near']];
-  return { rooms, links };
+  return { rooms, links: defaultLinks(rooms) }; // the wishes that most real flats have (shared/links.js)
 }
 
 /** Scale the wanted areas so the brief fits the usable area of the roof (hall included), never below 2 m2. */
